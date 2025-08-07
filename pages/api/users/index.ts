@@ -1,16 +1,33 @@
-import { NextApiRequest, NextApiResponse } from "next";
-import { sampleUserData } from "../../../utils/sample-data";
+import { NextApiRequest, NextApiResponse } from 'next';
+import { sampleUserData } from '../../../utils/sample-data';
+import { PrismaClient } from '@prisma/client';
+import bcrypt from 'bcryptjs';
 
-const handler = (_req: NextApiRequest, res: NextApiResponse) => {
-  try {
-    if (!Array.isArray(sampleUserData)) {
-      throw new Error("Cannot find user data");
+const prisma = new PrismaClient();
+
+const handler = async (req: NextApiRequest, res: NextApiResponse) => {
+  if (req.method === 'POST') {
+    const { name, email, password } = req.body;
+    if (!name || !email || !password) {
+      return res.status(400).json({ error: 'Name, email, and password are required.' });
     }
-
-    res.status(200).json(sampleUserData);
-  } catch (err: any) {
-    res.status(500).json({ statusCode: 500, message: err.message });
+    try {
+      const existingUser = await prisma.user.findUnique({ where: { email } });
+      if (existingUser) {
+        return res.status(409).json({ error: 'Email already in use.' });
+      }
+      const hashedPassword = await bcrypt.hash(password, 10);
+      const user = await prisma.user.create({
+        data: { name, email, password: hashedPassword },
+      });
+      return res
+        .status(201)
+        .json({ id: user.id, name: user.name, email: user.email, createdAt: user.createdAt });
+    } catch (err: any) {
+      return res.status(500).json({ error: err.message });
+    }
   }
+  // Remove GET endpoint for listing users in production
 };
 
 export default handler;

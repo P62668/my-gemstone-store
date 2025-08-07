@@ -1,0 +1,231 @@
+model FAQ {
+  id        Int      @id @default(autoincrement())
+  question  String
+  answer    String
+  active    Boolean  @default(true)
+  order     Int      @default(0)
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+}
+
+model Press {
+  id        Int      @id @default(autoincrement())
+  title     String
+  content   String
+  active    Boolean  @default(true)
+  order     Int      @default(0)
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+}
+
+model Testimonial {
+  id        Int      @id @default(autoincrement())
+  name      String
+  content   String
+  active    Boolean  @default(true)
+  order     Int      @default(0)
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+}
+model Review {
+  id         Int      @id @default(autoincrement())
+  gemstone   Gemstone @relation(fields: [gemstoneId], references: [id])
+  gemstoneId Int
+  user       User     @relation(fields: [userId], references: [id])
+  userId     Int
+  userName   String
+  rating     Int
+  comment    String
+  createdAt  DateTime @default(now())
+}
+model HomepageSection {
+  id        Int      @id @default(autoincrement())
+  key       String   @unique
+  content   Json
+  order     Int      @default(0)
+  active    Boolean  @default(true)
+  updatedAt DateTime @updatedAt
+}
+model Wishlist {
+  id         Int      @id @default(autoincrement())
+  user       User     @relation(fields: [userId], references: [id])
+  userId     Int
+  gemstone   Gemstone @relation(fields: [gemstoneId], references: [id])
+  gemstoneId Int
+  createdAt  DateTime @default(now())
+}
+
+model RecentlyViewed {
+  id         Int      @id @default(autoincrement())
+  user       User     @relation(fields: [userId], references: [id])
+  userId     Int
+  gemstone   Gemstone @relation(fields: [gemstoneId], references: [id])
+  gemstoneId Int
+  viewedAt   DateTime @default(now())
+}
+
+model Notification {
+  id        Int      @id @default(autoincrement())
+  user      User     @relation(fields: [userId], references: [id])
+  userId    Int
+  message   String
+  read      Boolean  @default(false)
+  createdAt DateTime @default(now())
+}
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "sqlite"
+  url      = "file:./dev.db"
+}
+
+model Category {
+  id           Int        @id @default(autoincrement())
+  name         String     @unique
+  description  String?
+  profileImage String?
+  order        Int        @default(0)
+  active       Boolean    @default(true)
+  createdAt    DateTime   @default(now())
+  updatedAt    DateTime   @updatedAt
+  gemstones    Gemstone[]
+}
+
+model Gemstone {
+  id             Int              @id @default(autoincrement())
+  name           String           @unique
+  type           String
+  description    String
+  price          Float
+  images         String
+  certification  String
+  active         Boolean          @default(true)
+  featured       Boolean          @default(false)
+  createdAt      DateTime         @default(now())
+  updatedAt      DateTime         @updatedAt
+  categoryId     Int?
+  category       Category?        @relation(fields: [categoryId], references: [id])
+  orderItems     OrderItem[]
+  wishlist       Wishlist[]
+  recentlyViewed RecentlyViewed[]
+  reviews        Review[]
+  @@index([type])
+  @@index([price])
+}
+
+model User {
+  id             Int              @id @default(autoincrement())
+  name           String
+  email          String           @unique
+  password       String
+  role           String           @default("user")
+  createdAt      DateTime         @default(now())
+  updatedAt      DateTime         @updatedAt
+  profileImage   String?
+  addresses      Address[]
+  orders         Order[]
+  wishlist       Wishlist[]
+  recentlyViewed RecentlyViewed[]
+  notifications  Notification[]
+  reviews        Review[]
+  @@index([role])
+}
+
+model Order {
+  id        Int         @id @default(autoincrement())
+  userId    Int
+  total     Float
+  status    String      @default("pending")
+  createdAt DateTime    @default(now())
+  updatedAt DateTime    @updatedAt
+  user      User        @relation(fields: [userId], references: [id])
+  items     OrderItem[]
+  statusHistory OrderStatusHistory[]
+  @@index([userId])
+  @@index([status])
+}
+
+model OrderItem {
+  id         Int      @id @default(autoincrement())
+  orderId    Int
+  gemstoneId Int
+  quantity   Int
+  price      Float
+  gemstone   Gemstone @relation(fields: [gemstoneId], references: [id])
+  order      Order    @relation(fields: [orderId], references: [id])
+  @@index([orderId])
+  @@index([gemstoneId])
+}
+
+model OrderStatusHistory {
+  id        Int      @id @default(autoincrement())
+  orderId   Int
+  status    String
+  comment   String?
+  createdAt DateTime @default(now())
+  order     Order    @relation(fields: [orderId], references: [id])
+}
+
+
+model Address {
+  id        Int      @id @default(autoincrement())
+  userId    Int
+  type      String
+  name      String
+  address   String
+  city      String
+  state     String
+  zipCode   String
+  phone     String
+  isDefault Boolean  @default(false)
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+  user      User     @relation(fields: [userId], references: [id])
+  @@index([userId])
+}
+
+
+model Banner {
+  id        Int      @id @default(autoincrement())
+  title     String
+  image     String
+  link      String?
+  active    Boolean  @default(true)
+  order     Int      @default(0)
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+}
+
+model NavigationSettings {
+  id                Int      @id @default(autoincrement())
+  logo              String?
+  menuItems         Json?
+  footerLinks       Json?
+  socialLinks       Json?
+  contactInfo       Json?
+  updatedAt         DateTime @updatedAt
+}
+
+model SiteSettings {
+  id                Int      @id @default(autoincrement())
+  siteName          String?
+  siteDescription   String?
+  contactEmail      String?
+  contactPhone      String?
+  address           String?
+  socialMedia       Json?
+  updatedAt         DateTime @updatedAt
+}
+
+model SEOSettings {
+  id             Int      @id @default(autoincrement())
+  global         Json?
+  pages          Json?
+  social         Json?
+  analytics      Json?
+  structuredData Json?
+  updatedAt      DateTime @updatedAt
+}

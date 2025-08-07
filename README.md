@@ -59,3 +59,61 @@ When we run `next dev` the next time, Next.js will start looking for any `.ts` o
 Next.js has built-in TypeScript declarations, so we'll get autocompletion for Next.js' modules straight away.
 
 A `type-check` script is also added to `package.json`, which runs TypeScript's `tsc` CLI in `noEmit` mode to run type-checking separately. You can then include this, for example, in your `test` scripts.
+
+# World-Class Design Patterns for Luxury Gemstone E-Commerce
+
+This project is built to world-class standards for luxury, comfort, and emotional engagement. Every section and component should be measured against these principles:
+
+## 1. Cinematic Visual Storytelling
+
+- Immersive, high-res imagery or video backgrounds that evoke emotion and tell a story (Kolkata heritage, gemstone craftsmanship).
+- Layered visuals: gradients, overlays, subtle particles, and bokeh for depth and atmosphere.
+- Parallax and scroll-based animations for movement and luxury.
+
+## 2. Luxury Typography & Color
+
+- Elegant, high-contrast fonts (serif for headings, clean sans-serif for body).
+- Gold, platinum, deep jewel tones, and rich dark backgrounds.
+- Gold foil, shimmer, or animated gradients for headings and accents.
+
+## 3. Glassmorphism & Soft Layering
+
+- Glassy, semi-transparent panels with blur for navbars, cards, overlays.
+- Layer content for depth: cards float above backgrounds, with soft drop shadows and subtle borders.
+
+## 4. Micro-Interactions & Delight
+
+- Buttons and CTAs have magnetic, tactile feedback (scale, glow, ripple, or confetti on click).
+- Hover states are animated: cards lift, badges shimmer, images shine.
+- Scroll indicators, progress bars, and floating badges guide and reward users.
+
+## 5. Editorial, Comfortable Layout
+
+- Generous spacing, clear visual hierarchy, and minimal clutter.
+- Cards and carousels are horizontally scrollable, with smooth, cinematic transitions.
+- Use whitespace to let content breathe and feel premium.
+
+## 6. Trust & Social Proof
+
+- Prominent, animated trust badges (certifications, heritage, awards).
+- Real-time social proof: “X people viewing”, “Recently purchased”, testimonials with photos.
+- Subtle, non-intrusive, but always visible.
+
+## 7. Performance & Accessibility
+
+- Animations are smooth, never jarring; fallback for reduced motion.
+- All interactive elements are keyboard accessible and screen reader friendly.
+- Images are optimized and lazy-loaded.
+
+---
+
+**Every new section/component:**
+
+- Ask, “Does this feel cinematic, comfortable, and emotionally engaging? Does it tell a story and build trust?”
+- Every visual/interaction should have a reason—either to delight, guide, or reassure the user.
+- Consistency: Use the same luxury color palette, typography, and animation style throughout.
+- Test on all devices: World-class means flawless on mobile, tablet, and desktop.
+
+---
+
+_This document is a living reference. All contributors should review it before designing or building new features._
