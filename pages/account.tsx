@@ -66,7 +66,14 @@ const AccountPage: React.FC = () => {
       try {
         // Fetch user profile
         const userRes = await fetch('/api/users/me');
-        if (!userRes.ok) throw new Error('Failed to fetch user profile');
+        if (!userRes.ok) {
+          if (userRes.status === 401) {
+            // User not authenticated, redirect to login
+            window.location.href = '/login?redirect=/account';
+            return;
+          }
+          throw new Error('Failed to fetch user profile');
+        }
         const userData = await userRes.json();
         setUser(userData);
         setEditForm({ name: userData.name, email: userData.email });
@@ -74,26 +81,40 @@ const AccountPage: React.FC = () => {
 
         // Fetch orders
         const ordersRes = await fetch('/api/orders');
-        if (!ordersRes.ok) throw new Error('Failed to fetch orders');
-        const ordersData = await ordersRes.json();
-        setOrders(ordersData);
+        if (!ordersRes.ok) {
+          if (ordersRes.status === 401) {
+            setOrders([]);
+          } else {
+            throw new Error('Failed to fetch orders');
+          }
+        } else {
+          const ordersData = await ordersRes.json();
+          setOrders(ordersData);
+        }
 
         // Fetch addresses
         const addressesRes = await fetch('/api/addresses');
-        if (!addressesRes.ok) throw new Error('Failed to fetch addresses');
-        const addressesData = await addressesRes.json();
-        setAddresses(addressesData);
-        setAddressForm({
-          id: null,
-          type: 'shipping',
-          name: userData.name,
-          address: '',
-          city: '',
-          state: '',
-          zipCode: '',
-          phone: '',
-          isDefault: true,
-        });
+        if (!addressesRes.ok) {
+          if (addressesRes.status === 401) {
+            setAddresses([]);
+          } else {
+            throw new Error('Failed to fetch addresses');
+          }
+        } else {
+          const addressesData = await addressesRes.json();
+          setAddresses(addressesData);
+          setAddressForm({
+            id: null,
+            type: 'shipping',
+            name: userData.name,
+            address: '',
+            city: '',
+            state: '',
+            zipCode: '',
+            phone: '',
+            isDefault: true,
+          });
+        }
 
         // Fetch wishlist
         const wishlistRes = await fetch('/api/users/wishlist');

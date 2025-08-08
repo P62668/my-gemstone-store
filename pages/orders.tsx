@@ -207,8 +207,35 @@ const OrdersPage: React.FC = () => {
                       }}
                       className="bg-amber-600 text-white px-3 py-1 rounded-lg font-semibold text-xs shadow hover:bg-amber-700 transition"
                     >
-                      View Details
+                      Track Order
                     </button>
+                    {order.status !== 'cancelled' && order.status !== 'delivered' && (
+                      <button
+                        onClick={async (e) => {
+                          e.preventDefault();
+                          if (confirm('Are you sure you want to cancel this order?')) {
+                            try {
+                              const res = await fetch(`/api/orders/${order.id}`, {
+                                method: 'PATCH',
+                                headers: { 'Content-Type': 'application/json' },
+                                body: JSON.stringify({ status: 'cancelled' }),
+                              });
+                              if (res.ok) {
+                                toast.success('Order cancelled successfully!');
+                                window.location.reload();
+                              } else {
+                                toast.error('Failed to cancel order');
+                              }
+                            } catch (error) {
+                              toast.error('Failed to cancel order');
+                            }
+                          }
+                        }}
+                        className="bg-red-600 text-white px-3 py-1 rounded-lg font-semibold text-xs shadow hover:bg-red-700 transition"
+                      >
+                        Cancel
+                      </button>
+                    )}
                   </div>
                 </div>
                 <ul className="divide-y divide-amber-100 overflow-x-auto flex-nowrap">
