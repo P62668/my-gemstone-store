@@ -266,6 +266,34 @@ async function main() {
 
   console.log('✅ Press mentions created');
 
+  // Create navigation settings
+  const navigationSettings = await prisma.navigationSettings.upsert({
+    where: { id: 1 },
+    update: {},
+    create: {
+      id: 1,
+      menuItems: [
+        { label: 'Home', url: '/', order: 1 },
+        { label: 'Shop', url: '/shop', order: 2 },
+        { label: 'About', url: '/about', order: 3 },
+        { label: 'Contact', url: '/contact', order: 4 }
+      ],
+      footerLinks: [
+        { label: 'Privacy Policy', url: '/privacy', order: 1 },
+        { label: 'Terms of Service', url: '/terms', order: 2 },
+        { label: 'Shipping Info', url: '/shipping', order: 3 },
+        { label: 'Returns', url: '/returns', order: 4 }
+      ],
+      socialLinks: [
+        { platform: 'facebook', url: 'https://facebook.com/shankarmala', order: 1 },
+        { platform: 'instagram', url: 'https://instagram.com/shankarmala', order: 2 },
+        { platform: 'twitter', url: 'https://twitter.com/shankarmala', order: 3 }
+      ]
+    },
+  });
+
+  console.log('✅ Navigation settings created');
+
   console.log('🎉 Database seeding completed successfully!');
 }
 
