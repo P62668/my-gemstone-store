@@ -367,14 +367,30 @@ const ProductDetailPage: React.FC = () => {
   };
 
   const handleAddToCart = async () => {
-    if (gemstone) {
-      setIsAddingToCart(true);
-      triggerGemConfetti();
-      // Simulate API call delay
-      await new Promise((resolve) => setTimeout(resolve, 1000));
+    if (!gemstone) return;
 
+    // Check stock availability
+    if (gemstone.stockCount && gemstone.stockCount < quantity) {
+      toast.error(`Only ${gemstone.stockCount} units available`);
+      setQuantity(gemstone.stockCount);
+      return;
+    }
+
+    if (gemstone.stockCount === 0) {
+      toast.error('This item is out of stock');
+      return;
+    }
+
+    try {
       addToCart(gemstone, quantity);
-      setIsAddingToCart(false);
+      confetti({
+        particleCount: 100,
+        spread: 70,
+        origin: { y: 0.6 },
+      });
+      toast.success(`${gemstone.name} added to cart!`);
+    } catch (error) {
+      toast.error('Failed to add to cart');
     }
   };
 

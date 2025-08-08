@@ -1,7 +1,6 @@
 /** @type {import('next').NextConfig} */
 const nextConfig = {
   // Production optimizations
-  output: 'standalone',
   experimental: {
     optimizeCss: true,
   },
@@ -35,7 +34,7 @@ const nextConfig = {
     unoptimized: false,
   },
   
-  // Fix for webpack hot update issues
+  // Simplified webpack configuration
   webpack: (config, { dev, isServer }) => {
     // Fix for server-side polyfills
     if (isServer) {
@@ -57,15 +56,6 @@ const nextConfig = {
         fs: false,
         path: false,
         os: false,
-      };
-    }
-
-    // Fix for webpack hot update issues
-    if (dev) {
-      config.watchOptions = {
-        poll: 1000,
-        aggregateTimeout: 300,
-        ignored: ['**/node_modules', '**/.next', '**/.git'],
       };
     }
 
@@ -96,9 +86,6 @@ const nextConfig = {
   
   // Trailing slash configuration
   trailingSlash: false,
-  
-  // Disable x-powered-by header
-  poweredByHeader: false,
 };
 
 export default nextConfig;

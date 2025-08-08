@@ -1,12 +1,13 @@
 import { NextApiRequest, NextApiResponse } from 'next';
-import { sampleUserData } from '../../../utils/sample-data';
 import { PrismaClient } from '@prisma/client';
 import bcrypt from 'bcryptjs';
+import { enforceRateLimit } from '../../../utils/rateLimit';
 
 const prisma = new PrismaClient();
 
 const handler = async (req: NextApiRequest, res: NextApiResponse) => {
   if (req.method === 'POST') {
+    if (!enforceRateLimit(req, res, { limit: 5, windowMs: 60_000, key: 'signup_legacy' })) return;
     const { name, email, password } = req.body;
     if (!name || !email || !password) {
       return res.status(400).json({ error: 'Name, email, and password are required.' });

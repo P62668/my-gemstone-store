@@ -1,55 +1,78 @@
-import type { NextApiRequest, NextApiResponse } from 'next';
 import Stripe from 'stripe';
-import jwt from 'jsonwebtoken';
+import type { NextApiRequest, NextApiResponse } from 'next';
 import { PrismaClient } from '@prisma/client';
+import { getUserFromRequest } from '../../../utils/auth';
 
-const stripe = new Stripe(process.env.STRIPE_SECRET_KEY || '', { apiVersion: '2025-06-30.basil' });
-const JWT_SECRET = process.env.JWT_SECRET || 'dev_secret_key';
 const prisma = new PrismaClient();
-
-function getUserIdFromReq(req: NextApiRequest): number | null {
-  const { cookie } = req.headers;
-  if (!cookie) return null;
-  const tokenMatch = cookie.match(/token=([^;]+)/);
-  if (!tokenMatch) return null;
-  try {
-    const decoded = jwt.verify(tokenMatch[1], JWT_SECRET) as { id: number };
-    return decoded.id;
-  } catch {
-    return null;
-  }
-}
+const stripe = new Stripe(process.env.STRIPE_SECRET_KEY || '', { apiVersion: '2025-06-30.basil' });
 
 export default async function handler(req: NextApiRequest, res: NextApiResponse) {
   if (req.method !== 'POST') {
     return res.status(405).json({ error: 'Method not allowed' });
   }
-  const userId = getUserIdFromReq(req);
-  if (!userId) {
-    return res.status(401).json({ error: 'Not authenticated' });
-  }
-  const { items } = req.body;
-  if (!Array.isArray(items) || items.length === 0) {
-    return res.status(400).json({ error: 'No items provided' });
-  }
+
   try {
-    // Calculate total
+    const user = getUserFromRequest(req);
+    const { items } = req.body;
+
+    if (!items || !Array.isArray(items) || items.length === 0) {
+      return res.status(400).json({ error: 'Items are required' });
+    }
+
+    // Validate stock availability
+    const stockValidation = await Promise.all(
+      items.map(async (item: any) => {
+        const gemstone = await prisma.gemstone.findUnique({
+          where: { id: item.gemstoneId },
+          select: { id: true, name: true, price: true, stockCount: true, active: true },
+        });
+
+        if (!gemstone) {
+          return { valid: false, error: `Product ${item.gemstoneId} not found` };
+        }
+
+        if (!gemstone.active) {
+          return { valid: false, error: `${gemstone.name} is not available` };
+        }
+
+        if (gemstone.stockCount < item.quantity) {
+          return {
+            valid: false,
+            error: `Only ${gemstone.stockCount} units available for ${gemstone.name}`,
+          };
+        }
+
+        return { valid: true, gemstone };
+      }),
+    );
+
+    const invalidItems = stockValidation.filter((item) => !item.valid);
+    if (invalidItems.length > 0) {
+      return res.status(400).json({
+        error: 'Stock validation failed',
+        details: invalidItems.map((item) => item.error),
+      });
+    }
+
     const total = items.reduce((sum: number, item: any) => sum + item.price * item.quantity, 0);
-    // Create pending order in DB
+
+    // Create order in database
     const order = await prisma.order.create({
       data: {
-        userId,
+        userId: user.id,
         total,
         status: 'pending',
+        paymentStatus: 'pending',
         items: {
           create: items.map((item: any) => ({
-            gemstoneId: item.gemstoneId || 1, // fallback if gemstoneId missing
+            gemstoneId: item.gemstoneId,
             quantity: item.quantity,
             price: item.price,
           })),
         },
       },
     });
+
     // Create Stripe session with orderId in metadata
     const session = await stripe.checkout.sessions.create({
       payment_method_types: ['card'],
@@ -58,18 +81,25 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
           currency: 'inr',
           product_data: {
             name: item.name,
+            images: item.images ? [item.images[0]] : [],
           },
-          unit_amount: Math.round(item.price * 100),
+          unit_amount: Math.round(item.price * 100), // Convert to cents
         },
         quantity: item.quantity,
       })),
       mode: 'payment',
-      success_url: `${req.headers.origin}/orders?success=1`,
-      cancel_url: `${req.headers.origin}/checkout?canceled=1`,
-      metadata: { userId: String(userId), orderId: String(order.id) },
+      success_url: `${process.env.PUBLIC_BASE_URL}/orders/${order.id}?success=1`,
+      cancel_url: `${process.env.PUBLIC_BASE_URL}/checkout?canceled=1`,
+      metadata: {
+        orderId: order.id.toString(),
+        userId: user.id.toString(),
+      },
+      customer_email: user.email,
     });
-    return res.status(200).json({ url: session.url });
-  } catch (err: any) {
-    return res.status(500).json({ error: err.message });
+
+    res.status(200).json({ url: session.url });
+  } catch (error) {
+    console.error('Checkout session error:', error);
+    res.status(500).json({ error: 'Failed to create checkout session' });
   }
 }

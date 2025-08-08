@@ -2,6 +2,8 @@ import type { NextApiRequest, NextApiResponse } from 'next';
 import { PrismaClient } from '@prisma/client';
 import bcrypt from 'bcryptjs';
 import jwt from 'jsonwebtoken';
+import { enforceRateLimit } from '../../../utils/rateLimit';
+import { sendMail } from '../../../utils/mailer';
 
 const prisma = new PrismaClient();
 const JWT_SECRET = process.env.JWT_SECRET || 'dev_secret_key';
@@ -10,6 +12,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
   if (req.method !== 'POST') {
     return res.status(405).json({ error: 'Method not allowed' });
   }
+  if (!enforceRateLimit(req, res, { limit: 5, windowMs: 60_000, key: 'signup' })) return;
 
   const { name, email, password } = req.body;
 
@@ -41,13 +44,27 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
       },
     });
 
+    // Generate email verification token and send mail (best effort)
+    try {
+      const emailVerifyToken = Math.random().toString(36).slice(2) + Date.now().toString(36);
+      await prisma.user.update({ where: { id: user.id }, data: { emailVerifyToken } });
+      const verifyUrl = `${process.env.PUBLIC_BASE_URL || 'http://localhost:3000'}/verify-email?token=${emailVerifyToken}`;
+      await sendMail({
+        to: user.email,
+        subject: 'Verify your Shankarmala account',
+        html: `<p>Welcome to Shankarmala!</p><p>Please verify your email by clicking the link below:</p><p><a href="${verifyUrl}">${verifyUrl}</a></p>`,
+      });
+    } catch (mailErr) {
+      console.warn('Email verification send failed:', mailErr);
+    }
+
     // Issue JWT and set as httpOnly cookie
     const token = jwt.sign({ id: user.id, email: user.email, role: user.role }, JWT_SECRET, {
       expiresIn: '7d',
     });
     res.setHeader(
       'Set-Cookie',
-      `token=${token}; HttpOnly; Path=/; Max-Age=604800; SameSite=Strict${process.env.NODE_ENV === 'production' ? '; Secure' : ''}`,
+      `token=${token}; HttpOnly; Path=/; Max-Age=604800; SameSite=Strict${process.env.NODE_ENV === 'production' ? '; Secure; Priority=High' : ''}`,
     );
 
     return res.status(201).json({

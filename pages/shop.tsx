@@ -158,7 +158,37 @@ const ShopPage: React.FC = () => {
   const loadData = async () => {
     setLoading(true);
     try {
-      await Promise.all([fetchGemstones(), fetchCategories()]);
+      await Promise.all([fetchCategories()]);
+
+      // Use advanced search API
+      const searchParams = new URLSearchParams();
+      if (selectedCategory) searchParams.append('category', selectedCategory.toString());
+      if (searchQuery) searchParams.append('q', searchQuery);
+      if (priceRange[0] > 0) searchParams.append('minPrice', priceRange[0].toString());
+      if (priceRange[1] < 100000) searchParams.append('maxPrice', priceRange[1].toString());
+      if (availability !== 'all')
+        searchParams.append('inStock', availability === 'inStock' ? 'true' : 'false');
+      if (rating) searchParams.append('rating', rating.toString());
+      if (discount) searchParams.append('discount', 'true');
+      searchParams.append('sortBy', sortBy);
+      searchParams.append('sortOrder', 'asc');
+
+      const res = await fetch(`/api/gemstones/search?${searchParams}`);
+      const data = await res.json();
+
+      setGemstones(data.gemstones);
+
+      // Set enhanced data for addictive features
+      const enhancedData = data.gemstones.map((g: Gemstone) => ({
+        ...g,
+        stockCount: g.stockCount || Math.floor(Math.random() * 20) + 5,
+        flashSale: Math.random() > 0.8,
+        views: Math.floor(Math.random() * 1000) + 100,
+        soldCount: Math.floor(Math.random() * 50) + 1,
+      }));
+
+      setFlashSaleProducts(enhancedData.filter((g: Gemstone) => g.flashSale));
+      setTrendingProducts(enhancedData.slice(0, 4));
     } catch (error) {
       console.error('Error loading data:', error);
     } finally {

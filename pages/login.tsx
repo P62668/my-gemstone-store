@@ -67,7 +67,7 @@ const LoginPage: React.FC = () => {
         const userData = await userRes.json();
         setUser(userData);
         setForm({ email: '', password: '' });
-        if (userData.email === 'admin@kolkata-gems.com') {
+        if (userData.role === 'admin') {
           router.push('/admin');
         } else {
           router.push('/');
@@ -82,7 +82,7 @@ const LoginPage: React.FC = () => {
     }
   };
 
-  // Forgot password handler (demo)
+  // Forgot password handler
   const handleForgot = async (e: React.FormEvent) => {
     e.preventDefault();
     setError('');
@@ -92,10 +92,19 @@ const LoginPage: React.FC = () => {
       return;
     }
     setLoading(true);
-    setTimeout(() => {
+    try {
+      const res = await fetch('/api/users/request-password-reset', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ email: forgotEmail }),
+      });
+      await res.json();
       setForgotSent(true);
+    } catch (err: any) {
+      setError(err.message || 'Failed to send reset link');
+    } finally {
       setLoading(false);
-    }, 1200);
+    }
   };
 
   return (

@@ -4,6 +4,9 @@ export default function handler(req: NextApiRequest, res: NextApiResponse) {
   if (req.method !== 'POST') {
     return res.status(405).json({ error: 'Method not allowed' });
   }
-  res.setHeader('Set-Cookie', 'token=; HttpOnly; Path=/; Max-Age=0; SameSite=Strict; Secure');
+  const isProd = process.env.NODE_ENV === 'production';
+  let cookie = 'token=; HttpOnly; Path=/; Max-Age=0; SameSite=Strict';
+  if (isProd) cookie += '; Secure; Priority=High';
+  res.setHeader('Set-Cookie', cookie);
   res.status(200).json({ message: 'Logged out' });
 }

@@ -1,5 +1,6 @@
 import type { NextApiRequest, NextApiResponse } from 'next';
 import { PrismaClient } from '@prisma/client';
+import { getUserFromRequest } from '../../../../utils/auth';
 
 const prisma = new PrismaClient();
 
@@ -23,17 +24,51 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
   }
 
   if (req.method === 'POST') {
-    // Add a new review (requires userId, userName, rating, comment)
-    const { userId, userName, rating, comment } = req.body;
-    if (!userId || !userName || !rating || !comment) {
-      return res.status(400).json({ error: 'Missing required fields' });
-    }
+    // Authenticated reviews only; reviewer must have purchased the product
+    let user;
     try {
+      user = getUserFromRequest(req);
+    } catch (err: any) {
+      return res.status(401).json({ error: 'Authentication required' });
+    }
+
+    const { rating, comment } = req.body as { rating?: number; comment?: string };
+    if (!rating || !comment) {
+      return res.status(400).json({ error: 'Missing required fields: rating, comment' });
+    }
+
+    try {
+      // Ensure gemstone exists
+      const gemstone = await prisma.gemstone.findUnique({ where: { id: Number(id) } });
+      if (!gemstone) return res.status(404).json({ error: 'Gemstone not found' });
+
+      // Verify the user has a PAID order containing this gemstone
+      const purchased = await prisma.orderItem.findFirst({
+        where: {
+          gemstoneId: Number(id),
+          order: {
+            // Only allow reviews for completed/paid orders
+            status: 'paid',
+            userId: user.id,
+          },
+        },
+      });
+
+      if (!purchased) {
+        return res.status(403).json({ error: 'Only verified buyers can review this product' });
+      }
+
+      // Get user display name
+      const dbUser = await prisma.user.findUnique({
+        where: { id: user.id },
+        select: { name: true },
+      });
+
       const review = await prisma.review.create({
         data: {
           gemstoneId: Number(id),
-          userId: Number(userId),
-          userName,
+          userId: user.id,
+          userName: dbUser?.name || 'Verified Buyer',
           rating: Number(rating),
           comment,
         },

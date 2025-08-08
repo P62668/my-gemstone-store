@@ -2,10 +2,12 @@ import type { NextApiRequest, NextApiResponse } from 'next';
 import { PrismaClient } from '@prisma/client';
 import { getUserFromRequest } from '../../../utils/auth';
 import { handleApiError } from '../../../utils/errorHandler';
+import { enforceRateLimit } from '../../../utils/rateLimit';
 
 const prisma = new PrismaClient();
 
 export default async function handler(req: NextApiRequest, res: NextApiResponse) {
+  if (!enforceRateLimit(req, res, { limit: 60, windowMs: 60_000, key: 'me' })) return;
   let user;
   try {
     user = getUserFromRequest(req);

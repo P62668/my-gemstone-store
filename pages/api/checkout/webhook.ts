@@ -25,6 +25,10 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
   if (req.method !== 'POST') {
     return res.status(405).end('Method Not Allowed');
   }
+  // Require webhook secret configured
+  if (!webhookSecret) {
+    return res.status(500).json({ error: 'Webhook secret not configured' });
+  }
   const buf = await buffer(req);
   const sig = req.headers['stripe-signature'] as string;
   let event: Stripe.Event;

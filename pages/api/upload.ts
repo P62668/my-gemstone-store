@@ -2,6 +2,7 @@ import type { NextApiRequest, NextApiResponse } from 'next';
 import multer from 'multer';
 import fs from 'fs';
 import path from 'path';
+import { requireAdmin } from '../../utils/auth';
 
 export const config = {
   api: {
@@ -42,6 +43,14 @@ const upload = multer({
 export default async function handler(req: NextApiRequest, res: NextApiResponse) {
   if (req.method !== 'POST') {
     return res.status(405).json({ error: 'Method not allowed' });
+  }
+
+  // Restrict to admin users only
+  try {
+    requireAdmin(req);
+  } catch (err: any) {
+    const message = err?.message?.includes('Admins only') ? 'Forbidden' : 'Not authenticated';
+    return res.status(message === 'Forbidden' ? 403 : 401).json({ error: message });
   }
 
   upload.single('file')(req as any, res as any, (err) => {

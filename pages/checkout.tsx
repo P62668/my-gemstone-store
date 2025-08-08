@@ -237,39 +237,31 @@ const CheckoutPage: React.FC = () => {
     setShowConfirm(true);
   };
 
-  // Final order placement
+  // Final order placement via Stripe checkout session
   const handlePlaceOrder = async () => {
     setLoading(true);
     setError('');
     setSuccess('');
     try {
+      // Create Stripe checkout session through server
       const orderItems = cart.map((item) => ({
         gemstoneId: Number(item.id),
         quantity: item.quantity,
         price: item.price,
+        name: item.name,
       }));
-      const orderTotal = cart.reduce((sum, item) => sum + item.price * item.quantity, 0);
-      const res = await fetch('/api/orders', {
+      const res = await fetch('/api/checkout/session', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         credentials: 'include',
-        body: JSON.stringify({
-          items: orderItems,
-          total: orderTotal,
-          status: 'paid',
-        }),
+        body: JSON.stringify({ items: orderItems }),
       });
       const data = await res.json();
-      if (!res.ok) {
-        throw new Error(data.error || 'Failed to place order.');
+      if (!res.ok || !data.url) {
+        throw new Error(data.error || 'Failed to start payment session.');
       }
-      if (data.emailWarning) {
-        setSuccess('Order placed successfully! (Email not sent)');
-        toast.success('Order placed, but confirmation email could not be sent.');
-      } else {
-        setSuccess('Order placed successfully! Thank you for your purchase.');
-        toast.success('Order placed successfully!');
-      }
+
+      // Save new shipping address if requested (best-effort before redirect)
       if (selectedAddressId === 'new' && saveToAddressBook) {
         await fetch('/api/addresses', {
           method: 'POST',
@@ -308,10 +300,8 @@ const CheckoutPage: React.FC = () => {
           }),
         });
       }
-      clearCart();
-      setTimeout(() => {
-        router.push('/orders');
-      }, 2000);
+      // Redirect to Stripe hosted checkout
+      window.location.href = data.url;
     } catch (err) {
       const errorMsg =
         err instanceof Error && err.message

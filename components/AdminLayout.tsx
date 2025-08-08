@@ -34,8 +34,10 @@ const AdminLayout: React.FC<AdminLayoutProps> = ({
     return () => window.removeEventListener('scroll', handleScroll);
   }, []);
 
-  const handleLogout = () => {
-    localStorage.removeItem('adminLoggedIn');
+  const handleLogout = async () => {
+    try {
+      await fetch('/api/admin/logout', { method: 'POST' });
+    } catch {}
     router.push('/admin/login');
   };
 
@@ -81,6 +83,7 @@ const AdminLayout: React.FC<AdminLayoutProps> = ({
     'E-commerce': [
       { href: '/admin/orders', label: 'Orders', icon: '📦', description: 'Manage customer orders' },
       { href: '/admin/users', label: 'Users', icon: '👥', description: 'Customer management' },
+      { href: '/admin/inventory', label: 'Inventory', icon: '📊', description: 'Stock management' },
     ],
     'Site Management': [
       {

@@ -104,6 +104,20 @@ model Gemstone {
   certification  String
   active         Boolean          @default(true)
   featured       Boolean          @default(false)
+  // Inventory management
+  stockCount     Int              @default(0)
+  lowStockThreshold Int           @default(5)
+  sku            String?          @unique
+  weight         Float?
+  dimensions     String?
+  // Pricing
+  mrp            Float?
+  discount       Float?
+  // Analytics
+  views          Int              @default(0)
+  soldCount      Int              @default(0)
+  rating         Float?
+  reviewCount    Int              @default(0)
   createdAt      DateTime         @default(now())
   updatedAt      DateTime         @updatedAt
   categoryId     Int?
@@ -114,6 +128,8 @@ model Gemstone {
   reviews        Review[]
   @@index([type])
   @@index([price])
+  @@index([stockCount])
+  @@index([sku])
 }
 
 model User {
@@ -122,6 +138,10 @@ model User {
   email          String           @unique
   password       String
   role           String           @default("user")
+  emailVerified  Boolean          @default(false)
+  emailVerifyToken String?        @unique
+  passwordResetToken String?      @unique
+  passwordResetExpires DateTime?
   createdAt      DateTime         @default(now())
   updatedAt      DateTime         @updatedAt
   profileImage   String?
@@ -131,6 +151,7 @@ model User {
   recentlyViewed RecentlyViewed[]
   notifications  Notification[]
   reviews        Review[]
+  returns        Return[]
   @@index([role])
 }
 
@@ -139,13 +160,26 @@ model Order {
   userId    Int
   total     Float
   status    String      @default("pending")
+  // Shipping & Delivery
+  shippingMethod String?
+  trackingNumber String?
+  estimatedDelivery DateTime?
+  deliveredAt DateTime?
+  shippingCost Float @default(0)
+  // Payment
+  paymentMethod String?
+  paymentStatus String @default("pending")
+  transactionId String?
   createdAt DateTime    @default(now())
   updatedAt DateTime    @updatedAt
   user      User        @relation(fields: [userId], references: [id])
   items     OrderItem[]
   statusHistory OrderStatusHistory[]
+  returns   Return[]
+  refunds   Refund[]
   @@index([userId])
   @@index([status])
+  @@index([trackingNumber])
 }
 
 model OrderItem {
@@ -228,4 +262,35 @@ model SEOSettings {
   analytics      Json?
   structuredData Json?
   updatedAt      DateTime @updatedAt
+}
+
+model Return {
+  id          Int      @id @default(autoincrement())
+  orderId     Int
+  userId      Int
+  reason      String
+  status      String   @default("pending") // pending, approved, rejected, completed
+  refundAmount Float?
+  refundMethod String?
+  returnDate  DateTime @default(now())
+  processedAt DateTime?
+  notes       String?
+  order       Order    @relation(fields: [orderId], references: [id])
+  user        User     @relation(fields: [userId], references: [id])
+  @@index([orderId])
+  @@index([userId])
+  @@index([status])
+}
+
+model Refund {
+  id          Int      @id @default(autoincrement())
+  orderId     Int
+  amount      Float
+  reason      String
+  status      String   @default("pending") // pending, processed, failed
+  transactionId String?
+  processedAt DateTime?
+  order       Order    @relation(fields: [orderId], references: [id])
+  @@index([orderId])
+  @@index([status])
 }
