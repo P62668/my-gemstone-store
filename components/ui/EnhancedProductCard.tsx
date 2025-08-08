@@ -48,18 +48,18 @@ const EnhancedProductCard: React.FC<EnhancedProductCardProps> = ({
   const handleAddToCart = async (e: React.MouseEvent) => {
     e.stopPropagation();
     setIsAddingToCart(true);
-    
+
     try {
-      await new Promise(resolve => setTimeout(resolve, 800)); // Simulate API call
+      await new Promise((resolve) => setTimeout(resolve, 800)); // Simulate API call
       onAddToCart(product.id);
-      
+
       // Trigger confetti effect
       confetti({
         particleCount: 100,
         spread: 70,
-        origin: { y: 0.6 }
+        origin: { y: 0.6 },
       });
-      
+
       toast.success('Added to cart! 🛒');
     } catch (error) {
       toast.error('Failed to add to cart');
@@ -72,7 +72,7 @@ const EnhancedProductCard: React.FC<EnhancedProductCardProps> = ({
     e.stopPropagation();
     setIsWishlisted(!isWishlisted);
     onWishlistToggle(product.id);
-    
+
     if (!isWishlisted) {
       toast.success('Added to wishlist! ❤️');
     } else {
@@ -98,7 +98,7 @@ const EnhancedProductCard: React.FC<EnhancedProductCardProps> = ({
     }
   };
 
-  const discountPercentage = product.originalPrice 
+  const discountPercentage = product.originalPrice
     ? Math.round(((product.originalPrice - product.price) / product.originalPrice) * 100)
     : 0;
 
@@ -108,15 +108,15 @@ const EnhancedProductCard: React.FC<EnhancedProductCardProps> = ({
       onMouseEnter={() => setIsHovered(true)}
       onMouseLeave={() => setIsHovered(false)}
       onClick={() => onClick(product.id)}
-      whileHover={{ 
+      whileHover={{
         y: -8,
         scale: 1.02,
         rotateY: 2,
       }}
-      transition={{ 
-        type: "spring", 
-        stiffness: 300, 
-        damping: 20 
+      transition={{
+        type: 'spring',
+        stiffness: 300,
+        damping: 20,
       }}
     >
       {/* Product Image Container */}
@@ -127,7 +127,7 @@ const EnhancedProductCard: React.FC<EnhancedProductCardProps> = ({
           alt={product.name}
           className="w-full h-full object-cover"
           whileHover={{ scale: 1.1 }}
-          transition={{ duration: 0.6, ease: "easeOut" }}
+          transition={{ duration: 0.6, ease: 'easeOut' }}
         />
 
         {/* Gradient Overlay */}
@@ -195,14 +195,10 @@ const EnhancedProductCard: React.FC<EnhancedProductCardProps> = ({
             whileTap={{ scale: 0.9 }}
           >
             <Heart
-              className={`w-5 h-5 ${
-                isWishlisted
-                  ? 'fill-red-500 text-red-500'
-                  : 'text-gray-600'
-              }`}
+              className={`w-5 h-5 ${isWishlisted ? 'fill-red-500 text-red-500' : 'text-gray-600'}`}
             />
           </motion.button>
-          
+
           <motion.button
             onClick={handleQuickView}
             className="p-2 bg-white/90 backdrop-blur-sm rounded-full hover:bg-white transition-colors shadow-lg"
@@ -234,7 +230,7 @@ const EnhancedProductCard: React.FC<EnhancedProductCardProps> = ({
               )}
               <span>{isAddingToCart ? 'Adding...' : 'Add to Cart'}</span>
             </motion.button>
-            
+
             <motion.button
               onClick={handleShare}
               className="bg-white/90 backdrop-blur-sm text-gray-700 px-4 py-2 rounded-lg font-medium hover:bg-white transition-colors"
@@ -300,13 +296,11 @@ const EnhancedProductCard: React.FC<EnhancedProductCardProps> = ({
         {/* Stock Status */}
         <div className="flex items-center justify-between">
           {product.stockCount > 0 ? (
-            <span className="text-green-600 text-sm font-medium">
-              ✓ In Stock
-            </span>
+            <span className="text-green-600 text-sm font-medium">✓ In Stock</span>
           ) : (
             <span className="text-red-600 text-sm font-medium">✗ Out of Stock</span>
           )}
-          
+
           {/* Add to Cart Button */}
           <motion.button
             onClick={handleAddToCart}

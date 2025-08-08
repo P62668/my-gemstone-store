@@ -16,22 +16,22 @@ interface HeroSectionProps {
 
 const HeroSection: React.FC<HeroSectionProps> = ({
   title = "Discover the World's Finest Gemstones",
-  subtitle = "Experience luxury, authenticity, and craftsmanship in every piece. From rare diamonds to vibrant emeralds, find your perfect gemstone.",
-  primaryCTA = "Shop Now",
-  secondaryCTA = "Watch Story",
-  primaryCTALink = "/shop",
-  secondaryCTALink = "#",
-  backgroundImage = "/images/hero-bg.jpg",
-  videoUrl = "/videos/hero-video.mp4",
+  subtitle = 'Experience luxury, authenticity, and craftsmanship in every piece. From rare diamonds to vibrant emeralds, find your perfect gemstone.',
+  primaryCTA = 'Shop Now',
+  secondaryCTA = 'Watch Story',
+  primaryCTALink = '/shop',
+  secondaryCTALink = '#',
+  backgroundImage = '/images/hero-bg.jpg',
+  videoUrl = '/videos/hero-video.mp4',
 }) => {
   const [isVideoPlaying, setIsVideoPlaying] = useState(false);
   const [currentFeature, setCurrentFeature] = useState(0);
 
   const features = [
-    { icon: Star, text: "Certified Authenticity", color: "text-yellow-500" },
-    { icon: Shield, text: "Secure Payments", color: "text-green-500" },
-    { icon: Truck, text: "Free Worldwide Shipping", color: "text-blue-500" },
-    { icon: RotateCcw, text: "30-Day Returns", color: "text-purple-500" },
+    { icon: Star, text: 'Certified Authenticity', color: 'text-yellow-500' },
+    { icon: Shield, text: 'Secure Payments', color: 'text-green-500' },
+    { icon: Truck, text: 'Free Worldwide Shipping', color: 'text-blue-500' },
+    { icon: RotateCcw, text: '30-Day Returns', color: 'text-purple-500' },
   ];
 
   useEffect(() => {
@@ -104,9 +104,7 @@ const HeroSection: React.FC<HeroSectionProps> = ({
               {title.split(' ').map((word, index) => (
                 <span
                   key={index}
-                  className={`${
-                    index === 2 || index === 3 ? 'text-amber-400' : ''
-                  }`}
+                  className={`${index === 2 || index === 3 ? 'text-amber-400' : ''}`}
                 >
                   {word}{' '}
                 </span>
@@ -137,7 +135,7 @@ const HeroSection: React.FC<HeroSectionProps> = ({
                 {primaryCTA}
                 <ArrowRight className="ml-2 w-5 h-5" />
               </Link>
-              
+
               <button
                 onClick={handleVideoPlay}
                 className="inline-flex items-center justify-center px-8 py-4 bg-white/10 backdrop-blur-sm border border-white/20 text-white text-lg font-medium rounded-xl hover:bg-white/20 transition-all duration-300"
@@ -282,12 +280,7 @@ const HeroSection: React.FC<HeroSectionProps> = ({
               >
                 ×
               </button>
-              <video
-                controls
-                autoPlay
-                className="w-full rounded-2xl"
-                src={videoUrl}
-              >
+              <video controls autoPlay className="w-full rounded-2xl" src={videoUrl}>
                 Your browser does not support the video tag.
               </video>
             </motion.div>

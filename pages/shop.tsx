@@ -7,6 +7,9 @@ import { toast } from 'react-hot-toast';
 import confetti from 'canvas-confetti';
 import Head from 'next/head';
 import EnhancedProductCard from '../components/ui/EnhancedProductCard';
+import AdvancedSearch from '../components/ui/AdvancedSearch';
+import SmartRecommendations from '../components/ui/SmartRecommendations';
+import QuickViewModal from '../components/ui/QuickViewModal';
 import Link from 'next/link';
 import { useRouter } from 'next/router';
 
@@ -60,6 +63,12 @@ const ShopPage: React.FC = () => {
   const [trendingProducts, setTrendingProducts] = useState<Gemstone[]>([]);
   const [isAddingToCart, setIsAddingToCart] = useState(false);
   const [recentlyViewed, setRecentlyViewed] = useState<Gemstone[]>([]);
+
+  // Advanced search and recommendations
+  const [recentSearches, setRecentSearches] = useState<string[]>([]);
+  const [trendingSearches, setTrendingSearches] = useState<string[]>([]);
+  const [quickViewProduct, setQuickViewProduct] = useState<Gemstone | null>(null);
+  const [showQuickView, setShowQuickView] = useState(false);
 
   // Simulate live viewers
   useEffect(() => {
@@ -587,6 +596,33 @@ const ShopPage: React.FC = () => {
                     </p>
                   </div>
 
+                  {/* Advanced Search */}
+                  <div className="mb-8">
+                    <AdvancedSearch
+                      onSearch={(query, filters) => {
+                        setSearchQuery(query);
+                        // Apply additional filters here
+                      }}
+                      onSuggestionClick={(suggestion) => {
+                        // Navigate to product or apply search
+                        setSearchQuery(suggestion.name);
+                      }}
+                      categories={categories}
+                      recentSearches={recentSearches}
+                      trendingSearches={trendingSearches}
+                    />
+                  </div>
+
+                  {/* Smart Recommendations */}
+                  <div className="mb-8">
+                    <SmartRecommendations
+                      userId={1} // Replace with actual user ID when auth is implemented
+                      currentProductId={undefined}
+                      userPreferences={[]}
+                      recentlyViewed={recentlyViewed.map((p) => p.id)}
+                    />
+                  </div>
+
                   {/* Addictive Features Banner */}
                   <motion.div
                     initial={{ opacity: 0, y: 20 }}
@@ -657,11 +693,36 @@ const ShopPage: React.FC = () => {
                             onClick={() => handleProductClick(product.id)}
                           >
                             <EnhancedProductCard
-                              product={product}
-                              onAddToCart={handleAddToCart}
-                              onWishlistToggle={() => toggleWishlist(product.id)}
-                              isWishlisted={wishlist.has(product.id)}
-                              isAddingToCart={isAddingToCart}
+                              product={{
+                                id: product.id,
+                                name: product.name,
+                                price: product.price,
+                                image: product.images?.[0] || '/images/placeholder-gemstone.jpg',
+                                rating: product.rating || 4.5,
+                                reviewCount: product.reviewCount || 0,
+                                category: product.category?.name || 'Gemstone',
+                                discount: product.discount,
+                                stockCount: product.stockCount || 0,
+                                originalPrice: product.discount
+                                  ? product.price / (1 - product.discount / 100)
+                                  : undefined,
+                                isNew: product.createdAt
+                                  ? new Date(product.createdAt).getTime() >
+                                    Date.now() - 7 * 24 * 60 * 60 * 1000
+                                  : false,
+                                isTrending: product.views && product.views > 1000,
+                                isLimited: product.stockCount && product.stockCount < 5,
+                                views: product.views,
+                                soldCount: product.soldCount,
+                                description: product.description,
+                              }}
+                              onAddToCart={(productId) => handleAddToCart(product)}
+                              onWishlistToggle={(productId) => toggleWishlist(productId)}
+                              onQuickView={(product) => {
+                                setQuickViewProduct(product as any);
+                                setShowQuickView(true);
+                              }}
+                              onClick={handleProductClick}
                             />
                           </motion.div>
                         ))}
@@ -961,6 +1022,66 @@ const ShopPage: React.FC = () => {
             )}
           </AnimatePresence>
         </div>
+
+        {/* Quick View Modal */}
+        <QuickViewModal
+          product={
+            quickViewProduct
+              ? {
+                  id: quickViewProduct.id,
+                  name: quickViewProduct.name,
+                  price: quickViewProduct.price,
+                  originalPrice: quickViewProduct.discount
+                    ? quickViewProduct.price / (1 - quickViewProduct.discount / 100)
+                    : undefined,
+                  images: quickViewProduct.images || ['/images/placeholder-gemstone.jpg'],
+                  rating: quickViewProduct.rating || 4.5,
+                  reviewCount: quickViewProduct.reviewCount || 0,
+                  description:
+                    quickViewProduct.description || 'Beautiful gemstone with excellent quality.',
+                  category: quickViewProduct.category?.name || 'Gemstone',
+                  discount: quickViewProduct.discount,
+                  stockCount: quickViewProduct.stockCount || 0,
+                  specifications: {
+                    weight: '2.5 carats',
+                    dimensions: '8.5 x 6.2 x 4.1 mm',
+                    color: 'Deep Red',
+                    clarity: 'VS1',
+                    cut: 'Brilliant',
+                    origin: 'Myanmar',
+                    certification: 'GIA',
+                  },
+                  reviews: [
+                    {
+                      id: 1,
+                      user: 'Sarah M.',
+                      rating: 5,
+                      comment: 'Beautiful gemstone, exactly as described!',
+                      date: '2024-12-01',
+                      verified: true,
+                    },
+                    {
+                      id: 2,
+                      user: 'John D.',
+                      rating: 4,
+                      comment: 'Great quality, fast shipping.',
+                      date: '2024-11-28',
+                      verified: true,
+                    },
+                  ],
+                }
+              : null
+          }
+          isOpen={showQuickView}
+          onClose={() => setShowQuickView(false)}
+          onAddToCart={(productId, quantity) => {
+            const product = gemstones.find((p) => p.id === productId);
+            if (product) {
+              handleAddToCart(product);
+            }
+          }}
+          onWishlistToggle={(productId) => toggleWishlist(productId)}
+        />
       </Layout>
     </>
   );

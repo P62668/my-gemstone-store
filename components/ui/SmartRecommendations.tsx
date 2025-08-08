@@ -35,7 +35,9 @@ const SmartRecommendations: React.FC<SmartRecommendationsProps> = ({
 }) => {
   const [recommendations, setRecommendations] = useState<Product[]>([]);
   const [loading, setLoading] = useState(true);
-  const [activeTab, setActiveTab] = useState<'personalized' | 'trending' | 'new' | 'similar'>('personalized');
+  const [activeTab, setActiveTab] = useState<'personalized' | 'trending' | 'new' | 'similar'>(
+    'personalized',
+  );
   const [wishlist, setWishlist] = useState<Set<number>>(new Set());
 
   // Mock data - in real app, this would come from AI/ML API
@@ -126,26 +128,26 @@ const SmartRecommendations: React.FC<SmartRecommendationsProps> = ({
     // Simulate API call
     const loadRecommendations = async () => {
       setLoading(true);
-      await new Promise(resolve => setTimeout(resolve, 1000));
-      
+      await new Promise((resolve) => setTimeout(resolve, 1000));
+
       // Filter based on active tab
       let filtered = [...mockProducts];
-      
+
       switch (activeTab) {
         case 'personalized':
-          filtered = mockProducts.filter(p => p.isTrending || p.rating > 4.5);
+          filtered = mockProducts.filter((p) => p.isTrending || p.rating > 4.5);
           break;
         case 'trending':
-          filtered = mockProducts.filter(p => p.isTrending);
+          filtered = mockProducts.filter((p) => p.isTrending);
           break;
         case 'new':
-          filtered = mockProducts.filter(p => p.isNew);
+          filtered = mockProducts.filter((p) => p.isNew);
           break;
         case 'similar':
-          filtered = mockProducts.filter(p => p.category === 'Ruby' || p.category === 'Emerald');
+          filtered = mockProducts.filter((p) => p.category === 'Ruby' || p.category === 'Emerald');
           break;
       }
-      
+
       setRecommendations(filtered);
       setLoading(false);
     };
@@ -154,7 +156,7 @@ const SmartRecommendations: React.FC<SmartRecommendationsProps> = ({
   }, [activeTab]);
 
   const handleWishlistToggle = (productId: number) => {
-    setWishlist(prev => {
+    setWishlist((prev) => {
       const newSet = new Set(prev);
       if (newSet.has(productId)) {
         newSet.delete(productId);
@@ -219,130 +221,128 @@ const SmartRecommendations: React.FC<SmartRecommendationsProps> = ({
       {/* Products Grid */}
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
         <AnimatePresence mode="wait">
-          {loading ? (
-            // Loading skeleton
-            Array.from({ length: 6 }).map((_, index) => (
-              <motion.div
-                key={index}
-                initial={{ opacity: 0 }}
-                animate={{ opacity: 1 }}
-                exit={{ opacity: 0 }}
-                className="bg-gray-100 rounded-xl h-80 animate-pulse"
-              />
-            ))
-          ) : (
-            recommendations.map((product, index) => (
-              <motion.div
-                key={product.id}
-                initial={{ opacity: 0, y: 20 }}
-                animate={{ opacity: 1, y: 0 }}
-                exit={{ opacity: 0, y: -20 }}
-                transition={{ delay: index * 0.1 }}
-                className="group relative bg-white rounded-xl border border-gray-200 hover:border-amber-300 hover:shadow-lg transition-all duration-300 overflow-hidden"
-              >
-                {/* Product Image */}
-                <div className="relative aspect-square overflow-hidden">
-                  <img
-                    src={product.image}
-                    alt={product.name}
-                    className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300"
-                  />
-                  
-                  {/* Badges */}
-                  <div className="absolute top-3 left-3 flex flex-col space-y-2">
-                    {product.isNew && (
-                      <span className="bg-blue-500 text-white text-xs px-2 py-1 rounded-full font-medium">
-                        NEW
-                      </span>
-                    )}
-                    {product.isTrending && (
-                      <span className="bg-orange-500 text-white text-xs px-2 py-1 rounded-full font-medium flex items-center">
-                        <Fire className="w-3 h-3 mr-1" />
-                        TRENDING
-                      </span>
-                    )}
-                    {product.isLimited && (
-                      <span className="bg-red-500 text-white text-xs px-2 py-1 rounded-full font-medium">
-                        LIMITED
-                      </span>
-                    )}
-                    {product.discount && (
-                      <span className="bg-green-500 text-white text-xs px-2 py-1 rounded-full font-medium">
-                        -{product.discount}%
-                      </span>
-                    )}
-                  </div>
-
-                  {/* Wishlist Button */}
-                  <button
-                    onClick={() => handleWishlistToggle(product.id)}
-                    className="absolute top-3 right-3 p-2 bg-white/80 backdrop-blur-sm rounded-full hover:bg-white transition-colors"
-                  >
-                    <Heart
-                      className={`w-5 h-5 ${
-                        wishlist.has(product.id)
-                          ? 'fill-red-500 text-red-500'
-                          : 'text-gray-600'
-                      }`}
+          {loading
+            ? // Loading skeleton
+              Array.from({ length: 6 }).map((_, index) => (
+                <motion.div
+                  key={index}
+                  initial={{ opacity: 0 }}
+                  animate={{ opacity: 1 }}
+                  exit={{ opacity: 0 }}
+                  className="bg-gray-100 rounded-xl h-80 animate-pulse"
+                />
+              ))
+            : recommendations.map((product, index) => (
+                <motion.div
+                  key={product.id}
+                  initial={{ opacity: 0, y: 20 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  exit={{ opacity: 0, y: -20 }}
+                  transition={{ delay: index * 0.1 }}
+                  className="group relative bg-white rounded-xl border border-gray-200 hover:border-amber-300 hover:shadow-lg transition-all duration-300 overflow-hidden"
+                >
+                  {/* Product Image */}
+                  <div className="relative aspect-square overflow-hidden">
+                    <img
+                      src={product.image}
+                      alt={product.name}
+                      className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300"
                     />
-                  </button>
 
-                  {/* Quick View */}
-                  <div className="absolute inset-0 bg-black/0 group-hover:bg-black/20 transition-colors duration-300 flex items-center justify-center opacity-0 group-hover:opacity-100">
-                    <button className="bg-white text-gray-900 px-4 py-2 rounded-lg font-medium hover:bg-gray-50 transition-colors">
-                      Quick View
-                    </button>
-                  </div>
-                </div>
-
-                {/* Product Info */}
-                <div className="p-4">
-                  <div className="flex items-center justify-between mb-2">
-                    <span className="text-xs text-gray-500 font-medium">{product.category}</span>
-                    <div className="flex items-center space-x-1">
-                      <Star className="w-4 h-4 fill-yellow-400 text-yellow-400" />
-                      <span className="text-sm text-gray-600">{product.rating}</span>
-                      <span className="text-xs text-gray-400">({product.reviewCount})</span>
-                    </div>
-                  </div>
-
-                  <h4 className="font-semibold text-gray-900 mb-2 line-clamp-2">{product.name}</h4>
-
-                  <div className="flex items-center justify-between mb-3">
-                    <div className="flex items-center space-x-2">
-                      {product.originalPrice && (
-                        <span className="text-sm text-gray-400 line-through">
-                          ₹{product.originalPrice.toLocaleString()}
+                    {/* Badges */}
+                    <div className="absolute top-3 left-3 flex flex-col space-y-2">
+                      {product.isNew && (
+                        <span className="bg-blue-500 text-white text-xs px-2 py-1 rounded-full font-medium">
+                          NEW
                         </span>
                       )}
-                      <span className="text-lg font-bold text-gray-900">
-                        ₹{product.price.toLocaleString()}
-                      </span>
+                      {product.isTrending && (
+                        <span className="bg-orange-500 text-white text-xs px-2 py-1 rounded-full font-medium flex items-center">
+                          <Fire className="w-3 h-3 mr-1" />
+                          TRENDING
+                        </span>
+                      )}
+                      {product.isLimited && (
+                        <span className="bg-red-500 text-white text-xs px-2 py-1 rounded-full font-medium">
+                          LIMITED
+                        </span>
+                      )}
+                      {product.discount && (
+                        <span className="bg-green-500 text-white text-xs px-2 py-1 rounded-full font-medium">
+                          -{product.discount}%
+                        </span>
+                      )}
+                    </div>
+
+                    {/* Wishlist Button */}
+                    <button
+                      onClick={() => handleWishlistToggle(product.id)}
+                      className="absolute top-3 right-3 p-2 bg-white/80 backdrop-blur-sm rounded-full hover:bg-white transition-colors"
+                    >
+                      <Heart
+                        className={`w-5 h-5 ${
+                          wishlist.has(product.id) ? 'fill-red-500 text-red-500' : 'text-gray-600'
+                        }`}
+                      />
+                    </button>
+
+                    {/* Quick View */}
+                    <div className="absolute inset-0 bg-black/0 group-hover:bg-black/20 transition-colors duration-300 flex items-center justify-center opacity-0 group-hover:opacity-100">
+                      <button className="bg-white text-gray-900 px-4 py-2 rounded-lg font-medium hover:bg-gray-50 transition-colors">
+                        Quick View
+                      </button>
                     </div>
                   </div>
 
-                  {/* Social Proof */}
-                  <div className="flex items-center justify-between text-xs text-gray-500">
-                    <span>{product.views} views</span>
-                    <span>{product.soldCount} sold</span>
+                  {/* Product Info */}
+                  <div className="p-4">
+                    <div className="flex items-center justify-between mb-2">
+                      <span className="text-xs text-gray-500 font-medium">{product.category}</span>
+                      <div className="flex items-center space-x-1">
+                        <Star className="w-4 h-4 fill-yellow-400 text-yellow-400" />
+                        <span className="text-sm text-gray-600">{product.rating}</span>
+                        <span className="text-xs text-gray-400">({product.reviewCount})</span>
+                      </div>
+                    </div>
+
+                    <h4 className="font-semibold text-gray-900 mb-2 line-clamp-2">
+                      {product.name}
+                    </h4>
+
+                    <div className="flex items-center justify-between mb-3">
+                      <div className="flex items-center space-x-2">
+                        {product.originalPrice && (
+                          <span className="text-sm text-gray-400 line-through">
+                            ₹{product.originalPrice.toLocaleString()}
+                          </span>
+                        )}
+                        <span className="text-lg font-bold text-gray-900">
+                          ₹{product.price.toLocaleString()}
+                        </span>
+                      </div>
+                    </div>
+
+                    {/* Social Proof */}
+                    <div className="flex items-center justify-between text-xs text-gray-500">
+                      <span>{product.views} views</span>
+                      <span>{product.soldCount} sold</span>
+                    </div>
+
+                    {/* Add to Cart */}
+                    <button className="w-full mt-3 bg-amber-600 text-white py-2 rounded-lg font-medium hover:bg-amber-700 transition-colors flex items-center justify-center space-x-2">
+                      <ShoppingCart className="w-4 h-4" />
+                      <span>Add to Cart</span>
+                    </button>
                   </div>
 
-                  {/* Add to Cart */}
-                  <button className="w-full mt-3 bg-amber-600 text-white py-2 rounded-lg font-medium hover:bg-amber-700 transition-colors flex items-center justify-center space-x-2">
-                    <ShoppingCart className="w-4 h-4" />
-                    <span>Add to Cart</span>
-                  </button>
-                </div>
-
-                {/* Recommendation Reason */}
-                <div className="absolute bottom-2 left-2">
-                  <span className="text-xs bg-amber-100 text-amber-700 px-2 py-1 rounded-full">
-                    {getRecommendationReason(product)}
-                  </span>
-                </div>
-              </motion.div>
-            ))
-          )}
+                  {/* Recommendation Reason */}
+                  <div className="absolute bottom-2 left-2">
+                    <span className="text-xs bg-amber-100 text-amber-700 px-2 py-1 rounded-full">
+                      {getRecommendationReason(product)}
+                    </span>
+                  </div>
+                </motion.div>
+              ))}
         </AnimatePresence>
       </div>
 

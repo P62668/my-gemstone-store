@@ -1,6 +1,17 @@
 import React, { useState, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { X, Heart, ShoppingCart, Star, Eye, Share2, Truck, Shield, RotateCcw, MessageCircle } from 'lucide-react';
+import {
+  X,
+  Heart,
+  ShoppingCart,
+  Star,
+  Eye,
+  Share2,
+  Truck,
+  Shield,
+  RotateCcw,
+  MessageCircle,
+} from 'lucide-react';
 import { toast } from 'react-hot-toast';
 
 interface Product {
@@ -51,7 +62,9 @@ const QuickViewModal: React.FC<QuickViewModalProps> = ({
 }) => {
   const [selectedImage, setSelectedImage] = useState(0);
   const [quantity, setQuantity] = useState(1);
-  const [activeTab, setActiveTab] = useState<'description' | 'specifications' | 'reviews'>('description');
+  const [activeTab, setActiveTab] = useState<'description' | 'specifications' | 'reviews'>(
+    'description',
+  );
   const [isWishlisted, setIsWishlisted] = useState(false);
   const [loading, setLoading] = useState(false);
 
@@ -64,10 +77,10 @@ const QuickViewModal: React.FC<QuickViewModalProps> = ({
 
   const handleAddToCart = async () => {
     if (!product) return;
-    
+
     setLoading(true);
     try {
-      await new Promise(resolve => setTimeout(resolve, 1000)); // Simulate API call
+      await new Promise((resolve) => setTimeout(resolve, 1000)); // Simulate API call
       onAddToCart(product.id, quantity);
       toast.success('Added to cart successfully!');
       onClose();
@@ -99,7 +112,7 @@ const QuickViewModal: React.FC<QuickViewModalProps> = ({
 
   if (!product) return null;
 
-  const discountPercentage = product.originalPrice 
+  const discountPercentage = product.originalPrice
     ? Math.round(((product.originalPrice - product.price) / product.originalPrice) * 100)
     : 0;
 
@@ -181,7 +194,7 @@ const QuickViewModal: React.FC<QuickViewModalProps> = ({
                       )}
                     </div>
                     <h1 className="text-3xl font-bold text-gray-900 mb-2">{product.name}</h1>
-                    
+
                     {/* Rating */}
                     <div className="flex items-center space-x-2 mb-4">
                       <div className="flex items-center">
@@ -346,7 +359,10 @@ const QuickViewModal: React.FC<QuickViewModalProps> = ({
                       className="grid grid-cols-1 md:grid-cols-2 gap-4"
                     >
                       {Object.entries(product.specifications).map(([key, value]) => (
-                        <div key={key} className="flex justify-between py-2 border-b border-gray-100">
+                        <div
+                          key={key}
+                          className="flex justify-between py-2 border-b border-gray-100"
+                        >
                           <span className="font-medium text-gray-700 capitalize">
                             {key.replace(/([A-Z])/g, ' $1').trim()}
                           </span>

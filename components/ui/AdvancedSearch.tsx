@@ -73,10 +73,13 @@ const AdvancedSearch: React.FC<AdvancedSearchProps> = ({
 
   useEffect(() => {
     if (query.length > 2) {
-      setSuggestions(mockSuggestions.filter(item => 
-        item.name.toLowerCase().includes(query.toLowerCase()) ||
-        item.category.toLowerCase().includes(query.toLowerCase())
-      ));
+      setSuggestions(
+        mockSuggestions.filter(
+          (item) =>
+            item.name.toLowerCase().includes(query.toLowerCase()) ||
+            item.category.toLowerCase().includes(query.toLowerCase()),
+        ),
+      );
       setShowSuggestions(true);
     } else {
       setShowSuggestions(false);
@@ -135,14 +138,14 @@ const AdvancedSearch: React.FC<AdvancedSearchProps> = ({
               </button>
             )}
           </div>
-          
+
           <button
             onClick={() => setIsExpanded(!isExpanded)}
             className="px-4 py-4 text-gray-600 hover:text-gray-800 transition-colors"
           >
             <Filter className="w-5 h-5" />
           </button>
-          
+
           <button
             onClick={handleSearch}
             className="px-6 py-4 bg-amber-600 text-white rounded-r-2xl hover:bg-amber-700 transition-colors font-medium"
@@ -167,12 +170,16 @@ const AdvancedSearch: React.FC<AdvancedSearchProps> = ({
                 <label className="block text-sm font-medium text-gray-700 mb-2">Category</label>
                 <select
                   value={selectedFilters.category}
-                  onChange={(e) => setSelectedFilters({...selectedFilters, category: e.target.value})}
+                  onChange={(e) =>
+                    setSelectedFilters({ ...selectedFilters, category: e.target.value })
+                  }
                   className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-amber-500 focus:border-transparent"
                 >
                   <option value="">All Categories</option>
                   {categories.map((cat) => (
-                    <option key={cat.id} value={cat.id}>{cat.name}</option>
+                    <option key={cat.id} value={cat.id}>
+                      {cat.name}
+                    </option>
                   ))}
                 </select>
               </div>
@@ -185,20 +192,27 @@ const AdvancedSearch: React.FC<AdvancedSearchProps> = ({
                     type="number"
                     placeholder="Min"
                     value={selectedFilters.priceRange[0]}
-                    onChange={(e) => setSelectedFilters({
-                      ...selectedFilters, 
-                      priceRange: [parseInt(e.target.value) || 0, selectedFilters.priceRange[1]]
-                    })}
+                    onChange={(e) =>
+                      setSelectedFilters({
+                        ...selectedFilters,
+                        priceRange: [parseInt(e.target.value) || 0, selectedFilters.priceRange[1]],
+                      })
+                    }
                     className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-amber-500 focus:border-transparent"
                   />
                   <input
                     type="number"
                     placeholder="Max"
                     value={selectedFilters.priceRange[1]}
-                    onChange={(e) => setSelectedFilters({
-                      ...selectedFilters, 
-                      priceRange: [selectedFilters.priceRange[0], parseInt(e.target.value) || 100000]
-                    })}
+                    onChange={(e) =>
+                      setSelectedFilters({
+                        ...selectedFilters,
+                        priceRange: [
+                          selectedFilters.priceRange[0],
+                          parseInt(e.target.value) || 100000,
+                        ],
+                      })
+                    }
                     className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-amber-500 focus:border-transparent"
                   />
                 </div>
@@ -209,7 +223,9 @@ const AdvancedSearch: React.FC<AdvancedSearchProps> = ({
                 <label className="block text-sm font-medium text-gray-700 mb-2">Rating</label>
                 <select
                   value={selectedFilters.rating}
-                  onChange={(e) => setSelectedFilters({...selectedFilters, rating: e.target.value})}
+                  onChange={(e) =>
+                    setSelectedFilters({ ...selectedFilters, rating: e.target.value })
+                  }
                   className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-amber-500 focus:border-transparent"
                 >
                   <option value="">Any Rating</option>
@@ -224,7 +240,9 @@ const AdvancedSearch: React.FC<AdvancedSearchProps> = ({
                 <label className="block text-sm font-medium text-gray-700 mb-2">Sort By</label>
                 <select
                   value={selectedFilters.sortBy}
-                  onChange={(e) => setSelectedFilters({...selectedFilters, sortBy: e.target.value})}
+                  onChange={(e) =>
+                    setSelectedFilters({ ...selectedFilters, sortBy: e.target.value })
+                  }
                   className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-amber-500 focus:border-transparent"
                 >
                   <option value="relevance">Relevance</option>
@@ -311,7 +329,9 @@ const AdvancedSearch: React.FC<AdvancedSearchProps> = ({
                         <div className="text-sm text-gray-500">{suggestion.category}</div>
                       </div>
                       <div className="text-right">
-                        <div className="font-medium text-gray-900">₹{suggestion.price.toLocaleString()}</div>
+                        <div className="font-medium text-gray-900">
+                          ₹{suggestion.price.toLocaleString()}
+                        </div>
                         <div className="flex items-center text-sm text-gray-500">
                           <Star className="w-4 h-4 fill-current text-yellow-400" />
                           {suggestion.rating}
