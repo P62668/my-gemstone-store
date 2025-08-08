@@ -696,7 +696,7 @@ const ProductDetailPage: React.FC = () => {
           <div className="space-y-8 relative lg:max-h-[calc(100vh-120px)] lg:overflow-y-auto lg:pr-2">
             {/* Addictive Features */}
             <AddictiveFeatures
-              productId={gemstone?.id || 0}
+              productId={gemstone?.id?.toString() || ''}
               productName={gemstone?.name || ''}
               price={gemstone?.price || 0}
               stockCount={gemstone?.stockCount}

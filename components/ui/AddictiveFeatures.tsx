@@ -3,6 +3,9 @@ import { motion, AnimatePresence } from 'framer-motion';
 import { toast } from 'react-hot-toast';
 
 interface AddictiveFeaturesProps {
+  productId?: string;
+  productName?: string;
+  price?: number;
   stockCount?: number;
   discount?: number;
 }

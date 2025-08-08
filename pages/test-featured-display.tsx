@@ -1,4 +1,5 @@
 import React, { useState, useEffect } from 'react';
+import Link from 'next/link';
 
 interface FeaturedProduct {
   id: number;
@@ -156,9 +157,9 @@ const TestFeaturedDisplay: React.FC = () => {
               <li>Check the browser console (F12) for detailed API logs</li>
               <li>
                 Go to{' '}
-                <a href="/" className="text-blue-600 underline">
+                <Link href="/" className="text-blue-600 underline">
                   homepage
-                </a>{' '}
+                </Link>{' '}
                 to see the real featured carousel
               </li>
             </ol>

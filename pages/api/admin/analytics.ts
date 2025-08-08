@@ -157,7 +157,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
     `;
 
     // Convert BigInt to Number for topGemstoneDetails
-    const topGemstoneDetails = topGemstoneDetailsRaw.map((item: any) => ({
+    const topGemstoneDetails = (topGemstoneDetailsRaw as any[]).map((item: any) => ({
       name: item.name,
       sales: Number(item.sales),
     }));
@@ -175,7 +175,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
     `;
 
     // Convert BigInt to Number for categorySales
-    const categorySales = categorySalesRaw.map((item: any) => ({
+    const categorySales = (categorySalesRaw as any[]).map((item: any) => ({
       category: item.category,
       sales: Number(item.sales),
     }));
