@@ -333,7 +333,7 @@ The Shankarmala Gemstone Store is now **100% ready for production deployment** w
 ## 🔐 AUTHENTICATION TESTING RESULTS
 
 ### **✅ Login System Working Perfectly**
-- **Admin Login**: ✅ Working (admin@shankarmala.com / Admin@123)
+- **Admin Login**: ✅ Working (admin@shankarmala.com). Use `ADMIN_PASSWORD` env in production or generated dev password.
 - **User Login**: ✅ Working (tested with sample users)
 - **Token Generation**: ✅ Working (proper JWT with issuer/audience)
 - **Token Verification**: ✅ Working (validates tokens correctly)

@@ -128,7 +128,7 @@ The Shankarmala Gemstone Store has been thoroughly analyzed, tested, and prepare
 
 **Admin Access:**
 - ✅ Admin user: `admin@shankarmala.com`
-- ✅ Password: `Admin@123`
+- ✅ Password: set via the `ADMIN_PASSWORD` environment variable (do NOT store secrets in repo)
 - ✅ Role-based access control working
 
 ---
