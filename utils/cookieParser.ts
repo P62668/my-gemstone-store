@@ -32,19 +32,29 @@ export function setSecureCookie(res: NextApiResponse, name: string, value: strin
   path?: string;
 } = {}) {
   const {
-    maxAge = 7 * 24 * 60 * 60 * 1000, // 7 days
+    // Max-Age must be seconds per cookie spec
+    maxAge = 7 * 24 * 60 * 60, // 7 days in seconds
     httpOnly = true,
     secure = process.env.NODE_ENV === 'production',
     sameSite = 'strict',
-    path = '/'
+    path = '/',
   } = options;
 
-  // Always set Path=/ for global cookie access
-  const cookieValue = `${name}=${value}; Path=/; HttpOnly; ${secure ? 'Secure; ' : ''}SameSite=${sameSite}; Max-Age=${maxAge}`;
+  const attrs: string[] = [];
+  attrs.push(`Path=${path}`);
+  attrs.push(`Max-Age=${maxAge}`);
+  attrs.push(`SameSite=${sameSite}`);
+  if (httpOnly) attrs.push('HttpOnly');
+  if (secure) attrs.push('Secure');
 
-  // Get existing cookies
-  const existingCookies = res.getHeader('Set-Cookie') as string[] || [];
+  const cookieValue = `${name}=${encodeURIComponent(value)}; ${attrs.join('; ')}`;
 
-  // Add new cookie
-  res.setHeader('Set-Cookie', [...existingCookies, cookieValue]);
+  // Normalize existing Set-Cookie header to an array
+  const existing = res.getHeader('Set-Cookie');
+  let cookies: string[] = [];
+  if (typeof existing === 'string') cookies = [existing];
+  else if (Array.isArray(existing)) cookies = existing as string[];
+
+  cookies.push(cookieValue);
+  res.setHeader('Set-Cookie', cookies);
 }

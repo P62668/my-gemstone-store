@@ -1,6 +1,6 @@
 // Force Prisma to use the library/native engine in local/dev environments
-// Override any .env value to avoid wasm/daemon fallbacks that fail in this environment.
-if (typeof process !== 'undefined') {
+// Avoid forcing in production where deployment platform may choose a different engine.
+if (typeof process !== 'undefined' && process.env.NODE_ENV !== 'production') {
   process.env.PRISMA_CLIENT_ENGINE_TYPE = 'library';
   process.env.PRISMA_FORCE_NAPI = '1';
 }
