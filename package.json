@@ -6,7 +6,7 @@
   "scripts": {
     "dev": "DATABASE_URL=\"file:/Users/p62668/my-gemstone-store/prisma/dev.db\" next",
     "build": "next build",
-    "start": "next start",
+    "start": "node scripts/check-env.js && next start",
     "lint": "next lint",
     "postinstall": "prisma generate",
     "prisma:seed": "node prisma/seed.js"

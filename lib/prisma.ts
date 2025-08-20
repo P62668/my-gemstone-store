@@ -17,6 +17,15 @@ export const prisma =
     log: ['query', 'info', 'warn', 'error'],
   });
 
+// Log engine selection info for easier diagnostics
+const engineInfo = {
+  PRISMA_CLIENT_ENGINE_TYPE: process.env.PRISMA_CLIENT_ENGINE_TYPE || '(not set)',
+  PRISMA_FORCE_NAPI: process.env.PRISMA_FORCE_NAPI || '(not set)',
+  PRISMA_QUERY_ENGINE_LIBRARY: process.env.PRISMA_QUERY_ENGINE_LIBRARY || '(not set)',
+  NODE_ENV: process.env.NODE_ENV || '(not set)',
+};
+console.info('[prisma] engine info:', engineInfo);
+
 // Attach runtime listeners to surface engine errors in server logs
 prisma.$on('warn', (e) => {
   // Lightweight warning - keep concise
