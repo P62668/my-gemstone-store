@@ -9,17 +9,18 @@ export function parseCookies(req: NextApiRequest, res: NextApiResponse, next: ()
 
 // Get token from request
 export function getTokenFromRequest(req: NextApiRequest): string | null {
-  // Try to get from cookies first
-  if (req.cookies && req.cookies.token) {
-    return req.cookies.token;
+  // Try to get from cookies first (support both generic token and adminToken)
+  if (req.cookies) {
+    if (typeof req.cookies.token === 'string' && req.cookies.token.length > 0) return req.cookies.token;
+    if (typeof req.cookies.adminToken === 'string' && req.cookies.adminToken.length > 0) return req.cookies.adminToken;
   }
-  
+
   // Try to get from Authorization header
   const authHeader = req.headers.authorization;
   if (authHeader && authHeader.startsWith('Bearer ')) {
     return authHeader.substring(7);
   }
-  
+
   return null;
 }
 
