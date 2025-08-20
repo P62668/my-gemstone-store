@@ -2,7 +2,11 @@ const http = require('http');
 const fs = require('fs');
 const path = require('path');
 
-const BASE_URL = process.env.TEST_BASE_URL || 'http://localhost:3001';
+const BASE_URL = process.env.TEST_BASE_URL || process.env.BASE_URL || 'http://localhost:3000';
+const ADMIN_PASSWORD = process.env.ADMIN_PASSWORD || 'Admin@123';
+if (!process.env.ADMIN_PASSWORD) {
+  console.warn('⚠️  Using fallback ADMIN_PASSWORD for comprehensive tests. Set ADMIN_PASSWORD in the environment for CI/production.');
+}
 
 // Comprehensive test configuration
 const tests = [
@@ -24,7 +28,7 @@ const tests = [
   { name: 'Addresses API', method: 'GET', path: '/api/addresses', expectedStatus: 200 },
   
   // Admin APIs
-  { name: 'Admin Login API', method: 'POST', path: '/api/admin/login', data: JSON.stringify({email: 'admin@shankarmala.com', password: 'Admin@123'}), headers: {'Content-Type': 'application/json'}, expectedStatus: 200 },
+  { name: 'Admin Login API', method: 'POST', path: '/api/admin/login', data: JSON.stringify({email: 'admin@shankarmala.com', password: ADMIN_PASSWORD}), headers: {'Content-Type': 'application/json'}, expectedStatus: 200 },
   { name: 'Admin Dashboard API', method: 'GET', path: '/api/admin/dashboard', expectedStatus: 200 },
   { name: 'Admin Gemstones API', method: 'GET', path: '/api/admin/gemstones', expectedStatus: 200 },
   { name: 'Admin Categories API', method: 'GET', path: '/api/admin/categories', expectedStatus: 200 },

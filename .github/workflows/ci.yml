@@ -1,0 +1,58 @@
+name: CI
+
+on:
+  push:
+    branches: [ main ]
+  pull_request:
+    branches: [ main ]
+
+jobs:
+  build-and-test:
+    runs-on: ubuntu-latest
+
+    services:
+      # nothing extra required (using sqlite file in repo)
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Use Node.js 20
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+          cache: 'npm'
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Generate Prisma client
+        run: npx prisma generate
+
+      - name: Build production bundle
+        env:
+          DATABASE_URL: file:./prisma/dev.db
+          NEXTAUTH_URL: http://localhost:3000
+          NEXTAUTH_SECRET: test-secret
+          JWT_SECRET: test-secret
+        run: npm run build --if-present
+
+      - name: Start production server
+        env:
+          DATABASE_URL: file:./prisma/dev.db
+          NEXTAUTH_URL: http://localhost:3000
+          NEXTAUTH_SECRET: test-secret
+          JWT_SECRET: test-secret
+        run: |
+          npm run start &
+          npx wait-on http://localhost:3000
+
+      - name: Run smoke tests
+        run: node scripts/test-all-apis.js
+
+      - name: Upload test report
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: comprehensive-test-report
+          path: comprehensive-test-report.json

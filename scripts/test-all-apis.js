@@ -1,6 +1,10 @@
 const http = require('http');
 
-const BASE_URL = 'http://localhost:3001';
+const BASE_URL = process.env.TEST_BASE_URL || process.env.BASE_URL || 'http://localhost:3000';
+const ADMIN_PASSWORD = process.env.ADMIN_PASSWORD || 'Admin@123';
+if (!process.env.ADMIN_PASSWORD) {
+  console.warn('⚠️  Using fallback ADMIN_PASSWORD for tests. Set ADMIN_PASSWORD in the environment for CI/production.');
+}
 
 // Test configuration
 const tests = [
@@ -28,7 +32,7 @@ const tests = [
     path: '/api/admin/login',
     data: JSON.stringify({
       email: 'admin@shankarmala.com',
-      password: 'Admin@123'
+      password: ADMIN_PASSWORD
     }),
     headers: { 'Content-Type': 'application/json' },
     expectedStatus: 200
