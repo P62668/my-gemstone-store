@@ -1,10 +1,16 @@
 const { PrismaClient } = require('@prisma/client');
 const bcrypt = require('bcryptjs');
+const { requireEnv } = require('../utils/env');
 
 const prisma = new PrismaClient();
 
 async function main() {
   console.log('Starting database seeding...');
+
+  // Prevent accidental production seeding
+  if (process.env.NODE_ENV === 'production' && process.env.ALLOW_PROD_SEED !== '1') {
+    throw new Error('Refusing to run seeds in production. Set ALLOW_PROD_SEED=1 to override.');
+  }
 
   // Seed categories first
   const categories = [
@@ -29,7 +35,20 @@ async function main() {
 
   // Seed admin user if not exists
   const adminEmail = 'admin@shankarmala.com';
-  const adminPassword = process.env.ADMIN_PASSWORD || 'Admin@123';
+  let adminPassword;
+  if (process.env.NODE_ENV === 'production') {
+    // In production require explicit ADMIN_PASSWORD
+    adminPassword = requireEnv('ADMIN_PASSWORD');
+  } else {
+    // Development: use provided ADMIN_PASSWORD or generate a secure temporary password
+    adminPassword = process.env.ADMIN_PASSWORD;
+    if (!adminPassword) {
+      const crypto = require('crypto');
+      adminPassword = crypto.randomBytes(12).toString('base64').replace(/\W/g, '').slice(0, 16);
+      console.log('⚠️ No ADMIN_PASSWORD provided — generated temporary admin password for development:', adminPassword);
+      console.log('Please set ADMIN_PASSWORD in your environment to use a stable password.');
+    }
+  }
   const hashed = await bcrypt.hash(adminPassword, 10);
   const admin = await prisma.user.upsert({
     where: { email: adminEmail },
@@ -42,7 +61,7 @@ async function main() {
       role: 'admin',
     },
   });
-  console.log('Admin user seeded:', { email: adminEmail, password: adminPassword });
+  console.log('Admin user seeded:', { email: adminEmail });
 
   // Seed sample users
   const sampleUsers = [
