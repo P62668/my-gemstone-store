@@ -29,8 +29,18 @@ npm-debug.log*
 yarn-debug.log*
 yarn-error.log*
 
-# local env files
-.env*.local
+# Local dev database
+/prisma/dev.db
+
+# Uploaded files (local)
+/public/images/uploads/
+
+# Local logs and dev artifacts
+dev-native2.log
+*.log
+
+# Local env files (already present but ensure)
+.env*
 
 # vercel
 .vercel
