@@ -15,7 +15,7 @@ const Error: ErrorPage = ({ statusCode }) => {
   return (
     <>
       <Head>
-        <title>Error {statusCode} - Shankarmala</title>
+        <title>Error {statusCode || 'Unknown'} - Shankarmala</title>
         <meta name="description" content="An error occurred" />
       </Head>
 

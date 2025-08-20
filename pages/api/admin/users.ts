@@ -1,36 +1,61 @@
 import { NextApiRequest, NextApiResponse } from 'next';
-import { PrismaClient } from '@prisma/client';
-import jwt from 'jsonwebtoken';
-import { requireAdmin } from '../../../utils/auth';
-
-const prisma = new PrismaClient();
-const JWT_SECRET = process.env.JWT_SECRET || 'dev_secret_key';
+import { prisma } from '../../../lib/prisma';
+import { requireAdminAuth } from '../../../utils/adminSecurity';
 
 export default async function handler(req: NextApiRequest, res: NextApiResponse) {
   try {
-    requireAdmin(req);
-  } catch (err: any) {
-    return res.status(err.message.includes('Forbidden') ? 403 : 401).json({ error: err.message });
-  }
-
-  if (req.method === 'GET') {
-    try {
-      const users = await prisma.user.findMany({
-        select: {
-          id: true,
-          name: true,
-          email: true,
-          createdAt: true,
-          updatedAt: true,
-        },
-        orderBy: { createdAt: 'desc' },
-      });
-      res.status(200).json(users);
-    } catch (error) {
-      res.status(500).json({ error: 'Failed to fetch users' });
+    // Authenticate admin user
+    const adminUser = await requireAdminAuth(req, res);
+    if (!adminUser) {
+      return; // Response already sent by requireAdminAuth
     }
-  } else {
-    res.setHeader('Allow', ['GET']);
-    res.status(405).end(`Method ${req.method} Not Allowed`);
+
+    if (req.method === 'GET') {
+      try {
+        const users = await prisma.user.findMany({
+          where: {
+            role: { not: 'admin' }, // Exclude admin users from the list
+          },
+          select: {
+            id: true,
+            firstName: true,
+            lastName: true,
+            email: true,
+            role: true,
+            active: true,
+            createdAt: true,
+            updatedAt: true,
+          },
+          orderBy: { createdAt: 'desc' },
+        });
+
+        // Transform the data to match the frontend interface
+        const transformedUsers = users.map((user) => ({
+          id: user.id,
+          name: `${user.firstName || ''} ${user.lastName || ''}`.trim() || user.email,
+          email: user.email,
+          role: user.role,
+          emailVerified: true, // Assuming all users are verified
+          createdAt: user.createdAt.toISOString(),
+          updatedAt: user.updatedAt.toISOString(),
+          profileImage: null,
+          phone: null,
+          lastLogin: null,
+          orderCount: 0,
+          totalSpent: 0,
+        }));
+
+        res.status(200).json(transformedUsers);
+      } catch (error) {
+        console.error('Error fetching users:', error);
+        res.status(500).json({ error: 'Failed to fetch users' });
+      }
+    } else {
+      res.setHeader('Allow', ['GET']);
+      res.status(405).end(`Method ${req.method} Not Allowed`);
+    }
+  } catch (error) {
+    console.error('Admin users API error:', error);
+    res.status(500).json({ error: 'Internal server error' });
   }
 }

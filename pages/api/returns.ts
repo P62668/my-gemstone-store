@@ -1,31 +1,39 @@
 import type { NextApiRequest, NextApiResponse } from 'next';
-import { PrismaClient } from '@prisma/client';
 import { getUserFromRequest } from '../../utils/auth';
 
-const prisma = new PrismaClient();
+import { prisma } from '../../lib/prisma';
 
 export default async function handler(req: NextApiRequest, res: NextApiResponse) {
   if (req.method === 'GET') {
     try {
-      const user = getUserFromRequest(req);
-
-      const returns = await prisma.return.findMany({
-        where: { userId: user.id },
-        include: {
-          order: {
-            include: {
-              items: {
-                include: {
-                  gemstone: true,
-                },
-              },
-            },
-          },
+      // For public returns info, return general policy
+      return res.status(200).json({
+        policy: {
+          returnWindow: '30 days',
+          conditions: [
+            'Item must be in original condition',
+            'Original packaging must be intact',
+            'Certificate must be included',
+            'Return shipping is customer responsibility'
+          ],
+          process: [
+            'Contact customer service within 30 days',
+            'Provide order number and reason',
+            'Ship item back with tracking',
+            'Refund processed within 5-7 business days'
+          ],
+          exclusions: [
+            'Custom or engraved items',
+            'Items with signs of wear',
+            'Items without original certificate'
+          ]
         },
-        orderBy: { returnDate: 'desc' },
+        contactInfo: {
+          email: 'returns@kolkata-gems.com',
+          phone: '+91-98765-43210',
+          address: 'Shankarmala, Kolkata, West Bengal, India'
+        }
       });
-
-      res.status(200).json(returns);
     } catch (error) {
       console.error('Returns fetch error:', error);
       res.status(500).json({ error: 'Failed to fetch returns' });
@@ -33,6 +41,9 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
   } else if (req.method === 'POST') {
     try {
       const user = getUserFromRequest(req);
+      if (!user) {
+        return res.status(401).json({ error: 'Authentication required' });
+      }
       const { orderId, reason } = req.body;
 
       if (!orderId || !reason) {
@@ -60,7 +71,6 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
       const returnRequest = await prisma.return.create({
         data: {
           orderId: parseInt(orderId),
-          userId: user.id,
           reason,
         },
         include: {

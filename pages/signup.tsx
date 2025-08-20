@@ -4,12 +4,13 @@ import Link from 'next/link';
 import Layout from '../components/Layout';
 
 const SignupPage: React.FC = () => {
-  const [form, setForm] = useState({ name: '', email: '', password: '' });
+  const [form, setForm] = useState({ firstName: '', lastName: '', email: '', password: '' });
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
   const [success, setSuccess] = useState('');
   const [formErrors, setFormErrors] = useState<{
-    name?: string;
+    firstName?: string;
+    lastName?: string;
     email?: string;
     password?: string;
     terms?: string;
@@ -35,10 +36,16 @@ const SignupPage: React.FC = () => {
       }));
       setPasswordStrength(getPasswordStrength(value));
     }
-    if (name === 'name') {
+    if (name === 'firstName') {
       setFormErrors((prev) => ({
         ...prev,
-        name: value.trim().length < 2 ? 'Enter your full name.' : undefined,
+        firstName: value.trim().length < 1 ? 'Enter your first name.' : undefined,
+      }));
+    }
+    if (name === 'lastName') {
+      setFormErrors((prev) => ({
+        ...prev,
+        lastName: value.trim().length < 1 ? 'Enter your last name.' : undefined,
       }));
     }
   };
@@ -58,8 +65,9 @@ const SignupPage: React.FC = () => {
     setError('');
     setSuccess('');
     // Validate before submit
-    const errors: { name?: string; email?: string; password?: string; terms?: string } = {};
-    if (form.name.trim().length < 2) errors.name = 'Enter your full name.';
+    const errors: { firstName?: string; lastName?: string; email?: string; password?: string; terms?: string } = {};
+    if (form.firstName.trim().length < 1) errors.firstName = 'Enter your first name.';
+    if (form.lastName.trim().length < 1) errors.lastName = 'Enter your last name.';
     if (!/^\S+@\S+\.\S+$/.test(form.email)) errors.email = 'Enter a valid email.';
     if (form.password.length < 6) errors.password = 'Password must be at least 6 characters.';
     if (!agreed) errors.terms = 'You must agree to the terms and privacy policy.';
@@ -71,7 +79,8 @@ const SignupPage: React.FC = () => {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
-          name: form.name,
+          firstName: form.firstName,
+          lastName: form.lastName,
           email: form.email,
           password: form.password,
         }),
@@ -84,7 +93,7 @@ const SignupPage: React.FC = () => {
         throw new Error(data.error || 'Signup failed');
       }
       setSuccess('Account created! You can now log in.');
-      setForm({ name: '', email: '', password: '' });
+      setForm({ firstName: '', lastName: '', email: '', password: '' });
       setAgreed(false);
       setPasswordStrength(0);
     } catch (err: unknown) {
@@ -164,49 +173,55 @@ const SignupPage: React.FC = () => {
             <h1 className="text-3xl font-bold text-amber-900 mb-6 text-center">
               Create Your Account
             </h1>
-            {/* Social signup placeholder */}
-            {/* <div className="flex gap-3 mb-4 justify-center">
-              <button className="bg-white border border-amber-200 rounded-full px-4 py-2 flex items-center gap-2 shadow hover:bg-amber-50">
-                <Image
-                  src={typeof '/images/google.svg' === 'string' && '/images/google.svg'.startsWith('/') ? '/images/google.svg' : '/images/placeholder-gemstone.jpg'}
-                  alt="Google"
-                  width={20}
-                  height={20}
-                  className="w-5 h-5"
-                /> Google
-              </button>
-              <button className="bg-white border border-amber-200 rounded-full px-4 py-2 flex items-center gap-2 shadow hover:bg-amber-50">
-                <Image
-                  src={typeof '/images/apple.svg' === 'string' && '/images/apple.svg'.startsWith('/') ? '/images/apple.svg' : '/images/placeholder-gemstone.jpg'}
-                  alt="Apple"
-                  width={20}
-                  height={20}
-                  className="w-5 h-5"
-                /> Apple
-              </button>
-            </div> */}
             <form className="flex flex-col gap-4" onSubmit={handleSubmit} aria-label="Signup form">
-              <label htmlFor="signup-name" className="sr-only">
-                Full Name
-              </label>
-              <input
-                id="signup-name"
-                name="name"
-                type="text"
-                placeholder="Full Name"
-                required
-                className={`rounded-xl border px-4 py-3 focus:ring-amber-500 ${formErrors.name ? 'border-red-400' : 'border-amber-200'}`}
-                value={form.name}
-                onChange={handleChange}
-                aria-invalid={!!formErrors.name}
-                aria-describedby={formErrors.name ? 'signup-name-error' : undefined}
-                autoComplete="name"
-              />
-              {formErrors.name && (
-                <div id="signup-name-error" className="text-red-600 text-xs" role="alert">
-                  {formErrors.name}
+              <div className="grid grid-cols-2 gap-3">
+                <div>
+                  <label htmlFor="signup-firstName" className="sr-only">
+                    First Name
+                  </label>
+                  <input
+                    id="signup-firstName"
+                    name="firstName"
+                    type="text"
+                    placeholder="First Name"
+                    required
+                    className={`rounded-xl border px-4 py-3 focus:ring-amber-500 w-full ${formErrors.firstName ? 'border-red-400' : 'border-amber-200'}`}
+                    value={form.firstName}
+                    onChange={handleChange}
+                    aria-invalid={!!formErrors.firstName}
+                    aria-describedby={formErrors.firstName ? 'signup-firstName-error' : undefined}
+                    autoComplete="given-name"
+                  />
+                  {formErrors.firstName && (
+                    <div id="signup-firstName-error" className="text-red-600 text-xs mt-1" role="alert">
+                      {formErrors.firstName}
+                    </div>
+                  )}
                 </div>
-              )}
+                <div>
+                  <label htmlFor="signup-lastName" className="sr-only">
+                    Last Name
+                  </label>
+                  <input
+                    id="signup-lastName"
+                    name="lastName"
+                    type="text"
+                    placeholder="Last Name"
+                    required
+                    className={`rounded-xl border px-4 py-3 focus:ring-amber-500 w-full ${formErrors.lastName ? 'border-red-400' : 'border-amber-200'}`}
+                    value={form.lastName}
+                    onChange={handleChange}
+                    aria-invalid={!!formErrors.lastName}
+                    aria-describedby={formErrors.lastName ? 'signup-lastName-error' : undefined}
+                    autoComplete="family-name"
+                  />
+                  {formErrors.lastName && (
+                    <div id="signup-lastName-error" className="text-red-600 text-xs mt-1" role="alert">
+                      {formErrors.lastName}
+                    </div>
+                  )}
+                </div>
+              </div>
               <label htmlFor="signup-email" className="sr-only">
                 Email
               </label>

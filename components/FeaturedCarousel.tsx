@@ -1,5 +1,5 @@
 import React, { useState, useRef, useEffect } from 'react';
-import { motion, AnimatePresence } from 'framer-motion';
+import { motion } from 'framer-motion';
 import Link from 'next/link';
 import { formatPriceUSD } from '../utils/numberFormat';
 import confetti from 'canvas-confetti';
@@ -20,11 +20,11 @@ const badgeColors = {
   Premium: 'bg-gradient-to-r from-purple-400 to-purple-600 text-white',
 };
 
-const fadeVariants = {
-  initial: { opacity: 0, y: 20 },
-  animate: { opacity: 1, y: 0 },
-  exit: { opacity: 0, y: -20 },
-};
+// const fadeVariants = {
+//   initial: { opacity: 0, y: 20 },
+//   animate: { opacity: 1, y: 0 },
+//   exit: { opacity: 0, y: -20 },
+// };
 
 interface FeaturedCarouselProps {
   title?: string;
@@ -54,8 +54,9 @@ const FeaturedCarousel: React.FC<FeaturedCarouselProps> = ({
         if (!res.ok) throw new Error('Failed to fetch featured products');
         const data = await res.json();
         setProducts(data);
-      } catch (err: any) {
-        setError(err.message || 'Unknown error');
+      } catch (err: unknown) {
+        const errorMessage = err instanceof Error ? err.message : 'Unknown error';
+        setError(errorMessage);
       } finally {
         setLoading(false);
       }
@@ -65,13 +66,15 @@ const FeaturedCarousel: React.FC<FeaturedCarouselProps> = ({
 
   // Touch/swipe handlers
   const handleTouchStart = (e: React.TouchEvent) => {
-    setIsDragging(true);
-    setStartX(e.touches[0].clientX);
-    setCurrentX(e.touches[0].clientX);
+    if (e.touches[0]) {
+      setIsDragging(true);
+      setStartX(e.touches[0].clientX);
+      setCurrentX(e.touches[0].clientX);
+    }
   };
 
   const handleTouchMove = (e: React.TouchEvent) => {
-    if (!isDragging) return;
+    if (!isDragging || !e.touches[0]) return;
     setCurrentX(e.touches[0].clientX);
   };
 
@@ -120,8 +123,7 @@ const FeaturedCarousel: React.FC<FeaturedCarouselProps> = ({
     if (!loading && products.length) {
       triggerGemConfetti();
     }
-    // eslint-disable-next-line
-  }, [current]);
+  }, [current, loading, products.length]);
 
   if (loading) {
     return (
@@ -306,7 +308,7 @@ const FeaturedCarousel: React.FC<FeaturedCarouselProps> = ({
               {product?.description}
             </p>
             <div className="text-3xl font-extrabold text-lime-700 mb-4">
-              {formatPriceUSD(product?.price)}
+              {formatPriceUSD(product?.price || 0)}
             </div>
             <Link href={`/product/${product?.id}`} className="inline-block mt-2">
               <span className="px-8 py-3 rounded-full bg-gradient-to-r from-lime-500 to-green-500 hover:from-lime-600 hover:to-green-600 text-white font-bold shadow-lg transition-all duration-300 focus:outline-none focus:ring-4 focus:ring-lime-300/40 text-lg relative overflow-hidden">

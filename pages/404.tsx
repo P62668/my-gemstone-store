@@ -1,63 +1,101 @@
 import React from 'react';
-import Head from 'next/head';
 import Link from 'next/link';
+import Layout from '../components/Layout';
+import { motion } from 'framer-motion';
 
 const Custom404: React.FC = () => {
   return (
-    <>
-      <Head>
-        <title>Page Not Found - Shankarmala</title>
-        <meta name="description" content="The page you're looking for doesn't exist." />
-      </Head>
-
-      <div className="min-h-screen bg-gradient-to-br from-amber-50 to-yellow-100 flex items-center justify-center px-4">
-        <div className="max-w-md w-full bg-white rounded-3xl shadow-2xl p-8 text-center">
-          <div className="mb-6">
-            <div className="w-20 h-20 mx-auto bg-gradient-to-br from-amber-500 to-yellow-400 rounded-full flex items-center justify-center mb-4">
-              <svg
-                className="w-10 h-10 text-white"
-                fill="none"
-                stroke="currentColor"
-                viewBox="0 0 24 24"
-              >
-                <path
-                  strokeLinecap="round"
-                  strokeLinejoin="round"
-                  strokeWidth={2}
-                  d="M9.172 16.172a4 4 0 015.656 0M9 12h6m-6-4h6m2 5.291A7.962 7.962 0 0112 15c-2.34 0-4.47-.881-6.08-2.33"
-                />
-              </svg>
+    <Layout title="Page Not Found - Shankarmala">
+      
+      <div className="min-h-[70vh] flex items-center justify-center py-16">
+        <div className="text-center max-w-2xl mx-auto px-4">
+          <motion.div
+            initial={{ opacity: 0, y: 20 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ duration: 0.6 }}
+          >
+            {/* 404 Icon */}
+            <div className="mb-8">
+              <div className="w-32 h-32 mx-auto bg-gradient-to-br from-amber-100 to-amber-200 rounded-full flex items-center justify-center mb-6">
+                <span className="text-6xl">💎</span>
+              </div>
+              <h1 className="text-8xl font-bold text-amber-600 mb-4">404</h1>
             </div>
-            <h1 className="text-3xl font-bold text-gray-900 mb-2">Page Not Found</h1>
-            <p className="text-gray-600 mb-6">
-              The page you're looking for doesn't exist or has been moved.
+
+            {/* Error Message */}
+            <h2 className="text-3xl font-bold text-gray-800 mb-4">
+              Oops! Page Not Found
+            </h2>
+            <p className="text-lg text-gray-600 mb-8 leading-relaxed">
+              The gemstone you&apos;re looking for seems to have wandered off. 
+              Don&apos;t worry, we have plenty of other beautiful pieces waiting for you.
             </p>
-          </div>
 
-          <div className="space-y-4">
-            <Link
-              href="/"
-              className="block w-full bg-gradient-to-r from-amber-500 to-yellow-400 text-white font-semibold py-3 px-6 rounded-xl hover:from-amber-600 hover:to-yellow-500 transition-all duration-200 transform hover:scale-105"
-            >
-              Go Home
-            </Link>
+            {/* Action Buttons */}
+            <div className="flex flex-col sm:flex-row gap-4 justify-center mb-8">
+              <Link
+                href="/"
+                className="bg-amber-600 text-white px-8 py-3 rounded-xl font-semibold hover:bg-amber-700 transition-colors duration-300 shadow-lg hover:shadow-xl"
+              >
+                🏠 Back to Home
+              </Link>
+              <Link
+                href="/shop"
+                className="bg-white text-amber-600 border-2 border-amber-600 px-8 py-3 rounded-xl font-semibold hover:bg-amber-50 transition-colors duration-300 shadow-lg hover:shadow-xl"
+              >
+                🛍️ Browse Collection
+              </Link>
+            </div>
 
-            <Link
-              href="/shop"
-              className="block w-full bg-gray-100 text-gray-700 font-semibold py-3 px-6 rounded-xl hover:bg-gray-200 transition-all duration-200"
-            >
-              Browse Gemstones
-            </Link>
-          </div>
+            {/* Helpful Links */}
+            <div className="bg-gray-50 rounded-2xl p-6 mb-8">
+              <h3 className="text-lg font-semibold text-gray-800 mb-4">
+                Looking for something specific?
+              </h3>
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 text-sm">
+                <Link
+                  href="/shop?category=ruby"
+                  className="text-amber-600 hover:text-amber-700 transition-colors"
+                >
+                  🔴 Ruby Collection
+                </Link>
+                <Link
+                  href="/shop?category=emerald"
+                  className="text-amber-600 hover:text-amber-700 transition-colors"
+                >
+                  💚 Emerald Collection
+                </Link>
+                <Link
+                  href="/shop?category=sapphire"
+                  className="text-amber-600 hover:text-amber-700 transition-colors"
+                >
+                  🔵 Sapphire Collection
+                </Link>
+                <Link
+                  href="/shop?category=diamond"
+                  className="text-amber-600 hover:text-amber-700 transition-colors"
+                >
+                  💎 Diamond Collection
+                </Link>
+              </div>
+            </div>
 
-          <div className="mt-8 pt-6 border-t border-gray-200">
-            <p className="text-sm text-gray-500">
-              Looking for something specific? Try our search or browse our collection.
-            </p>
-          </div>
+            {/* Contact Support */}
+            <div className="text-gray-500">
+              <p className="mb-2">
+                Can&apos;t find what you&apos;re looking for?
+              </p>
+              <Link
+                href="/contact"
+                className="text-amber-600 hover:text-amber-700 font-medium transition-colors"
+              >
+                Contact our gemstone experts →
+              </Link>
+            </div>
+          </motion.div>
         </div>
       </div>
-    </>
+    </Layout>
   );
 };
 

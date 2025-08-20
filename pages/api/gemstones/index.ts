@@ -1,7 +1,5 @@
 import type { NextApiRequest, NextApiResponse } from 'next';
-import { PrismaClient } from '@prisma/client';
-
-const prisma = new PrismaClient();
+import { prisma } from '../../../lib/prisma';
 
 export default async function handler(req: NextApiRequest, res: NextApiResponse) {
   if (req.method !== 'GET') {
@@ -55,23 +53,24 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
     });
 
     res.status(200).json(
-      gemstones.map((gem) => ({
-        ...gem,
-        images: (() => {
-          if (Array.isArray(gem.images)) return gem.images;
-          if (typeof gem.images === 'string') {
-            try {
-              const parsed = JSON.parse(gem.images);
-              if (Array.isArray(parsed)) return parsed;
-              if (typeof parsed === 'string') return [parsed];
-            } catch {
-              if (gem.images.trim().startsWith('/')) return [gem.images.trim()];
-              return [];
-            }
+      gemstones.map((gem) => {
+        let parsedImages = [];
+        try {
+          if (typeof gem.images === 'string' && gem.images.trim()) {
+            parsedImages = JSON.parse(gem.images);
+          } else if (Array.isArray(gem.images)) {
+            parsedImages = gem.images;
           }
-          return [];
-        })(),
-      })),
+        } catch (error) {
+          console.error('Error parsing images for gemstone:', gem.id, error);
+          parsedImages = [];
+        }
+        
+        return {
+          ...gem,
+          images: parsedImages,
+        };
+      }),
     );
   } catch (error) {
     console.error('Error fetching gemstones:', error);

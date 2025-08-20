@@ -67,20 +67,20 @@ const OrdersAdmin: React.FC = () => {
 
   const checkAuthAndFetch = async () => {
     try {
-      // Check if user is authenticated by calling the /api/users/me endpoint
-      const res = await fetch('/api/users/me', { credentials: 'include' });
+      // Check if user is authenticated by calling the admin auth endpoint
+      const res = await fetch('/api/admin/auth', { credentials: 'include' });
       if (!res.ok) {
         router.push('/admin/login');
         return;
       }
-      const user = await res.json();
-      if (user.role !== 'admin') {
+      const authData = await res.json();
+      if (authData.user.role !== 'admin') {
         router.push('/admin/login');
         return;
       }
       fetchOrders();
     } catch (error) {
-      console.error('Auth check failed:', error);
+      console.error('Admin auth check failed:', error);
       router.push('/admin/login');
     }
   };
@@ -537,7 +537,7 @@ const OrdersAdmin: React.FC = () => {
         )}
 
         {/* Order Details Modal */}
-        <AnimatePresence>
+        <AnimatePresence mode="wait">
           {showOrderDetails && selectedOrder && (
             <motion.div
               className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4"

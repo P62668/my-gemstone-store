@@ -8,7 +8,9 @@ console.log('🚀 Starting production deployment...');
 
 // Check if .env file exists
 if (!fs.existsSync('.env')) {
-  console.log('⚠️  No .env file found. Please create one with your production environment variables.');
+  console.log(
+    '⚠️  No .env file found. Please create one with your production environment variables.',
+  );
   console.log('📝 Copy env.production.example to .env and update the values.');
   process.exit(1);
 }
@@ -44,8 +46,7 @@ try {
   console.log('2. Or use: npm start');
   console.log('3. Make sure all environment variables are set correctly');
   console.log('4. Test all functionality');
-
 } catch (error) {
   console.error('❌ Deployment failed:', error.message);
   process.exit(1);
-} 
+}

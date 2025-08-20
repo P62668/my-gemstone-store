@@ -1,7 +1,5 @@
 import type { NextApiRequest, NextApiResponse } from 'next';
-import { PrismaClient } from '@prisma/client';
-
-const prisma = new PrismaClient();
+import { prisma } from '../../../lib/prisma';
 
 export default async function handler(req: NextApiRequest, res: NextApiResponse) {
   const { id, related, recommended } = req.query;
@@ -20,10 +18,24 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
         orderBy: { createdAt: 'desc' },
       });
       return res.status(200).json(
-        relatedGems.map((g) => ({
-          ...g,
-          images: Array.isArray(g.images) ? g.images : JSON.parse(g.images || '[]'),
-        })),
+        relatedGems.map((g) => {
+          let parsedImages = [];
+          try {
+            if (typeof g.images === 'string' && g.images.trim()) {
+              parsedImages = JSON.parse(g.images);
+            } else if (Array.isArray(g.images)) {
+              parsedImages = g.images;
+            }
+          } catch (error) {
+            console.error('Error parsing images for gemstone:', g.id, error);
+            parsedImages = [];
+          }
+          
+          return {
+            ...g,
+            images: parsedImages,
+          };
+        }),
       );
     } catch (error) {
       return res.status(500).json({ error: 'Failed to fetch related gemstones' });
@@ -42,10 +54,24 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
         orderBy: { createdAt: 'desc' },
       });
       return res.status(200).json(
-        recommendedGems.map((g) => ({
-          ...g,
-          images: Array.isArray(g.images) ? g.images : JSON.parse(g.images || '[]'),
-        })),
+        recommendedGems.map((g) => {
+          let parsedImages = [];
+          try {
+            if (typeof g.images === 'string' && g.images.trim()) {
+              parsedImages = JSON.parse(g.images);
+            } else if (Array.isArray(g.images)) {
+              parsedImages = g.images;
+            }
+          } catch (error) {
+            console.error('Error parsing images for gemstone:', g.id, error);
+            parsedImages = [];
+          }
+          
+          return {
+            ...g,
+            images: parsedImages,
+          };
+        }),
       );
     } catch (error) {
       return res.status(500).json({ error: 'Failed to fetch recommended gemstones' });
@@ -70,11 +96,21 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
     if (!gemstone) {
       return res.status(404).json({ error: 'Gemstone not found' });
     }
+    let parsedImages = [];
+    try {
+      if (typeof gemstone.images === 'string' && gemstone.images.trim()) {
+        parsedImages = JSON.parse(gemstone.images);
+      } else if (Array.isArray(gemstone.images)) {
+        parsedImages = gemstone.images;
+      }
+    } catch (error) {
+      console.error('Error parsing images for gemstone:', gemstone.id, error);
+      parsedImages = [];
+    }
+    
     res.status(200).json({
       ...gemstone,
-      images: Array.isArray(gemstone.images)
-        ? gemstone.images
-        : JSON.parse(gemstone.images || '[]'),
+      images: parsedImages,
     });
   } catch (error) {
     console.error('Error fetching gemstone:', error);

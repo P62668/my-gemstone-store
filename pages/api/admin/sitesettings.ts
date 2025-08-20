@@ -1,16 +1,18 @@
 import { NextApiRequest, NextApiResponse } from 'next';
-import { PrismaClient } from '@prisma/client';
 import jwt from 'jsonwebtoken';
-import { requireAdmin } from '../../../utils/auth';
+import { requireAdminAuth } from '../../../utils/adminSecurity';
 
-const prisma = new PrismaClient();
+import { prisma } from '../../../lib/prisma';
 const JWT_SECRET = process.env.JWT_SECRET || 'dev_secret_key';
 
 export default async function handler(req: NextApiRequest, res: NextApiResponse) {
   try {
-    requireAdmin(req);
+    const adminUser = await requireAdminAuth(req, res);
+    if (!adminUser) {
+      return; // Response already sent by requireAdminAuth
+    }
   } catch (err: any) {
-    return res.status(err.message.includes('Forbidden') ? 403 : 401).json({ error: err.message });
+    return res.status(401).json({ error: 'Authentication required' });
   }
 
   if (req.method === 'GET') {
@@ -21,34 +23,30 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
 
       if (!settings) {
         // Create default settings if none exist
-        const siteSettings = {
-          name: 'Shankarmala',
-          tagline: 'Luxury Gemstone Collection',
-          about:
-            'Welcome to Shankarmala, your premier destination for luxury gemstones and heritage jewelry.',
-          contact: 'Contact us for premium gemstones and heritage jewelry',
-          address: 'Kolkata, West Bengal, India',
-          phone: '+91 98765 43210',
-          email: 'info@shankarmala.com',
-        };
-        settings = await prisma.siteSettings.create({
-          data: {
-            id: 1,
-            siteName: 'Shankarmala',
-            siteDescription: 'Luxury Gemstone Collection',
-            contactEmail: 'info@shankarmala.com',
-            contactPhone: '+91 98765 43210',
-            address: 'Kolkata, West Bengal, India',
-            socialMedia: {
+        await prisma.siteSettings.createMany({
+          data: [
+            { key: 'siteName', value: 'Shankarmala', type: 'string' },
+            { key: 'siteDescription', value: 'Luxury Gemstone Collection', type: 'string' },
+            { key: 'contactEmail', value: 'info@shankarmala.com', type: 'string' },
+            { key: 'contactPhone', value: '+91 98765 43210', type: 'string' },
+            { key: 'address', value: 'Kolkata, West Bengal, India', type: 'string' },
+            { key: 'socialMedia', value: JSON.stringify({
               facebook: 'https://facebook.com/shankarmala',
               instagram: 'https://instagram.com/shankarmala',
               twitter: 'https://twitter.com/shankarmala',
-            },
-          },
+            }), type: 'json' },
+          ],
         });
       }
+      
+      // Fetch all settings
+      const allSettings = await prisma.siteSettings.findMany();
+      const settingsObject = allSettings.reduce((acc, setting) => {
+        acc[setting.key] = setting.type === 'json' ? JSON.parse(setting.value) : setting.value;
+        return acc;
+      }, {} as any);
 
-      res.status(200).json(settings);
+      res.status(200).json(settingsObject);
     } catch (error) {
       console.error('Error fetching site settings:', error);
       res.status(500).json({ error: 'Failed to fetch site settings' });
@@ -58,29 +56,61 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
       const { siteName, siteDescription, contactEmail, contactPhone, address, socialMedia } =
         req.body;
 
-      // Upsert settings (create if doesn't exist, update if it does)
-      const settings = await prisma.siteSettings.upsert({
-        where: { id: 1 },
-        update: {
-          siteName,
-          siteDescription,
-          contactEmail,
-          contactPhone,
-          address,
-          socialMedia,
-        },
-        create: {
-          id: 1,
-          siteName,
-          siteDescription,
-          contactEmail,
-          contactPhone,
-          address,
-          socialMedia,
-        },
-      });
+      // Update each setting individually
+      const updates = [];
+      if (siteName) {
+        updates.push(prisma.siteSettings.upsert({
+          where: { key: 'siteName' },
+          update: { value: siteName },
+          create: { key: 'siteName', value: siteName, type: 'string' },
+        }));
+      }
+      if (siteDescription) {
+        updates.push(prisma.siteSettings.upsert({
+          where: { key: 'siteDescription' },
+          update: { value: siteDescription },
+          create: { key: 'siteDescription', value: siteDescription, type: 'string' },
+        }));
+      }
+      if (contactEmail) {
+        updates.push(prisma.siteSettings.upsert({
+          where: { key: 'contactEmail' },
+          update: { value: contactEmail },
+          create: { key: 'contactEmail', value: contactEmail, type: 'string' },
+        }));
+      }
+      if (contactPhone) {
+        updates.push(prisma.siteSettings.upsert({
+          where: { key: 'contactPhone' },
+          update: { value: contactPhone },
+          create: { key: 'contactPhone', value: contactPhone, type: 'string' },
+        }));
+      }
+      if (address) {
+        updates.push(prisma.siteSettings.upsert({
+          where: { key: 'address' },
+          update: { value: address },
+          create: { key: 'address', value: address, type: 'string' },
+        }));
+      }
+      if (socialMedia) {
+        updates.push(prisma.siteSettings.upsert({
+          where: { key: 'socialMedia' },
+          update: { value: JSON.stringify(socialMedia) },
+          create: { key: 'socialMedia', value: JSON.stringify(socialMedia), type: 'json' },
+        }));
+      }
 
-      res.status(200).json(settings);
+      await Promise.all(updates);
+
+      // Fetch updated settings
+      const allSettings = await prisma.siteSettings.findMany();
+      const settingsObject = allSettings.reduce((acc, setting) => {
+        acc[setting.key] = setting.type === 'json' ? JSON.parse(setting.value) : setting.value;
+        return acc;
+      }, {} as any);
+
+      res.status(200).json(settingsObject);
     } catch (error) {
       console.error('Error updating site settings:', error);
       res.status(500).json({ error: 'Failed to update site settings' });

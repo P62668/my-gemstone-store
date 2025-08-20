@@ -2,10 +2,10 @@ import { User } from '../interfaces';
 
 /** Dummy user data. */
 export const sampleUserData: User[] = [
-  { id: 101, name: 'Alice' },
-  { id: 102, name: 'Bob' },
-  { id: 103, name: 'Caroline' },
-  { id: 104, name: 'Dave' },
+  { id: 101, firstName: 'Alice', lastName: 'Smith', email: 'alice@example.com', name: 'Alice' },
+  { id: 102, firstName: 'Bob', lastName: 'Johnson', email: 'bob@example.com', name: 'Bob' },
+  { id: 103, firstName: 'Caroline', lastName: 'Williams', email: 'caroline@example.com', name: 'Caroline' },
+  { id: 104, firstName: 'Dave', lastName: 'Brown', email: 'dave@example.com', name: 'Dave' },
 ];
 
 /** Sample gemstone data for the luxury store. */

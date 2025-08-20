@@ -43,5 +43,3 @@ export async function sendMail(options: MailOptions) {
   const from = process.env.MAIL_FROM || 'no-reply@shankarmala.com';
   return transporter.sendMail({ from, ...options });
 }
-
-

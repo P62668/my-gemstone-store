@@ -75,7 +75,7 @@ const FAQSection: React.FC<FAQSectionProps> = ({ title = 'Frequently Asked Quest
                   +
                 </span>
               </button>
-              <AnimatePresence initial={false}>
+              <AnimatePresence initial={false} mode="wait">
                 {openIdx === idx && (
                   <motion.div
                     id={`faq-answer-${idx}`}

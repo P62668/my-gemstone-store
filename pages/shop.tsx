@@ -1,17 +1,8 @@
-import React, { useState, useEffect, useCallback, useMemo } from 'react';
+import React, { useState, useEffect } from 'react';
 import Layout from '../components/Layout';
-import { useCart } from '../components/context/CartContext';
-import type { Gemstone as DatabaseGemstone } from '../interfaces';
-import { motion, AnimatePresence } from 'framer-motion';
-import { toast } from 'react-hot-toast';
-import confetti from 'canvas-confetti';
-import Head from 'next/head';
-import EnhancedProductCard from '../components/ui/EnhancedProductCard';
-import AdvancedSearch from '../components/ui/AdvancedSearch';
-import SmartRecommendations from '../components/ui/SmartRecommendations';
-import QuickViewModal from '../components/ui/QuickViewModal';
-import Link from 'next/link';
 import { useRouter } from 'next/router';
+import { GetServerSideProps } from 'next';
+import { prisma } from '../lib/prisma';
 
 interface Category {
   id: number;
@@ -19,333 +10,137 @@ interface Category {
   description?: string;
 }
 
-type Gemstone = DatabaseGemstone & {
+interface Gemstone {
+  id: number;
+  name: string;
+  description: string;
+  price: number;
+  salePrice?: number;
+  categoryId: number;
+  images: string[];
+  weight?: number;
+  dimensions?: string;
+  clarity?: string;
+  color?: string;
+  cut?: string;
+  origin?: string;
+  certificate?: string;
+  stockCount: number;
+  stockQuantity: number;
+  lowStockThreshold: number;
+  featured: boolean;
+  active: boolean;
+  createdAt: string;
+  updatedAt: string;
   category?: Category;
-  rating?: number;
-  reviewCount?: number;
-  stockCount?: number;
-  discount?: number;
-  flashSale?: boolean;
-  views?: number;
-  soldCount?: number;
-};
+}
 
-const ShopPage: React.FC = () => {
-  const { addToCart } = useCart();
-  const router = useRouter();
-
-  // State management
-  const [gemstones, setGemstones] = useState<Gemstone[]>([]);
-  const [categories, setCategories] = useState<Category[]>([]);
-  const [loading, setLoading] = useState(true);
-
-  // Filters and search
-  const [selectedCategory, setSelectedCategory] = useState<number | ''>('');
-  const [searchQuery, setSearchQuery] = useState('');
-  const [priceRange, setPriceRange] = useState<[number, number]>([0, 100000]);
-  const [sortBy, setSortBy] = useState('name');
-  const [availability, setAvailability] = useState<'all' | 'inStock' | 'outOfStock'>('all');
-  const [rating, setRating] = useState<number | ''>('');
-  const [discount, setDiscount] = useState(false);
-
-  // UI state
-  const [viewMode, setViewMode] = useState<'grid' | 'list'>('grid');
-  const [wishlist, setWishlist] = useState<Set<number>>(new Set());
-  const [mobileFiltersOpen, setMobileFiltersOpen] = useState(false);
-  const [showMobileFilters, setShowMobileFilters] = useState(false);
-
-  // Addictive features
-  const [viewersCount, setViewersCount] = useState(0);
-  const [socialProof, setSocialProof] = useState<{ name: string; action: string; time: string }[]>(
-    [],
-  );
-  const [flashSaleProducts, setFlashSaleProducts] = useState<Gemstone[]>([]);
-  const [trendingProducts, setTrendingProducts] = useState<Gemstone[]>([]);
-  const [isAddingToCart, setIsAddingToCart] = useState(false);
-  const [recentlyViewed, setRecentlyViewed] = useState<Gemstone[]>([]);
-
-  // Advanced search and recommendations
-  const [recentSearches, setRecentSearches] = useState<string[]>([]);
-  const [trendingSearches, setTrendingSearches] = useState<string[]>([]);
-  const [quickViewProduct, setQuickViewProduct] = useState<Gemstone | null>(null);
-  const [showQuickView, setShowQuickView] = useState(false);
-
-  // Simulate live viewers
-  useEffect(() => {
-    const interval = setInterval(() => {
-      setViewersCount((prev) => {
-        const change = Math.floor(Math.random() * 5) - 2;
-        return Math.max(15, Math.min(35, prev + change));
-      });
-    }, 4000);
-
-    return () => clearInterval(interval);
-  }, []);
-
-  // Social proof simulation
-  useEffect(() => {
-    const names = ['Sarah', 'Mike', 'Emma', 'David', 'Lisa', 'John', 'Anna', 'Tom'];
-    const actions = ['purchased', 'added to cart', 'viewed', 'wishlisted'];
-
-    const interval = setInterval(() => {
-      const newActivity = {
-        name: names[Math.floor(Math.random() * names.length)],
-        action: actions[Math.floor(Math.random() * actions.length)],
-        time: 'just now',
-      };
-
-      setSocialProof((prev) => [newActivity, ...prev.slice(0, 3)]);
-    }, 6000);
-
-    return () => clearInterval(interval);
-  }, []);
-
-  // Show mobile filters on scroll
-  useEffect(() => {
-    const handleScroll = () => {
-      if (window.innerWidth <= 768) {
-        setShowMobileFilters(window.scrollY > 200);
-      }
-    };
-
-    window.addEventListener('scroll', handleScroll);
-    return () => window.removeEventListener('scroll', handleScroll);
-  }, []);
-
-  // Fetch data
-  const fetchGemstones = useCallback(async () => {
-    try {
-      const response = await fetch('/api/gemstones', {
-        credentials: 'include',
-      });
-
-      if (!response.ok) {
-        throw new Error('Failed to fetch gemstones');
-      }
-
-      const data = await response.json();
-
-      // Add simulated data for better UX
-      const enhancedData = data.map((gemstone: Gemstone) => ({
-        ...gemstone,
-        rating: Math.floor(Math.random() * 2) + 4, // 4-5 stars
-        reviewCount: Math.floor(Math.random() * 50) + 10,
-        stockCount: Math.floor(Math.random() * 20) + 5,
-        discount: Math.random() > 0.7 ? Math.floor(Math.random() * 30) + 10 : 0,
-        flashSale: Math.random() > 0.8,
-        views: Math.floor(Math.random() * 1000) + 100,
-        soldCount: Math.floor(Math.random() * 50) + 5,
-      }));
-
-      setGemstones(enhancedData);
-      setFlashSaleProducts(enhancedData.filter((g: Gemstone) => g.flashSale));
-      setTrendingProducts(enhancedData.slice(0, 4));
-    } catch (error) {
-      console.error('Error fetching gemstones:', error);
-      toast.error('Failed to load products');
-    }
-  }, []);
-
-  const fetchCategories = useCallback(async () => {
-    try {
-      const response = await fetch('/api/categories', {
-        credentials: 'include',
-      });
-
-      if (!response.ok) {
-        throw new Error('Failed to fetch categories');
-      }
-
-      const data = await response.json();
-      setCategories(data);
-    } catch (error) {
-      console.error('Error fetching categories:', error);
-    }
-  }, []);
-
-  // Load data
-  const loadData = async () => {
-    setLoading(true);
-    try {
-      await Promise.all([fetchCategories()]);
-
-      // Use advanced search API
-      const searchParams = new URLSearchParams();
-      if (selectedCategory) searchParams.append('category', selectedCategory.toString());
-      if (searchQuery) searchParams.append('q', searchQuery);
-      if (priceRange[0] > 0) searchParams.append('minPrice', priceRange[0].toString());
-      if (priceRange[1] < 100000) searchParams.append('maxPrice', priceRange[1].toString());
-      if (availability !== 'all')
-        searchParams.append('inStock', availability === 'inStock' ? 'true' : 'false');
-      if (rating) searchParams.append('rating', rating.toString());
-      if (discount) searchParams.append('discount', 'true');
-      searchParams.append('sortBy', sortBy);
-      searchParams.append('sortOrder', 'asc');
-
-      const res = await fetch(`/api/gemstones/search?${searchParams}`);
-      const data = await res.json();
-
-      setGemstones(data.gemstones);
-
-      // Set enhanced data for addictive features
-      const enhancedData = data.gemstones.map((g: Gemstone) => ({
-        ...g,
-        stockCount: g.stockCount || Math.floor(Math.random() * 20) + 5,
-        flashSale: Math.random() > 0.8,
-        views: Math.floor(Math.random() * 1000) + 100,
-        soldCount: Math.floor(Math.random() * 50) + 1,
-      }));
-
-      setFlashSaleProducts(enhancedData.filter((g: Gemstone) => g.flashSale));
-      setTrendingProducts(enhancedData.slice(0, 4));
-    } catch (error) {
-      console.error('Error loading data:', error);
-    } finally {
-      setLoading(false);
-    }
+interface ShopProps {
+  initialData: {
+    gemstones: Gemstone[];
+    categories: Category[];
   };
+}
 
-  useEffect(() => {
-    loadData();
-  }, []);
+export const getServerSideProps: GetServerSideProps<ShopProps> = async () => {
+  try {
+    // Read directly from the database to avoid SSR network calls/port issues
+    const [gemstonesRaw, categories] = await Promise.all([
+      prisma.gemstone.findMany({
+        where: { active: true },
+        orderBy: { name: 'asc' },
+      }),
+      prisma.category.findMany({
+        where: { active: true },
+        orderBy: { name: 'asc' },
+        select: { id: true, name: true, description: true },
+      }),
+    ]);
 
-  // Price statistics
-  const priceStats = useMemo(() => {
-    if (gemstones.length === 0) return { min: 1000, max: 100000 };
+    // Normalize images and attach category reference (name only) for display
+    const categoryById = new Map(categories.map((c) => [c.id, c]));
+    const gemstones = gemstonesRaw.map((g: any) => {
+      let images: string[] = [];
+      if (Array.isArray(g.images)) {
+        images = g.images;
+      } else if (typeof g.images === 'string') {
+        try {
+          const parsed = JSON.parse(g.images);
+          images = Array.isArray(parsed) ? parsed : [];
+        } catch {
+          images = [];
+        }
+      }
 
-    const prices = gemstones.map((g) => g.price);
-    const min = Math.min(...prices);
-    const max = Math.max(...prices);
+      return {
+        ...g,
+        images,
+        // Ensure JSON-serializable values for dates
+        createdAt: typeof g.createdAt === 'string' ? g.createdAt : g.createdAt?.toISOString?.() ?? null,
+        updatedAt: typeof g.updatedAt === 'string' ? g.updatedAt : g.updatedAt?.toISOString?.() ?? null,
+        category: categoryById.get(g.categoryId)
+          ? { id: g.categoryId, name: categoryById.get(g.categoryId)!.name }
+          : undefined,
+      } as Gemstone;
+    });
 
     return {
-      min: Math.max(1000, min), // Ensure minimum is at least 1000
-      max: Math.max(max, min + 1000), // Ensure max is greater than min
+      props: {
+        initialData: {
+          gemstones,
+          categories,
+        },
+      },
     };
-  }, [gemstones]);
+  } catch (error) {
+    console.error('Error fetching shop data:', error);
+    return {
+      props: {
+        initialData: {
+          gemstones: [],
+          categories: [],
+        },
+      },
+    };
+  }
+};
 
-  // Initialize price range with safe values
-  useEffect(() => {
-    if (priceStats.min > 0 && priceStats.max > priceStats.min) {
-      setPriceRange([priceStats.min, priceStats.max]);
-    }
-  }, [priceStats]);
+const ShopPage: React.FC<ShopProps> = ({ initialData }) => {
+  const router = useRouter();
+  const [gemstones, setGemstones] = useState<Gemstone[]>(initialData.gemstones);
+  const [categories, setCategories] = useState<Category[]>(initialData.categories);
+  const [loading, setLoading] = useState(!initialData.gemstones.length);
+  const [selectedCategory, setSelectedCategory] = useState<number | ''>('');
+  const [searchQuery, setSearchQuery] = useState('');
+  const [sortBy, setSortBy] = useState('name');
 
   // Filtered and sorted products
-  const filteredProducts = useMemo(() => {
-    let filtered = gemstones.filter((gemstone) => {
+  const filteredProducts = gemstones.filter((gemstone) => {
       const matchesCategory = !selectedCategory || gemstone.categoryId === selectedCategory;
       const matchesSearch =
         !searchQuery ||
         gemstone.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
         gemstone.description?.toLowerCase().includes(searchQuery.toLowerCase());
-      const matchesPrice = gemstone.price >= priceRange[0] && gemstone.price <= priceRange[1];
-      const matchesAvailability =
-        availability === 'all' ||
-        (availability === 'inStock' && gemstone.stockCount && gemstone.stockCount > 0) ||
-        (availability === 'outOfStock' && gemstone.stockCount === 0);
-      const matchesRating = !rating || (gemstone.rating && gemstone.rating >= rating);
-      const matchesDiscount = !discount || (gemstone.discount && gemstone.discount > 0);
 
-      return (
-        matchesCategory &&
-        matchesSearch &&
-        matchesPrice &&
-        matchesAvailability &&
-        matchesRating &&
-        matchesDiscount
-      );
-    });
-
-    // Sort
+    return matchesCategory && matchesSearch;
+  }).sort((a, b) => {
     switch (sortBy) {
       case 'price-low':
-        filtered.sort((a, b) => a.price - b.price);
-        break;
+        return a.price - b.price;
       case 'price-high':
-        filtered.sort((a, b) => b.price - a.price);
-        break;
-      case 'rating':
-        filtered.sort((a, b) => (b.rating || 0) - (a.rating || 0));
-        break;
+        return b.price - a.price;
       case 'newest':
-        filtered.sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime());
-        break;
+        return new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime();
       case 'featured':
-        filtered.sort((a, b) => (b.featured ? 1 : 0) - (a.featured ? 1 : 0));
-        break;
-      case 'popular':
-        filtered.sort((a, b) => (b.views || 0) - (a.views || 0));
-        break;
+        return (b.featured ? 1 : 0) - (a.featured ? 1 : 0);
       default:
-        filtered.sort((a, b) => a.name.localeCompare(b.name));
+        return a.name.localeCompare(b.name);
     }
+  });
 
-    return filtered;
-  }, [
-    gemstones,
-    selectedCategory,
-    searchQuery,
-    priceRange,
-    sortBy,
-    availability,
-    rating,
-    discount,
-  ]);
-
-  // Clear filters
-  const clearFilters = useCallback(() => {
-    setSelectedCategory('');
-    setSearchQuery('');
-    setPriceRange([priceStats.min, priceStats.max]);
-    setSortBy('name');
-    setAvailability('all');
-    setRating('');
-    setDiscount(false);
-  }, [priceStats]);
-
-  // Wishlist functions
-  const toggleWishlist = useCallback((productId: number) => {
-    setWishlist((prev) => {
-      const newSet = new Set(prev);
-      if (newSet.has(productId)) {
-        newSet.delete(productId);
-        toast.success('Removed from wishlist');
-      } else {
-        newSet.add(productId);
-        toast.success('Added to wishlist');
-      }
-      return newSet;
-    });
-  }, []);
-
-  // Add to cart with enhanced UX
-  const handleAddToCart = useCallback(
-    async (product: Gemstone, quantity: number = 1) => {
-      setIsAddingToCart(true);
-      try {
-        await addToCart(product, quantity);
-        confetti({
-          particleCount: 100,
-          spread: 70,
-          origin: { y: 0.6 },
-        });
-        toast.success(`${product.name} added to cart!`);
-      } catch (error) {
-        toast.error('Failed to add to cart');
-      } finally {
-        setIsAddingToCart(false);
-      }
-    },
-    [addToCart],
-  );
-
-  // Handle product card click
-  const handleProductClick = useCallback(
-    (productId: number) => {
+  const handleProductClick = (productId: number) => {
       router.push(`/product/${productId}`);
-    },
-    [router],
-  );
+  };
 
   if (loading) {
     return (
@@ -374,359 +169,128 @@ const ShopPage: React.FC = () => {
   }
 
   return (
-    <>
-      <Head>
-        <title>Shop Gemstones | Shankarmala</title>
-        <meta
-          name="description"
-          content="Discover our exclusive collection of fine gemstones. Browse by category, filter by price, and find your perfect piece."
-        />
-      </Head>
-      <Layout>
+    <Layout
+      title="Shop Gemstones | Shankarmala"
+      description="Discover our exclusive collection of fine gemstones. Browse by category, filter by price, and find your perfect piece."
+    >
         <div className="min-h-screen bg-gray-50">
-          {/* Desktop Layout with Left Sidebar */}
-          <div className="flex">
-            {/* Left Sidebar - Desktop Only */}
-            <div className="hidden lg:block lg:w-80 flex-shrink-0 lg:sticky lg:top-20 lg:h-screen lg:overflow-y-auto">
-              <div className="p-6">
-                <div className="bg-white rounded-2xl shadow-lg p-6 space-y-6">
-                  <div className="flex items-center justify-between">
-                    <h3 className="text-lg font-semibold text-gray-900">Filters</h3>
-                    <button
-                      onClick={clearFilters}
-                      className="text-sm text-amber-600 hover:text-amber-700 font-medium"
-                    >
-                      Clear All
-                    </button>
+        <div className="py-8">
+          <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+            {/* Header */}
+            <div className="text-center mb-8">
+              <h1 className="text-4xl font-bold text-gray-900 mb-4">
+                Luxury Gemstones
+              </h1>
+              <p className="text-xl text-gray-600 max-w-2xl mx-auto">
+                Discover our exclusive collection of fine gemstones, each hand-selected for their exceptional quality and beauty
+              </p>
                   </div>
 
+            {/* Filters */}
+            <div className="bg-white rounded-2xl p-6 mb-8 shadow-sm">
+              <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
                   {/* Search */}
                   <div>
-                    <h4 className="font-medium text-gray-900 mb-3">Search</h4>
+                  <label className="block text-sm font-medium text-gray-700 mb-2">Search</label>
                     <input
                       type="text"
                       placeholder="Search products..."
                       value={searchQuery}
                       onChange={(e) => setSearchQuery(e.target.value)}
-                      className="w-full px-4 py-3 border border-gray-300 rounded-xl focus:ring-2 focus:ring-amber-500 focus:border-transparent transition-colors"
+                    className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-amber-500 focus:border-transparent"
                     />
                   </div>
 
                   {/* Categories */}
                   <div>
-                    <h4 className="font-medium text-gray-900 mb-3">Categories</h4>
-                    <div className="space-y-2">
-                      <button
-                        onClick={() => setSelectedCategory('')}
-                        className={`w-full text-left px-3 py-2 rounded-lg transition-colors ${
-                          selectedCategory === ''
-                            ? 'bg-amber-100 text-amber-700'
-                            : 'text-gray-600 hover:bg-gray-50'
-                        }`}
-                      >
-                        All Categories
-                      </button>
+                  <label className="block text-sm font-medium text-gray-700 mb-2">Category</label>
+                  <select
+                    value={selectedCategory}
+                    onChange={(e) => setSelectedCategory(e.target.value === '' ? '' : Number(e.target.value))}
+                    className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-amber-500 focus:border-transparent"
+                  >
+                    <option value="">All Categories</option>
                       {categories.map((category) => (
-                        <button
-                          key={category.id}
-                          onClick={() => setSelectedCategory(category.id)}
-                          className={`w-full text-left px-3 py-2 rounded-lg transition-colors ${
-                            selectedCategory === category.id
-                              ? 'bg-amber-100 text-amber-700'
-                              : 'text-gray-600 hover:bg-gray-50'
-                          }`}
-                        >
+                      <option key={category.id} value={category.id}>
                           {category.name}
-                        </button>
-                      ))}
-                    </div>
-                  </div>
-
-                  {/* Price Range */}
-                  <div>
-                    <h4 className="font-medium text-gray-900 mb-3">Price Range</h4>
-                    <div className="px-2">
-                      <div className="space-y-4">
-                        <div className="flex justify-between text-sm text-gray-600">
-                          <span>₹{priceRange[0].toLocaleString()}</span>
-                          <span>₹{priceRange[1].toLocaleString()}</span>
-                        </div>
-                        <div className="relative">
-                          <input
-                            type="range"
-                            min={priceStats.min}
-                            max={priceStats.max}
-                            value={priceRange[0]}
-                            onChange={(e) => {
-                              const newMin = parseInt(e.target.value);
-                              setPriceRange([newMin, Math.max(newMin + 1000, priceRange[1])]);
-                            }}
-                            className="w-full h-2 bg-gray-200 rounded-lg appearance-none cursor-pointer"
-                            style={{
-                              background: `linear-gradient(to right, #f59e0b 0%, #f59e0b ${((priceRange[0] - priceStats.min) / (priceStats.max - priceStats.min)) * 100}%, #e5e7eb ${((priceRange[0] - priceStats.min) / (priceStats.max - priceStats.min)) * 100}%, #e5e7eb 100%)`,
-                            }}
-                          />
-                          <input
-                            type="range"
-                            min={priceStats.min}
-                            max={priceStats.max}
-                            value={priceRange[1]}
-                            onChange={(e) => {
-                              const newMax = parseInt(e.target.value);
-                              setPriceRange([Math.min(priceRange[0], newMax - 1000), newMax]);
-                            }}
-                            className="w-full h-2 bg-gray-200 rounded-lg appearance-none cursor-pointer mt-2"
-                            style={{
-                              background: `linear-gradient(to right, #e5e7eb 0%, #e5e7eb ${((priceRange[1] - priceStats.min) / (priceStats.max - priceStats.min)) * 100}%, #f59e0b ${((priceRange[1] - priceStats.min) / (priceStats.max - priceStats.min)) * 100}%, #f59e0b 100%)`,
-                            }}
-                          />
-                        </div>
-                      </div>
-                    </div>
-                  </div>
-
-                  {/* Availability */}
-                  <div>
-                    <h4 className="font-medium text-gray-900 mb-3">Availability</h4>
-                    <select
-                      value={availability}
-                      onChange={(e) => setAvailability(e.target.value as any)}
-                      className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-amber-500 focus:border-transparent"
-                    >
-                      <option value="all">All Items</option>
-                      <option value="inStock">In Stock</option>
-                      <option value="outOfStock">Out of Stock</option>
+                      </option>
+                    ))}
                     </select>
                   </div>
 
-                  {/* Rating Filter */}
+                {/* Sort */}
                   <div>
-                    <h4 className="font-medium text-gray-900 mb-3">Rating</h4>
-                    <select
-                      value={rating}
-                      onChange={(e) =>
-                        setRating(e.target.value === '' ? '' : Number(e.target.value))
-                      }
-                      className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-amber-500 focus:border-transparent"
-                    >
-                      <option value="">All Ratings</option>
-                      <option value="4">4+ Stars</option>
-                      <option value="3">3+ Stars</option>
-                      <option value="2">2+ Stars</option>
-                    </select>
-                  </div>
-
-                  {/* Sort By */}
-                  <div>
-                    <h4 className="font-medium text-gray-900 mb-3">Sort By</h4>
+                  <label className="block text-sm font-medium text-gray-700 mb-2">Sort By</label>
                     <select
                       value={sortBy}
                       onChange={(e) => setSortBy(e.target.value)}
-                      className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-amber-500 focus:border-transparent"
+                    className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-amber-500 focus:border-transparent"
                     >
                       <option value="name">Name A-Z</option>
                       <option value="price-low">Price: Low to High</option>
                       <option value="price-high">Price: High to Low</option>
-                      <option value="rating">Highest Rated</option>
                       <option value="newest">Newest First</option>
                       <option value="featured">Featured First</option>
-                      <option value="popular">Most Popular</option>
                     </select>
-                  </div>
-
-                  {/* Discount Filter */}
-                  <div>
-                    <label className="flex items-center space-x-3">
-                      <input
-                        type="checkbox"
-                        checked={discount}
-                        onChange={(e) => setDiscount(e.target.checked)}
-                        className="rounded text-amber-600 focus:ring-amber-500"
-                      />
-                      <span className="text-gray-700">On Sale Only</span>
-                    </label>
-                  </div>
-
-                  {/* View Mode */}
-                  <div>
-                    <h4 className="font-medium text-gray-900 mb-3">View Mode</h4>
-                    <div className="flex space-x-2">
-                      <button
-                        onClick={() => setViewMode('grid')}
-                        className={`p-2 rounded-lg ${viewMode === 'grid' ? 'bg-amber-100 text-amber-600' : 'text-gray-400'}`}
-                      >
-                        <svg className="w-5 h-5" fill="currentColor" viewBox="0 0 20 20">
-                          <path d="M5 3a2 2 0 00-2 2v2a2 2 0 002 2h2a2 2 0 002-2V5a2 2 0 00-2-2H5zM5 11a2 2 0 00-2 2v2a2 2 0 002 2h2a2 2 0 002-2v-2a2 2 0 00-2-2H5zM11 5a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2h-2a2 2 0 01-2-2V5zM11 13a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2h-2a2 2 0 01-2-2v-2z" />
-                        </svg>
-                      </button>
-                      <button
-                        onClick={() => setViewMode('list')}
-                        className={`p-2 rounded-lg ${viewMode === 'list' ? 'bg-amber-100 text-amber-600' : 'text-gray-400'}`}
-                      >
-                        <svg className="w-5 h-5" fill="currentColor" viewBox="0 0 20 20">
-                          <path
-                            fillRule="evenodd"
-                            d="M3 4a1 1 0 011-1h12a1 1 0 110 2H4a1 1 0 01-1-1zm0 4a1 1 0 011-1h12a1 1 0 110 2H4a1 1 0 01-1-1zm0 4a1 1 0 011-1h12a1 1 0 110 2H4a1 1 0 01-1-1z"
-                            clipRule="evenodd"
-                          />
-                        </svg>
-                      </button>
-                    </div>
-                  </div>
-
-                  {/* Results Count */}
-                  <div className="pt-4 border-t border-gray-200">
-                    <p className="text-sm text-gray-600">
-                      {filteredProducts.length} of {gemstones.length} products
-                    </p>
-                  </div>
                 </div>
               </div>
             </div>
 
-            {/* Main Content */}
-            <div className="flex-1">
-              <div className="py-8">
-                <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-                  {/* Header */}
-                  <div className="mb-8">
-                    <h1 className="text-4xl font-bold text-gray-900 mb-2">Shop Gemstones</h1>
-                    <p className="text-gray-600">
-                      Discover our exclusive collection of fine gemstones
-                    </p>
-                  </div>
+            {/* Results Count */}
+            <div className="mb-6">
+              <p className="text-gray-600">
+                {filteredProducts.length} of {gemstones.length} products
+                      </p>
+                    </div>
 
-                  {/* Advanced Search */}
-                  <div className="mb-8">
-                    <AdvancedSearch
-                      onSearch={(query, filters) => {
-                        setSearchQuery(query);
-                        // Apply additional filters here
-                      }}
-                      onSuggestionClick={(suggestion) => {
-                        // Navigate to product or apply search
-                        setSearchQuery(suggestion.name);
-                      }}
-                      categories={categories}
-                      recentSearches={recentSearches}
-                      trendingSearches={trendingSearches}
-                    />
-                  </div>
-
-                  {/* Smart Recommendations */}
-                  <div className="mb-8">
-                    <SmartRecommendations
-                      userId={1} // Replace with actual user ID when auth is implemented
-                      currentProductId={undefined}
-                      userPreferences={[]}
-                      recentlyViewed={recentlyViewed.map((p) => p.id)}
-                    />
-                  </div>
-
-                  {/* Addictive Features Banner */}
-                  <motion.div
-                    initial={{ opacity: 0, y: 20 }}
-                    animate={{ opacity: 1, y: 0 }}
-                    className="bg-gradient-to-r from-amber-500 to-orange-500 rounded-2xl p-4 mb-6"
+            {/* Products Grid */}
+            {filteredProducts.length > 0 ? (
+              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
+                {filteredProducts.map((product) => (
+                  <div
+                    key={product.id}
+                    className="bg-white rounded-2xl shadow-lg hover:shadow-xl transition-all duration-300 overflow-hidden cursor-pointer"
+                    onClick={() => handleProductClick(product.id)}
                   >
-                    <div className="flex items-center justify-between text-white">
-                      <div className="flex items-center space-x-4">
-                        <div className="flex items-center space-x-2">
-                          <div className="w-2 h-2 bg-green-400 rounded-full animate-pulse" />
-                          <span className="text-sm font-medium">{viewersCount} people viewing</span>
+                    {/* Image */}
+                    <div className="relative aspect-square overflow-hidden">
+                      <img
+                        src={product.images?.[0] || '/images/placeholder-gemstone.jpg'}
+                        alt={product.name}
+                        className="w-full h-full object-cover hover:scale-105 transition-transform duration-300"
+                      />
+                      {product.featured && (
+                        <div className="absolute top-4 right-4">
+                          <span className="bg-amber-500 text-white px-2 py-1 rounded-full text-xs font-medium">
+                            Featured
+                          </span>
                         </div>
-                        {socialProof[0] && (
-                          <div className="text-sm">
-                            <span className="font-medium">{socialProof[0].name}</span>
-                            <span className="ml-1">{socialProof[0].action}</span>
-                            <span className="ml-1 text-amber-200">{socialProof[0].time}</span>
-                          </div>
+                      )}
+                    </div>
+
+                    {/* Content */}
+                    <div className="p-6">
+                      <h3 className="text-xl font-semibold text-gray-900 mb-2">{product.name}</h3>
+                      <p className="text-gray-600 text-sm mb-3 line-clamp-2">{product.description}</p>
+                      
+                      <div className="flex items-center justify-between mb-3">
+                        <span className="text-2xl font-bold text-amber-600">
+                          ${product.price.toLocaleString()}
+                        </span>
+                        {product.stockCount > 0 ? (
+                          <span className="text-sm text-green-600">In Stock</span>
+                        ) : (
+                          <span className="text-sm text-red-600">Out of Stock</span>
                         )}
                       </div>
-                      <div className="text-sm text-amber-200 font-medium">
-                        {filteredProducts.length} products found
+
+                      <div className="flex items-center justify-between text-sm text-gray-500">
+                        <span>{product.category?.name || 'Gemstone'}</span>
+                        {product.weight && <span>{product.weight}ct</span>}
                       </div>
                     </div>
-                  </motion.div>
-
-                  {/* Flash Sale Section */}
-                  {flashSaleProducts.length > 0 && (
-                    <motion.div
-                      initial={{ opacity: 0, y: 20 }}
-                      animate={{ opacity: 1, y: 0 }}
-                      className="bg-red-500 text-white rounded-2xl p-4 mb-6"
-                    >
-                      <div className="flex items-center justify-between">
-                        <div className="flex items-center space-x-3">
-                          <span className="text-2xl">🔥</span>
-                          <div>
-                            <h3 className="font-bold text-lg">Flash Sale!</h3>
-                            <p className="text-red-100">Limited time offers on selected items</p>
-                          </div>
-                        </div>
-                        <div className="text-right">
-                          <div className="text-2xl font-bold">50% OFF</div>
-                          <div className="text-red-100 text-sm">Ends soon</div>
-                        </div>
-                      </div>
-                    </motion.div>
-                  )}
-
-                  {/* Products Grid */}
-                  {filteredProducts.length > 0 ? (
-                    <div
-                      className={`grid gap-6 ${
-                        viewMode === 'grid'
-                          ? 'grid-cols-1 sm:grid-cols-2 xl:grid-cols-3 2xl:grid-cols-4'
-                          : 'grid-cols-1'
-                      }`}
-                    >
-                      <AnimatePresence>
-                        {filteredProducts.map((product) => (
-                          <motion.div
-                            key={product.id}
-                            initial={{ opacity: 0, y: 20 }}
-                            animate={{ opacity: 1, y: 0 }}
-                            exit={{ opacity: 0, y: -20 }}
-                            transition={{ duration: 0.3 }}
-                            className="cursor-pointer"
-                            onClick={() => handleProductClick(product.id)}
-                          >
-                            <EnhancedProductCard
-                              product={{
-                                id: product.id,
-                                name: product.name,
-                                price: product.price,
-                                image: product.images?.[0] || '/images/placeholder-gemstone.jpg',
-                                rating: product.rating || 4.5,
-                                reviewCount: product.reviewCount || 0,
-                                category: product.category?.name || 'Gemstone',
-                                discount: product.discount,
-                                stockCount: product.stockCount || 0,
-                                originalPrice: product.discount
-                                  ? product.price / (1 - product.discount / 100)
-                                  : undefined,
-                                isNew: product.createdAt
-                                  ? new Date(product.createdAt).getTime() >
-                                    Date.now() - 7 * 24 * 60 * 60 * 1000
-                                  : false,
-                                isTrending: product.views && product.views > 1000,
-                                isLimited: product.stockCount && product.stockCount < 5,
-                                views: product.views,
-                                soldCount: product.soldCount,
-                                description: product.description,
-                              }}
-                              onAddToCart={(productId) => handleAddToCart(product)}
-                              onWishlistToggle={(productId) => toggleWishlist(productId)}
-                              onQuickView={(product) => {
-                                setQuickViewProduct(product as any);
-                                setShowQuickView(true);
-                              }}
-                              onClick={handleProductClick}
-                            />
-                          </motion.div>
-                        ))}
-                      </AnimatePresence>
+                  </div>
+                ))}
                     </div>
                   ) : (
                     <div className="text-center py-12">
@@ -752,7 +316,11 @@ const ShopPage: React.FC = () => {
                         Try adjusting your filters or search terms
                       </p>
                       <button
-                        onClick={clearFilters}
+                  onClick={() => {
+                    setSelectedCategory('');
+                    setSearchQuery('');
+                    setSortBy('name');
+                  }}
                         className="px-6 py-3 bg-amber-600 text-white rounded-lg hover:bg-amber-700 transition-colors"
                       >
                         Clear Filters
@@ -762,328 +330,7 @@ const ShopPage: React.FC = () => {
                 </div>
               </div>
             </div>
-          </div>
-
-          {/* Mobile Filters Button - Bottom Right */}
-          <AnimatePresence>
-            {showMobileFilters && (
-              <motion.button
-                initial={{ opacity: 0, scale: 0.8 }}
-                animate={{ opacity: 1, scale: 1 }}
-                exit={{ opacity: 0, scale: 0.8 }}
-                onClick={() => setMobileFiltersOpen(true)}
-                className="fixed bottom-6 right-6 z-50 lg:hidden bg-amber-600 text-white p-4 rounded-full shadow-lg hover:bg-amber-700 transition-all duration-300 hover:scale-110"
-                aria-label="Open filters"
-              >
-                <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path
-                    strokeLinecap="round"
-                    strokeLinejoin="round"
-                    strokeWidth={2}
-                    d="M3 4a1 1 0 011-1h16a1 1 0 011 1v2.586a1 1 0 01-.293.707l-6.414 6.414a1 1 0 00-.293.707V17l-4 4v-6.586a1 1 0 00-.293-.707L3.293 7.207A1 1 0 013 6.5V4z"
-                  />
-                </svg>
-              </motion.button>
-            )}
-          </AnimatePresence>
-
-          {/* Mobile Filters Modal */}
-          <AnimatePresence>
-            {mobileFiltersOpen && (
-              <motion.div
-                initial={{ opacity: 0 }}
-                animate={{ opacity: 1 }}
-                exit={{ opacity: 0 }}
-                className="fixed inset-0 z-50 lg:hidden bg-black/50 backdrop-blur-sm"
-                onClick={() => setMobileFiltersOpen(false)}
-              >
-                <motion.div
-                  initial={{ opacity: 0, y: 100 }}
-                  animate={{ opacity: 1, y: 0 }}
-                  exit={{ opacity: 0, y: 100 }}
-                  className="absolute bottom-0 left-0 right-0 bg-white rounded-t-3xl p-6 max-h-[80vh] overflow-y-auto"
-                  onClick={(e) => e.stopPropagation()}
-                >
-                  <div className="flex items-center justify-between mb-6">
-                    <h3 className="text-xl font-semibold text-gray-900">Filters</h3>
-                    <button
-                      onClick={() => setMobileFiltersOpen(false)}
-                      className="p-2 text-gray-400 hover:text-gray-600"
-                    >
-                      <svg
-                        className="w-6 h-6"
-                        fill="none"
-                        stroke="currentColor"
-                        viewBox="0 0 24 24"
-                      >
-                        <path
-                          strokeLinecap="round"
-                          strokeLinejoin="round"
-                          strokeWidth={2}
-                          d="M6 18L18 6M6 6l12 12"
-                        />
-                      </svg>
-                    </button>
-                  </div>
-
-                  <div className="space-y-6">
-                    {/* Search */}
-                    <div>
-                      <h4 className="font-medium text-gray-900 mb-3">Search</h4>
-                      <input
-                        type="text"
-                        placeholder="Search products..."
-                        value={searchQuery}
-                        onChange={(e) => setSearchQuery(e.target.value)}
-                        className="w-full px-4 py-3 border border-gray-300 rounded-xl focus:ring-2 focus:ring-amber-500 focus:border-transparent"
-                      />
-                    </div>
-
-                    {/* Categories */}
-                    <div>
-                      <h4 className="font-medium text-gray-900 mb-3">Categories</h4>
-                      <div className="space-y-2">
-                        <button
-                          onClick={() => setSelectedCategory('')}
-                          className={`w-full text-left px-3 py-2 rounded-lg transition-colors ${
-                            selectedCategory === ''
-                              ? 'bg-amber-100 text-amber-700'
-                              : 'text-gray-600 hover:bg-gray-50'
-                          }`}
-                        >
-                          All Categories
-                        </button>
-                        {categories.map((category) => (
-                          <button
-                            key={category.id}
-                            onClick={() => setSelectedCategory(category.id)}
-                            className={`w-full text-left px-3 py-2 rounded-lg transition-colors ${
-                              selectedCategory === category.id
-                                ? 'bg-amber-100 text-amber-700'
-                                : 'text-gray-600 hover:bg-gray-50'
-                            }`}
-                          >
-                            {category.name}
-                          </button>
-                        ))}
-                      </div>
-                    </div>
-
-                    {/* Price Range */}
-                    <div>
-                      <h4 className="font-medium text-gray-900 mb-3">Price Range</h4>
-                      <div className="px-2">
-                        <div className="space-y-4">
-                          <div className="flex justify-between text-sm text-gray-600">
-                            <span>₹{priceRange[0].toLocaleString()}</span>
-                            <span>₹{priceRange[1].toLocaleString()}</span>
-                          </div>
-                          <div className="relative">
-                            <input
-                              type="range"
-                              min={priceStats.min}
-                              max={priceStats.max}
-                              value={priceRange[0]}
-                              onChange={(e) => {
-                                const newMin = parseInt(e.target.value);
-                                setPriceRange([newMin, Math.max(newMin + 1000, priceRange[1])]);
-                              }}
-                              className="w-full h-2 bg-gray-200 rounded-lg appearance-none cursor-pointer"
-                              style={{
-                                background: `linear-gradient(to right, #f59e0b 0%, #f59e0b ${((priceRange[0] - priceStats.min) / (priceStats.max - priceStats.min)) * 100}%, #e5e7eb ${((priceRange[0] - priceStats.min) / (priceStats.max - priceStats.min)) * 100}%, #e5e7eb 100%)`,
-                              }}
-                            />
-                            <input
-                              type="range"
-                              min={priceStats.min}
-                              max={priceStats.max}
-                              value={priceRange[1]}
-                              onChange={(e) => {
-                                const newMax = parseInt(e.target.value);
-                                setPriceRange([Math.min(priceRange[0], newMax - 1000), newMax]);
-                              }}
-                              className="w-full h-2 bg-gray-200 rounded-lg appearance-none cursor-pointer mt-2"
-                              style={{
-                                background: `linear-gradient(to right, #e5e7eb 0%, #e5e7eb ${((priceRange[1] - priceStats.min) / (priceStats.max - priceStats.min)) * 100}%, #f59e0b ${((priceRange[1] - priceStats.min) / (priceStats.max - priceStats.min)) * 100}%, #f59e0b 100%)`,
-                              }}
-                            />
-                          </div>
-                        </div>
-                      </div>
-                    </div>
-
-                    {/* Availability */}
-                    <div>
-                      <h4 className="font-medium text-gray-900 mb-3">Availability</h4>
-                      <select
-                        value={availability}
-                        onChange={(e) => setAvailability(e.target.value as any)}
-                        className="w-full px-4 py-3 border border-gray-300 rounded-xl focus:ring-2 focus:ring-amber-500 focus:border-transparent"
-                      >
-                        <option value="all">All Items</option>
-                        <option value="inStock">In Stock</option>
-                        <option value="outOfStock">Out of Stock</option>
-                      </select>
-                    </div>
-
-                    {/* Rating Filter */}
-                    <div>
-                      <h4 className="font-medium text-gray-900 mb-3">Rating</h4>
-                      <select
-                        value={rating}
-                        onChange={(e) =>
-                          setRating(e.target.value === '' ? '' : Number(e.target.value))
-                        }
-                        className="w-full px-4 py-3 border border-gray-300 rounded-xl focus:ring-2 focus:ring-amber-500 focus:border-transparent"
-                      >
-                        <option value="">All Ratings</option>
-                        <option value="4">4+ Stars</option>
-                        <option value="3">3+ Stars</option>
-                        <option value="2">2+ Stars</option>
-                      </select>
-                    </div>
-
-                    {/* Sort Options */}
-                    <div>
-                      <h4 className="font-medium text-gray-900 mb-3">Sort By</h4>
-                      <select
-                        value={sortBy}
-                        onChange={(e) => setSortBy(e.target.value)}
-                        className="w-full px-4 py-3 border border-gray-300 rounded-xl focus:ring-2 focus:ring-amber-500 focus:border-transparent"
-                      >
-                        <option value="name">Name A-Z</option>
-                        <option value="price-low">Price: Low to High</option>
-                        <option value="price-high">Price: High to Low</option>
-                        <option value="rating">Highest Rated</option>
-                        <option value="newest">Newest First</option>
-                        <option value="featured">Featured First</option>
-                        <option value="popular">Most Popular</option>
-                      </select>
-                    </div>
-
-                    {/* Discount Filter */}
-                    <div>
-                      <label className="flex items-center space-x-3">
-                        <input
-                          type="checkbox"
-                          checked={discount}
-                          onChange={(e) => setDiscount(e.target.checked)}
-                          className="rounded text-amber-600 focus:ring-amber-500"
-                        />
-                        <span className="text-gray-700">On Sale Only</span>
-                      </label>
-                    </div>
-
-                    {/* View Mode */}
-                    <div>
-                      <h4 className="font-medium text-gray-900 mb-3">View Mode</h4>
-                      <div className="flex space-x-2">
-                        <button
-                          onClick={() => setViewMode('grid')}
-                          className={`p-2 rounded-lg ${viewMode === 'grid' ? 'bg-amber-100 text-amber-600' : 'text-gray-400'}`}
-                        >
-                          <svg className="w-5 h-5" fill="currentColor" viewBox="0 0 20 20">
-                            <path d="M5 3a2 2 0 00-2 2v2a2 2 0 002 2h2a2 2 0 002-2V5a2 2 0 00-2-2H5zM5 11a2 2 0 00-2 2v2a2 2 0 002 2h2a2 2 0 002-2v-2a2 2 0 00-2-2H5zM11 5a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2h-2a2 2 0 01-2-2V5zM11 13a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2h-2a2 2 0 01-2-2v-2z" />
-                          </svg>
-                        </button>
-                        <button
-                          onClick={() => setViewMode('list')}
-                          className={`p-2 rounded-lg ${viewMode === 'list' ? 'bg-amber-100 text-amber-600' : 'text-gray-400'}`}
-                        >
-                          <svg className="w-5 h-5" fill="currentColor" viewBox="0 0 20 20">
-                            <path
-                              fillRule="evenodd"
-                              d="M3 4a1 1 0 011-1h12a1 1 0 110 2H4a1 1 0 01-1-1zm0 4a1 1 0 011-1h12a1 1 0 110 2H4a1 1 0 01-1-1zm0 4a1 1 0 011-1h12a1 1 0 110 2H4a1 1 0 01-1-1z"
-                              clipRule="evenodd"
-                            />
-                          </svg>
-                        </button>
-                      </div>
-                    </div>
-
-                    {/* Action Buttons */}
-                    <div className="flex space-x-3 pt-4 border-t border-gray-200">
-                      <button
-                        onClick={clearFilters}
-                        className="flex-1 px-4 py-3 border border-gray-300 rounded-xl text-gray-700 hover:bg-gray-50 transition-colors"
-                      >
-                        Clear All
-                      </button>
-                      <button
-                        onClick={() => setMobileFiltersOpen(false)}
-                        className="flex-1 px-4 py-3 bg-amber-600 text-white rounded-xl hover:bg-amber-700 transition-colors"
-                      >
-                        Apply Filters
-                      </button>
-                    </div>
-                  </div>
-                </motion.div>
-              </motion.div>
-            )}
-          </AnimatePresence>
-        </div>
-
-        {/* Quick View Modal */}
-        <QuickViewModal
-          product={
-            quickViewProduct
-              ? {
-                  id: quickViewProduct.id,
-                  name: quickViewProduct.name,
-                  price: quickViewProduct.price,
-                  originalPrice: quickViewProduct.discount
-                    ? quickViewProduct.price / (1 - quickViewProduct.discount / 100)
-                    : undefined,
-                  images: quickViewProduct.images || ['/images/placeholder-gemstone.jpg'],
-                  rating: quickViewProduct.rating || 4.5,
-                  reviewCount: quickViewProduct.reviewCount || 0,
-                  description:
-                    quickViewProduct.description || 'Beautiful gemstone with excellent quality.',
-                  category: quickViewProduct.category?.name || 'Gemstone',
-                  discount: quickViewProduct.discount,
-                  stockCount: quickViewProduct.stockCount || 0,
-                  specifications: {
-                    weight: '2.5 carats',
-                    dimensions: '8.5 x 6.2 x 4.1 mm',
-                    color: 'Deep Red',
-                    clarity: 'VS1',
-                    cut: 'Brilliant',
-                    origin: 'Myanmar',
-                    certification: 'GIA',
-                  },
-                  reviews: [
-                    {
-                      id: 1,
-                      user: 'Sarah M.',
-                      rating: 5,
-                      comment: 'Beautiful gemstone, exactly as described!',
-                      date: '2024-12-01',
-                      verified: true,
-                    },
-                    {
-                      id: 2,
-                      user: 'John D.',
-                      rating: 4,
-                      comment: 'Great quality, fast shipping.',
-                      date: '2024-11-28',
-                      verified: true,
-                    },
-                  ],
-                }
-              : null
-          }
-          isOpen={showQuickView}
-          onClose={() => setShowQuickView(false)}
-          onAddToCart={(productId, quantity) => {
-            const product = gemstones.find((p) => p.id === productId);
-            if (product) {
-              handleAddToCart(product);
-            }
-          }}
-          onWishlistToggle={(productId) => toggleWishlist(productId)}
-        />
       </Layout>
-    </>
   );
 };
 

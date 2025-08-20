@@ -1,66 +1,64 @@
 /** @type {import('next').NextConfig} */
 const nextConfig = {
-  // Production optimizations
-  experimental: {
-    optimizeCss: true,
-  },
-  reactStrictMode: true,
-  // Production optimizations
-  compiler: {
-    removeConsole: process.env.NODE_ENV === 'production',
+  reactStrictMode: false,
+  swcMinify: true,
+  
+  // Webpack configuration to fix cache issues
+  webpack: (config, { dev, isServer }) => {
+    if (dev) {
+      // Prefer in-memory cache to avoid corrupted gzip pack files on disk
+      config.cache = {
+        type: 'memory',
+      };
+    }
+    
+    // Optimize bundle size
+    config.optimization = {
+      ...config.optimization,
+      splitChunks: {
+        chunks: 'all',
+        cacheGroups: {
+          vendor: {
+            test: /[\\/]node_modules[\\/]/,
+            name: 'vendors',
+            chunks: 'all',
+          },
+        },
+      },
+    };
+    
+    return config;
   },
   
-  // Image optimization
+  // Image configuration
   images: {
     remotePatterns: [
       {
-        protocol: 'https',
-        hostname: 'images.unsplash.com',
+        protocol: 'http',
+        hostname: 'localhost',
+        port: '3000',
+        pathname: '/images/**',
       },
       {
         protocol: 'https',
         hostname: 'res.cloudinary.com',
+        pathname: '/**',
       },
       {
         protocol: 'https',
-        hostname: 'randomuser.me',
-      },
-      {
-        protocol: 'http',
-        hostname: 'localhost',
+        hostname: 'images.unsplash.com',
+        pathname: '/**',
       },
     ],
     formats: ['image/webp', 'image/avif'],
-    unoptimized: false,
   },
   
-  // Simplified webpack configuration
-  webpack: (config, { dev, isServer }) => {
-    // Fix for server-side polyfills
-    if (isServer) {
-      config.resolve.fallback = {
-        ...config.resolve.fallback,
-        self: false,
-        global: false,
-        process: false,
-      };
-    } else {
-      // Client-side polyfills
-      config.resolve.fallback = {
-        ...config.resolve.fallback,
-        process: false,
-        util: false,
-        buffer: false,
-        stream: false,
-        crypto: false,
-        fs: false,
-        path: false,
-        os: false,
-      };
-    }
-
-    return config;
+  // Environment variables
+  env: {
+    CUSTOM_KEY: process.env.CUSTOM_KEY || '',
   },
+  
+
   
   // Security headers
   async headers() {
@@ -68,24 +66,24 @@ const nextConfig = {
       {
         source: '/(.*)',
         headers: [
-          { key: 'Cache-Control', value: 'public, max-age=31536000, immutable' },
-          { key: 'Access-Control-Allow-Origin', value: '*' },
-          { key: 'Access-Control-Allow-Methods', value: 'GET, POST, PUT, DELETE, OPTIONS' },
-          { key: 'Access-Control-Allow-Headers', value: 'Content-Type, Authorization' },
-          { key: 'X-Content-Type-Options', value: 'nosniff' },
-          { key: 'X-Frame-Options', value: 'DENY' },
-          { key: 'X-XSS-Protection', value: '1; mode=block' },
+          {
+            key: 'X-Frame-Options',
+            value: 'DENY',
+          },
+          {
+            key: 'X-Content-Type-Options',
+            value: 'nosniff',
+          },
+          {
+            key: 'Referrer-Policy',
+            value: 'origin-when-cross-origin',
+          },
         ],
       },
     ];
   },
   
-  // Optimize for production
-  compress: true,
-  poweredByHeader: false,
-  
-  // Trailing slash configuration
-  trailingSlash: false,
+
 };
 
-export default nextConfig;
+module.exports = nextConfig;

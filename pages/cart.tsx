@@ -1,15 +1,44 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import Head from 'next/head';
 import Link from 'next/link';
 import Layout from '../components/Layout';
 import { useCart } from '../components/context/CartContext';
-import { StarIcon as StarIconSolid } from '@heroicons/react/24/solid';
 import { motion, AnimatePresence } from 'framer-motion';
+import {
+  ShoppingBag,
+  Shield,
+  Truck,
+  CreditCard,
+  Heart,
+  Star,
+  Sparkles,
+  ArrowRight,
+  Trash2,
+  Plus,
+  Minus,
+} from 'lucide-react';
+import { toast } from 'react-hot-toast';
 
 const CartPage: React.FC = () => {
-  const { cart, updateQuantity, removeFromCart } = useCart();
+  const [mounted, setMounted] = useState(false);
+  
+  useEffect(() => {
+    setMounted(true);
+  }, []);
+
+  const { items: cart, updateQuantity, removeFromCart } = useCart();
   const [removingItem, setRemovingItem] = useState<string | null>(null);
-  const total = cart.reduce((sum, item) => sum + item.price * item.quantity, 0);
+
+  if (!mounted) {
+    return (
+      <Layout title="Your Cart - Shankarmala Gemstore">
+        <div className="min-h-screen flex items-center justify-center">
+          <div className="animate-spin rounded-full h-32 w-32 border-b-2 border-amber-500"></div>
+        </div>
+      </Layout>
+    );
+  }
+      const total = cart.reduce((sum, item) => sum + (item.gemstone?.price || 0) * item.quantity, 0);
 
   const handleRemoveItem = async (itemId: string) => {
     setRemovingItem(itemId);
@@ -17,11 +46,13 @@ const CartPage: React.FC = () => {
     await new Promise((resolve) => setTimeout(resolve, 300));
     removeFromCart(Number(itemId));
     setRemovingItem(null);
+    toast.success('Item removed from cart');
   };
 
   const handleQuantityChange = (itemId: string, newQuantity: number) => {
     if (newQuantity < 1) return;
     updateQuantity(Number(itemId), newQuantity);
+    toast.success('Cart updated');
   };
 
   // SEO structured data (JSON-LD)
@@ -35,20 +66,20 @@ const CartPage: React.FC = () => {
     itemListElement: cart.map((item, idx) => ({
       '@type': 'Product',
       position: idx + 1,
-      name: item.name,
-      images: item.images,
-      sku: item.id,
+      name: item.gemstone?.name || 'Unknown Product',
+      images: item.gemstone?.images ? [item.gemstone.images] : ['/images/placeholder-gemstone.jpg'],
+      sku: item.gemstone?.id || 0,
       offers: {
         '@type': 'Offer',
         priceCurrency: 'INR',
-        price: item.price,
+        price: item.gemstone?.price || 0,
         availability: 'https://schema.org/InStock',
       },
     })),
   };
 
   return (
-    <Layout title="Your Cart - Kolkata Gems">
+    <Layout title="Your Cart - Shankarmala">
       <Head>
         <title>Your Cart - Shankarmala Gemstore</title>
         <meta
@@ -62,7 +93,7 @@ const CartPage: React.FC = () => {
         />
         <meta
           property="og:image"
-          content={cart[0]?.images?.[0] || '/images/placeholder-gemstone.jpg'}
+          content={cart[0]?.gemstone?.images || '/images/placeholder-gemstone.jpg'}
         />
         <meta property="og:type" content="website" />
         <meta property="og:url" content="https://shankarmala.com/cart" />
@@ -74,58 +105,91 @@ const CartPage: React.FC = () => {
         />
         <meta
           name="twitter:image"
-          content={cart[0]?.images?.[0] || '/images/placeholder-gemstone.jpg'}
+          content={cart[0]?.gemstone?.images || '/images/placeholder-gemstone.jpg'}
         />
         <script
           type="application/ld+json"
           dangerouslySetInnerHTML={{ __html: JSON.stringify(seoJsonLd) }}
         />
       </Head>
-      <div className="max-w-4xl mx-auto py-12 px-4">
-        <motion.h1
-          className="text-4xl font-bold text-amber-900 mb-8"
+
+      <div className="max-w-6xl mx-auto py-12 px-4">
+        {/* Premium Header */}
+        <motion.div
+          className="text-center mb-12"
           initial={{ opacity: 0, y: 20 }}
           animate={{ opacity: 1, y: 0 }}
           transition={{ duration: 0.6 }}
         >
-          Your Cart
-        </motion.h1>
+          <motion.div
+            initial={{ scale: 0.8 }}
+            animate={{ scale: 1 }}
+            className="inline-flex items-center space-x-2 bg-gradient-to-r from-amber-500 to-orange-500 text-white px-4 py-2 rounded-full text-sm font-medium mb-4"
+          >
+            <Sparkles className="w-4 h-4" />
+            <span>Premium Shopping Cart</span>
+          </motion.div>
+          <h1 className="text-5xl font-bold text-gray-900 mb-4 bg-gradient-to-r from-amber-600 to-orange-600 bg-clip-text text-transparent">
+            Your Luxury Cart
+          </h1>
+          <p className="text-xl text-gray-600 max-w-2xl mx-auto">
+            Review your selected gemstones and proceed to secure checkout
+          </p>
+        </motion.div>
 
         <AnimatePresence mode="wait">
           {cart.length === 0 ? (
             <motion.div
-              className="text-center py-16"
+              className="text-center py-20"
               initial={{ opacity: 0, y: 20 }}
               animate={{ opacity: 1, y: 0 }}
               exit={{ opacity: 0, y: -20 }}
             >
-              <div className="text-8xl mb-6">🛒</div>
-              <h2 className="text-2xl font-bold text-gray-700 mb-4">Your cart is empty</h2>
-              <p className="text-gray-500 mb-8 max-w-md mx-auto">
-                Looks like you haven&apos;t added any gemstones to your cart yet. Start exploring
-                our collection!
+              <motion.div
+                initial={{ scale: 0.5 }}
+                animate={{ scale: 1 }}
+                transition={{ delay: 0.2, type: 'spring', bounce: 0.4 }}
+                className="w-32 h-32 mx-auto mb-8 bg-gradient-to-br from-amber-100 to-orange-100 rounded-full flex items-center justify-center"
+              >
+                <ShoppingBag className="w-16 h-16 text-amber-600" />
+              </motion.div>
+              <h2 className="text-3xl font-bold text-gray-900 mb-4">Your cart is empty</h2>
+              <p className="text-gray-600 mb-8 max-w-md mx-auto text-lg">
+                Discover our exclusive collection of premium gemstones and start building your
+                luxury collection
               </p>
               <Link
                 href="/shop"
-                className="inline-block bg-amber-600 text-white px-8 py-4 rounded-2xl font-bold text-lg shadow-lg hover:bg-amber-700 transition-all duration-200 hover:scale-105"
+                className="inline-flex items-center space-x-2 bg-gradient-to-r from-amber-600 to-orange-600 text-white px-8 py-4 rounded-2xl font-bold text-lg shadow-lg hover:shadow-xl transition-all duration-200 hover:scale-105"
               >
-                Start Shopping
+                <Sparkles className="w-5 h-5" />
+                <span>Start Shopping</span>
+                <ArrowRight className="w-5 h-5" />
               </Link>
             </motion.div>
           ) : (
             <motion.div
-              className="bg-white/80 rounded-3xl shadow-xl border border-amber-100 p-8"
+              className="bg-white/90 backdrop-blur-sm rounded-3xl shadow-2xl border border-amber-100 p-8"
               initial={{ opacity: 0, y: 20 }}
               animate={{ opacity: 1, y: 0 }}
               exit={{ opacity: 0, y: -20 }}
             >
-              <div className="flex items-center justify-between mb-6">
-                <h2 className="text-2xl font-bold text-amber-900">Cart Items ({cart.length})</h2>
+              <div className="flex items-center justify-between mb-8">
+                <div className="flex items-center space-x-3">
+                  <div className="w-12 h-12 bg-gradient-to-br from-amber-500 to-orange-500 rounded-full flex items-center justify-center">
+                    <ShoppingBag className="w-6 h-6 text-white" />
+                  </div>
+                  <div>
+                    <h2 className="text-2xl font-bold text-gray-900">Cart Items ({cart.length})</h2>
+                    <p className="text-gray-600">Premium gemstones selected</p>
+                  </div>
+                </div>
                 <Link
                   href="/shop"
-                  className="text-amber-600 hover:text-amber-700 font-medium transition-colors"
+                  className="flex items-center space-x-2 text-amber-600 hover:text-amber-700 font-medium transition-colors group"
                 >
-                  Continue Shopping →
+                  <span>Continue Shopping</span>
+                  <ArrowRight className="w-4 h-4 group-hover:translate-x-1 transition-transform" />
                 </Link>
               </div>
 
@@ -134,106 +198,133 @@ const CartPage: React.FC = () => {
                   {cart.map((item, index) => (
                     <motion.li
                       key={item.id}
-                      className="flex flex-col md:flex-row items-center gap-6 py-6"
+                      className="flex flex-col md:flex-row items-center gap-6 py-8"
                       initial={{ opacity: 0, x: -20 }}
                       animate={{ opacity: 1, x: 0 }}
                       exit={{ opacity: 0, x: 20, height: 0 }}
                       transition={{ duration: 0.3, delay: index * 0.1 }}
                     >
-                      <div className="relative">
-                        <img
-                          src={item.images?.[0] || '/images/placeholder-gemstone.jpg'}
-                          alt={item.name}
-                          className="w-24 h-24 rounded-2xl object-cover border border-amber-200 shadow-lg"
-                        />
+                      <div className="relative group">
+                        <motion.div
+                          whileHover={{ scale: 1.05 }}
+                          className="relative overflow-hidden rounded-2xl shadow-lg"
+                        >
+                          <img
+                            src={item.images?.[0] || '/images/placeholder-gemstone.jpg'}
+                            alt={item.name}
+                            className="w-24 h-24 object-cover border border-amber-200"
+                          />
+                          <div className="absolute inset-0 bg-gradient-to-t from-black/20 to-transparent opacity-0 group-hover:opacity-100 transition-opacity" />
+                        </motion.div>
                         {removingItem === String(item.id) && (
-                          <div className="absolute inset-0 bg-red-500/20 rounded-2xl flex items-center justify-center">
+                          <motion.div
+                            initial={{ opacity: 0 }}
+                            animate={{ opacity: 1 }}
+                            className="absolute inset-0 bg-red-500/20 rounded-2xl flex items-center justify-center"
+                          >
                             <div className="w-6 h-6 border-2 border-red-500 border-t-transparent rounded-full animate-spin"></div>
-                          </div>
+                          </motion.div>
                         )}
                       </div>
 
                       <div className="flex-1 w-full">
-                        <div className="font-semibold text-lg text-amber-900 mb-1">{item.name}</div>
-                        <div className="text-amber-700 font-bold text-xl mb-2">
+                        <div className="font-bold text-xl text-gray-900 mb-2">{item.name}</div>
+                        <div className="text-amber-700 font-bold text-2xl mb-3">
                           ₹{item.price.toLocaleString('en-IN')}
                         </div>
-                        <div className="flex items-center gap-1 mb-2">
+                        <div className="flex items-center gap-1 mb-3">
                           {[...Array(5)].map((_, i) => (
-                            <StarIconSolid key={i} className={`w-4 h-4 text-gray-200`} />
+                            <Star key={i} className="w-4 h-4 text-amber-400 fill-current" />
                           ))}
-                          {/* Review count not available on CartItem */}
+                          <span className="text-sm text-gray-600 ml-2">Premium Quality</span>
                         </div>
-                        <div className="text-xs text-gray-500 mb-3 flex items-center gap-2">
-                          <span className="bg-green-100 text-green-800 px-2 py-1 rounded-full">
-                            {/* Certification not available on CartItem */}
+                        <div className="flex items-center gap-3">
+                          <span className="bg-green-100 text-green-800 px-3 py-1 rounded-full text-sm font-medium">
+                            GIA Certified
                           </span>
-                          <span className="text-green-600">● In Stock</span>
+                          <span className="text-green-600 text-sm font-medium flex items-center">
+                            <div className="w-2 h-2 bg-green-500 rounded-full mr-2"></div>
+                            In Stock
+                          </span>
                         </div>
                       </div>
 
-                      <div className="flex items-center gap-3">
-                        <div className="flex items-center border border-amber-200 rounded-xl overflow-hidden">
+                      <div className="flex items-center gap-4">
+                        <div className="flex items-center border border-amber-200 rounded-xl overflow-hidden shadow-sm">
                           <button
                             onClick={() => handleQuantityChange(String(item.id), item.quantity - 1)}
                             disabled={item.quantity <= 1}
-                            className="px-3 py-2 bg-amber-50 hover:bg-amber-100 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
+                            className="p-2 bg-amber-50 hover:bg-amber-100 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
                           >
-                            -
+                            <Minus className="w-4 h-4" />
                           </button>
-                          <span className="px-4 py-2 bg-white font-medium min-w-[3rem] text-center">
+                          <span className="px-4 py-2 bg-white font-bold min-w-[3rem] text-center text-lg">
                             {item.quantity}
                           </span>
                           <button
                             onClick={() => handleQuantityChange(String(item.id), item.quantity + 1)}
-                            className="px-3 py-2 bg-amber-50 hover:bg-amber-100 transition-colors"
+                            className="p-2 bg-amber-50 hover:bg-amber-100 transition-colors"
                           >
-                            +
+                            <Plus className="w-4 h-4" />
                           </button>
                         </div>
                       </div>
 
-                      <div className="text-right">
-                        <div className="text-lg font-bold text-amber-900 mb-2">
-                          ₹{(item.price * item.quantity).toLocaleString('en-IN')}
+                                              <div className="text-right">
+                          <div className="text-2xl font-bold text-gray-900 mb-3">
+                            ₹{(item.price * item.quantity).toLocaleString('en-IN')}
+                          </div>
+                          <div className="flex flex-col gap-2">
+                            <button
+                              onClick={() => handleQuantityChange(String(item.id), item.quantity)}
+                              className="flex items-center space-x-1 text-blue-600 hover:text-blue-700 text-sm font-semibold transition-colors"
+                            >
+                              <span>Update Cart</span>
+                            </button>
+                            <button
+                              onClick={() => handleRemoveItem(String(item.id))}
+                              disabled={removingItem === String(item.id)}
+                              className="flex items-center space-x-1 text-red-600 hover:text-red-700 text-sm font-semibold transition-colors disabled:opacity-50"
+                            >
+                              <Trash2 className="w-4 h-4" />
+                              <span>Remove</span>
+                            </button>
+                          </div>
                         </div>
-                        <button
-                          onClick={() => handleRemoveItem(String(item.id))}
-                          disabled={removingItem === String(item.id)}
-                          className="text-red-600 hover:text-red-700 text-sm font-semibold transition-colors disabled:opacity-50"
-                        >
-                          Remove
-                        </button>
-                      </div>
                     </motion.li>
                   ))}
                 </AnimatePresence>
               </ul>
 
-              {/* Order Summary */}
+              {/* Premium Order Summary */}
               <motion.div
-                className="mt-8 pt-6 border-t border-amber-200"
+                className="mt-8 pt-8 border-t border-amber-200"
                 initial={{ opacity: 0, y: 20 }}
                 animate={{ opacity: 1, y: 0 }}
                 transition={{ duration: 0.6, delay: 0.3 }}
               >
-                <div className="bg-amber-50 rounded-2xl p-6">
-                  <h3 className="text-xl font-bold text-amber-900 mb-4">Order Summary</h3>
-                  <div className="space-y-3">
-                    <div className="flex justify-between text-gray-600">
+                <div className="bg-gradient-to-br from-amber-50 to-orange-50 rounded-2xl p-8 border border-amber-200">
+                  <div className="flex items-center space-x-3 mb-6">
+                    <div className="w-10 h-10 bg-gradient-to-br from-amber-500 to-orange-500 rounded-full flex items-center justify-center">
+                      <CreditCard className="w-5 h-5 text-white" />
+                    </div>
+                    <h3 className="text-2xl font-bold text-gray-900">Order Summary</h3>
+                  </div>
+                  <div className="space-y-4">
+                    <div className="flex justify-between text-gray-700 text-lg">
                       <span>Subtotal ({cart.length} items)</span>
-                      <span>₹{total.toLocaleString('en-IN')}</span>
+                      <span className="font-semibold">₹{total.toLocaleString('en-IN')}</span>
                     </div>
-                    <div className="flex justify-between text-gray-600">
+                    <div className="flex justify-between text-gray-700 text-lg">
                       <span>Shipping</span>
-                      <span className="text-green-600">Free</span>
+                      <span className="text-green-600 font-semibold">Free</span>
                     </div>
-                    <div className="flex justify-between text-gray-600">
+                    <div className="flex justify-between text-gray-700 text-lg">
                       <span>Tax</span>
                       <span>₹{(total * 0.18).toLocaleString('en-IN')}</span>
                     </div>
-                    <div className="border-t border-amber-200 pt-3">
-                      <div className="flex justify-between text-2xl font-bold text-amber-900">
+                    <div className="border-t border-amber-300 pt-4">
+                      <div className="flex justify-between text-3xl font-bold text-gray-900">
                         <span>Total</span>
                         <span>₹{(total * 1.18).toLocaleString('en-IN')}</span>
                       </div>
@@ -241,12 +332,13 @@ const CartPage: React.FC = () => {
                   </div>
                 </div>
 
-                <div className="mt-6 flex flex-col sm:flex-row gap-4">
+                <div className="mt-8 flex flex-col sm:flex-row gap-4">
                   <Link
                     href="/checkout"
-                    className="flex-1 bg-amber-600 text-white px-8 py-4 rounded-2xl font-bold text-lg shadow-lg hover:bg-amber-700 transition-all duration-200 hover:scale-105 text-center"
+                    className="flex-1 bg-gradient-to-r from-amber-600 to-orange-600 text-white px-8 py-4 rounded-2xl font-bold text-lg shadow-lg hover:shadow-xl transition-all duration-200 hover:scale-105 text-center flex items-center justify-center space-x-2"
                   >
-                    Proceed to Checkout
+                    <span>Proceed to Checkout</span>
+                    <ArrowRight className="w-5 h-5" />
                   </Link>
                   <Link
                     href="/shop"
@@ -256,56 +348,35 @@ const CartPage: React.FC = () => {
                   </Link>
                 </div>
 
-                {/* Trust indicators */}
-                <div className="mt-6 pt-6 border-t border-amber-200">
-                  <div className="flex flex-wrap justify-center gap-6 text-sm text-gray-600">
-                    <div className="flex items-center gap-2">
-                      <svg
-                        className="w-4 h-4 text-green-600"
-                        fill="none"
-                        stroke="currentColor"
-                        viewBox="0 0 24 24"
-                      >
-                        <path
-                          strokeLinecap="round"
-                          strokeLinejoin="round"
-                          strokeWidth={2}
-                          d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"
-                        />
-                      </svg>
-                      <span>Secure Checkout</span>
+                {/* Premium Trust indicators */}
+                <div className="mt-8 pt-8 border-t border-amber-200">
+                  <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+                    <div className="flex items-center space-x-3 p-4 bg-white rounded-xl border border-amber-100">
+                      <div className="w-10 h-10 bg-green-100 rounded-full flex items-center justify-center">
+                        <Shield className="w-5 h-5 text-green-600" />
+                      </div>
+                      <div>
+                        <div className="font-semibold text-gray-900">Secure Checkout</div>
+                        <div className="text-sm text-gray-600">SSL Encrypted</div>
+                      </div>
                     </div>
-                    <div className="flex items-center gap-2">
-                      <svg
-                        className="w-4 h-4 text-green-600"
-                        fill="none"
-                        stroke="currentColor"
-                        viewBox="0 0 24 24"
-                      >
-                        <path
-                          strokeLinecap="round"
-                          strokeLinejoin="round"
-                          strokeWidth={2}
-                          d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"
-                        />
-                      </svg>
-                      <span>30-Day Returns</span>
+                    <div className="flex items-center space-x-3 p-4 bg-white rounded-xl border border-amber-100">
+                      <div className="w-10 h-10 bg-blue-100 rounded-full flex items-center justify-center">
+                        <Truck className="w-5 h-5 text-blue-600" />
+                      </div>
+                      <div>
+                        <div className="font-semibold text-gray-900">Free Shipping</div>
+                        <div className="text-sm text-gray-600">Worldwide</div>
+                      </div>
                     </div>
-                    <div className="flex items-center gap-2">
-                      <svg
-                        className="w-4 h-4 text-green-600"
-                        fill="none"
-                        stroke="currentColor"
-                        viewBox="0 0 24 24"
-                      >
-                        <path
-                          strokeLinecap="round"
-                          strokeLinejoin="round"
-                          strokeWidth={2}
-                          d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"
-                        />
-                      </svg>
-                      <span>Free Shipping</span>
+                    <div className="flex items-center space-x-3 p-4 bg-white rounded-xl border border-amber-100">
+                      <div className="w-10 h-10 bg-purple-100 rounded-full flex items-center justify-center">
+                        <Heart className="w-5 h-5 text-purple-600" />
+                      </div>
+                      <div>
+                        <div className="font-semibold text-gray-900">30-Day Returns</div>
+                        <div className="text-sm text-gray-600">No Questions</div>
+                      </div>
                     </div>
                   </div>
                 </div>

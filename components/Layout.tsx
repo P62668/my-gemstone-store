@@ -1,60 +1,95 @@
-import React, { useState, useEffect } from 'react';
+import React from 'react';
 import Head from 'next/head';
 import Navbar from './ui/Navbar';
+import Footer from './ui/Footer';
 
 interface LayoutProps {
   children: React.ReactNode;
   title?: string;
   description?: string;
+  keywords?: string;
+  ogImage?: string;
+  ogUrl?: string;
+  canonical?: string;
+  structuredData?: object;
 }
 
 const Layout: React.FC<LayoutProps> = ({
   children,
-  title = 'Shankarmala - Luxury Gemstone Collection',
-  description = "Discover the finest gemstones from Kolkata's heritage jewelry district. GIA certified, worldwide shipping.",
+  title,
+  description,
+  keywords,
+  ogImage,
+  ogUrl,
+  canonical,
+  structuredData,
 }) => {
-  const [currentYear, setCurrentYear] = useState('');
-  const [seo, setSeo] = useState<{ title: string; description: string } | null>(null);
+  // Default SEO settings - no API calls to prevent hydration issues
+  const defaultTitle = 'Shankarmala - Luxury Gemstone Collection';
+  const defaultDescription = 'Discover the finest gemstones from Shankarmala\'s heritage jewelry collection. GIA certified, worldwide shipping.';
+  const defaultKeywords = 'gemstones, jewelry, luxury, GIA certified, diamonds, rubies, emeralds, sapphires';
+  const defaultOgImage = '/images/placeholder-gemstone.jpg';
+  const defaultOgUrl = 'https://shankarmala.com';
 
-  useEffect(() => {
-    setCurrentYear(new Date().getFullYear().toString());
-    const fetchSeo = async () => {
-      try {
-        const res = await fetch('/api/public/seo');
-        if (!res.ok) throw new Error('Failed to fetch SEO');
-        const data = await res.json();
-        setSeo({
-          title: data.global.siteTitle || title,
-          description: data.global.siteDescription || description,
-        });
-      } catch {
-        setSeo(null);
-      }
-    };
-    fetchSeo();
-  }, [title, description]);
+  // Ensure title is always a string, never an array
+  const finalTitle = typeof title === 'string' ? title : defaultTitle;
+  const finalDescription = typeof description === 'string' ? description : defaultDescription;
+  const finalKeywords = typeof keywords === 'string' ? keywords : defaultKeywords;
+  const finalOgImage = typeof ogImage === 'string' ? ogImage : defaultOgImage;
+  const finalOgUrl = typeof ogUrl === 'string' ? ogUrl : defaultOgUrl;
+  const finalCanonical = typeof canonical === 'string' ? canonical : defaultOgUrl;
 
   return (
     <>
       <Head>
-        <title>{seo?.title || title}</title>
-        <meta name="description" content={seo?.description || description} />
+        <title>{finalTitle}</title>
+        <meta name="description" content={finalDescription} />
+        <meta name="keywords" content={finalKeywords} />
         <meta name="viewport" content="width=device-width, initial-scale=1" />
-        <link rel="icon" href="/favicon.ico" />
+        
+        {/* Favicon */}
+        <link rel="icon" href="/images/logo-shankar.png" type="image/png" />
+        <link rel="shortcut icon" href="/images/logo-shankar.png" type="image/png" />
+        
+        {/* Open Graph */}
+        <meta property="og:type" content="website" />
+        <meta property="og:site_name" content="Shankarmala" />
+        <meta property="og:title" content={finalTitle} />
+        <meta property="og:description" content={finalDescription} />
+        <meta property="og:image" content={finalOgImage} />
+        <meta property="og:url" content={finalOgUrl} />
+        
+        {/* Twitter */}
+        <meta name="twitter:card" content="summary_large_image" />
+        <meta name="twitter:site" content="@shankarmala" />
+        <meta name="twitter:title" content={finalTitle} />
+        <meta name="twitter:description" content={finalDescription} />
+        <meta name="twitter:image" content={finalOgImage} />
+        
+        {/* Theme */}
+        <meta name="theme-color" content="#f59e0b" />
+        <meta name="msapplication-TileColor" content="#f59e0b" />
+        
+        {/* Canonical */}
+        {finalCanonical && <link rel="canonical" href={finalCanonical} />}
+        
+        {/* Structured Data */}
+        {structuredData && (
+          <script
+            type="application/ld+json"
+            dangerouslySetInnerHTML={{
+              __html: JSON.stringify(structuredData),
+            }}
+          />
+        )}
       </Head>
-
-      <div className="min-h-screen bg-gray-50">
+      
+      <div className="min-h-screen bg-gradient-to-br from-amber-50 via-white to-yellow-50">
         <Navbar />
-
-        <main className="pt-16 lg:pt-20">{children}</main>
-
-        <footer className="bg-gray-900 text-white py-8">
-          <div className="max-w-6xl mx-auto px-4">
-            <div className="text-center">
-              <p className="text-gray-400">© {currentYear} Kolkata Gems. All rights reserved.</p>
-            </div>
-          </div>
-        </footer>
+        <main className="pt-16 lg:pt-20">
+          {children}
+        </main>
+        <Footer />
       </div>
     </>
   );

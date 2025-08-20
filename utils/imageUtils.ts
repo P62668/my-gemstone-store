@@ -1,3 +1,5 @@
+import React from 'react';
+
 /**
  * Safely get image source with fallback
  * Prevents 500 errors when image URLs are invalid
@@ -53,4 +55,51 @@ export function isValidImageUrl(url: string): boolean {
   if (url.startsWith('/')) return true;
 
   return false;
+}
+
+/**
+ * Utility functions for handling image data from the database
+ */
+
+export function parseImages(images: any): string[] {
+  if (!images) {
+    return ['/images/placeholder-gemstone.jpg'];
+  }
+
+  // If it's already an array, filter out empty strings and return
+  if (Array.isArray(images)) {
+    const filteredImages = images.filter(img => img && typeof img === 'string' && img.trim() !== '');
+    return filteredImages.length > 0 ? filteredImages : ['/images/placeholder-gemstone.jpg'];
+  }
+
+  // If it's a string, try to parse it as JSON
+  if (typeof images === 'string') {
+    try {
+      const parsed = JSON.parse(images);
+      if (Array.isArray(parsed)) {
+        const filteredImages = parsed.filter(img => img && typeof img === 'string' && img.trim() !== '');
+        return filteredImages.length > 0 ? filteredImages : ['/images/placeholder-gemstone.jpg'];
+      }
+    } catch (error) {
+      console.warn('Failed to parse images JSON:', error);
+    }
+    
+    // If parsing fails or result is empty, treat as single image
+    if (images.trim()) {
+      return [images];
+    }
+  }
+
+  // Default fallback
+  return ['/images/placeholder-gemstone.jpg'];
+}
+
+export function getFirstImage(images: any): string {
+  const parsedImages = parseImages(images);
+  return parsedImages[0] || '/images/placeholder-gemstone.jpg';
+}
+
+export function getImageCount(images: any): number {
+  const parsedImages = parseImages(images);
+  return parsedImages.length;
 }

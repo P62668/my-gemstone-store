@@ -1,70 +1,92 @@
-import type { NextApiRequest, NextApiResponse } from 'next';
-import { PrismaClient } from '@prisma/client';
-import jwt from 'jsonwebtoken';
+import { NextApiRequest, NextApiResponse } from 'next';
+import { withAuth, AuthenticatedRequest } from '../../../utils/authMiddleware';
 
-const prisma = new PrismaClient();
-const JWT_SECRET = process.env.JWT_SECRET || 'dev_secret_key';
+import { prisma } from '../../../lib/prisma';
 
-export default async function handler(req: NextApiRequest, res: NextApiResponse) {
-  const { cookie } = req.headers;
-  if (!cookie) return res.status(401).json({ error: 'Not authenticated' });
-  const tokenMatch = cookie.match(/token=([^;]+)/);
-  if (!tokenMatch) return res.status(401).json({ error: 'Not authenticated' });
-  const token = tokenMatch[1];
-  let decoded;
-  try {
-    decoded = jwt.verify(token, JWT_SECRET) as { id: number };
-  } catch (err: any) {
-    return res.status(401).json({ error: 'Invalid or expired token' });
+async function handler(req: AuthenticatedRequest, res: NextApiResponse) {
+  const user = req.user;
+  if (!user) {
+    return res.status(401).json({ error: 'Authentication required' });
   }
+
   if (req.method === 'GET') {
     try {
-      const wishlist = await prisma.wishlist.findMany({
-        where: { userId: decoded.id },
+      const wishlistItems = await prisma.wishlistItem.findMany({
+        where: { userId: user.id },
         include: { gemstone: true },
       });
-      return res.status(200).json(wishlist);
-    } catch (err: any) {
-      return res
-        .status(500)
-        .json({ error: 'Failed to fetch wishlist', details: err.message || err });
+
+      res.status(200).json(wishlistItems);
+    } catch (error) {
+      console.error('Error fetching wishlist:', error);
+      res.status(500).json({ error: 'Internal server error' });
     }
   } else if (req.method === 'POST') {
-    // Add to wishlist: expects gemstoneId in body
     try {
       const { gemstoneId } = req.body;
-      if (!gemstoneId) return res.status(400).json({ error: 'Missing gemstoneId' });
-      // Prevent duplicates
-      const exists = await prisma.wishlist.findFirst({ where: { userId: decoded.id, gemstoneId } });
-      if (exists) return res.status(409).json({ error: 'Already in wishlist' });
-      await prisma.wishlist.create({ data: { userId: decoded.id, gemstoneId } });
-      const wishlist = await prisma.wishlist.findMany({
-        where: { userId: decoded.id },
+
+      if (!gemstoneId) {
+        return res.status(400).json({ error: 'Gemstone ID is required' });
+      }
+
+      // Check if gemstone exists
+      const gemstone = await prisma.gemstone.findUnique({
+        where: { id: parseInt(gemstoneId) },
+      });
+
+      if (!gemstone) {
+        return res.status(404).json({ error: 'Gemstone not found' });
+      }
+
+      // Check if already in wishlist
+      const existingItem = await prisma.wishlistItem.findFirst({
+        where: {
+          userId: user.id,
+          gemstoneId: parseInt(gemstoneId),
+        },
+      });
+
+      if (existingItem) {
+        return res.status(400).json({ error: 'Item already in wishlist' });
+      }
+
+      // Add to wishlist
+      const wishlistItem = await prisma.wishlistItem.create({
+        data: {
+          userId: user.id,
+          gemstoneId: parseInt(gemstoneId),
+        },
         include: { gemstone: true },
       });
-      return res.status(200).json(wishlist);
-    } catch (err: any) {
-      return res
-        .status(500)
-        .json({ error: 'Failed to add to wishlist', details: err.message || err });
+
+      res.status(200).json(wishlistItem);
+    } catch (error) {
+      console.error('Error adding to wishlist:', error);
+      res.status(500).json({ error: 'Internal server error' });
     }
   } else if (req.method === 'DELETE') {
-    // Remove from wishlist: expects id in body
     try {
-      const { id } = req.body;
-      if (!id) return res.status(400).json({ error: 'Missing wishlist id' });
-      await prisma.wishlist.delete({ where: { id } });
-      const wishlist = await prisma.wishlist.findMany({
-        where: { userId: decoded.id },
-        include: { gemstone: true },
+      const { gemstoneId } = req.body;
+
+      if (!gemstoneId) {
+        return res.status(400).json({ error: 'Gemstone ID is required' });
+      }
+
+      await prisma.wishlistItem.deleteMany({
+        where: {
+          userId: user.id,
+          gemstoneId: parseInt(gemstoneId),
+        },
       });
-      return res.status(200).json(wishlist);
-    } catch (err: any) {
-      return res
-        .status(500)
-        .json({ error: 'Failed to remove from wishlist', details: err.message || err });
+
+      res.status(200).json({ message: 'Item removed from wishlist' });
+    } catch (error) {
+      console.error('Error removing from wishlist:', error);
+      res.status(500).json({ error: 'Internal server error' });
     }
   } else {
-    return res.status(405).json({ error: 'Method not allowed' });
+    res.status(405).json({ error: 'Method not allowed' });
   }
 }
+
+export default withAuth(handler);

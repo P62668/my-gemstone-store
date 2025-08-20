@@ -1,61 +1,160 @@
-import type { NextApiRequest, NextApiResponse } from 'next';
+import { NextApiRequest, NextApiResponse } from 'next';
+import { logger } from './logger';
 
-type RateLimitOptions = {
-  limit: number; // maximum requests per window
-  windowMs: number; // window size in milliseconds
-  key?: string; // optional custom key prefix per route
-};
-
-type Counter = {
-  count: number;
-  expiresAt: number;
-};
-
-// In-memory store. For serverless, this resets per cold start. For stronger guarantees, use Redis.
-const rateLimitStore = new Map<string, Counter>();
-
-export function getClientIp(req: NextApiRequest): string {
-  const xff = (req.headers['x-forwarded-for'] as string) || '';
-  const ip = xff.split(',')[0]?.trim() || (req.socket as any)?.remoteAddress || 'unknown';
-  return ip;
+interface RateLimitConfig {
+  windowMs: number;
+  max: number;
+  limit?: number;
+  key?: string;
 }
 
-export function enforceRateLimit(
-  req: NextApiRequest,
-  res: NextApiResponse,
-  options: RateLimitOptions,
-): boolean {
+interface RateLimitResult {
+  success: boolean;
+  remaining?: number;
+  resetTime?: number;
+}
+
+// In-memory store for rate limiting (use Redis in production)
+const rateLimitStore = new Map<string, { count: number; resetTime: number }>();
+
+export function rateLimit(config: RateLimitConfig) {
+  return async (req: NextApiRequest, res: NextApiResponse): Promise<RateLimitResult> => {
+    try {
+      const ip = getClientIP(req);
+      const key = `rate_limit:${ip}:${req.url}`;
+      const now = Date.now();
+      const { windowMs, max, limit } = config;
+      const actualLimit = limit || max;
+
+      const current = rateLimitStore.get(key);
+      
+      if (!current || now > current.resetTime) {
+        rateLimitStore.set(key, { count: 1, resetTime: now + windowMs });
+        return { success: true, remaining: actualLimit - 1, resetTime: now + windowMs };
+      }
+
+      if (current.count >= actualLimit) {
+        return { success: false, remaining: 0, resetTime: current.resetTime };
+      }
+
+      current.count++;
+      return { success: true, remaining: actualLimit - current.count, resetTime: current.resetTime };
+    } catch (error) {
+      logger.error('Rate limit check failed', req, error as Error);
+      return { success: true, remaining: 999 };
+    }
+  };
+}
+
+export function enforceRateLimit(req: NextApiRequest, res: NextApiResponse, config: RateLimitConfig): boolean {
+    try {
+      const ip = getClientIP(req);
+      const key = `rate_limit:${ip}:${req.url}`;
+      const now = Date.now();
+      const { windowMs, max, limit } = config;
+      const actualLimit = limit || max;
+
+      const current = rateLimitStore.get(key);
+      
+      if (!current || now > current.resetTime) {
+        rateLimitStore.set(key, { count: 1, resetTime: now + windowMs });
+        
+        // Set rate limit headers
+        res.setHeader('X-RateLimit-Limit', actualLimit);
+        res.setHeader('X-RateLimit-Remaining', actualLimit - 1);
+        res.setHeader('X-RateLimit-Reset', new Date(now + windowMs).toISOString());
+        
+        return true;
+      }
+
+      if (current.count >= actualLimit) {
+        // Set rate limit headers
+        res.setHeader('X-RateLimit-Limit', actualLimit);
+        res.setHeader('X-RateLimit-Remaining', 0);
+        res.setHeader('X-RateLimit-Reset', new Date(current.resetTime).toISOString());
+        
+        logger.warn(`Rate limit exceeded for IP: ${ip}`, req);
+        return false;
+      }
+
+      current.count++;
+      
+      // Set rate limit headers
+      res.setHeader('X-RateLimit-Limit', actualLimit);
+      res.setHeader('X-RateLimit-Remaining', actualLimit - current.count);
+      res.setHeader('X-RateLimit-Reset', new Date(current.resetTime).toISOString());
+      
+      return true;
+    } catch (error) {
+      logger.error('Rate limiting error', req, error as Error);
+      // Allow request if rate limiting fails
+      return true;
+    }
+}
+
+function getClientIP(req: NextApiRequest): string {
+  return (
+    (req.headers['x-forwarded-for'] as string)?.split(',')[0] ||
+    (req.headers['x-real-ip'] as string) ||
+    req.socket.remoteAddress ||
+    'unknown'
+  );
+}
+
+// Clean up expired rate limit entries periodically
+setInterval(() => {
   const now = Date.now();
-  const ip = getClientIp(req);
-  const keyBase = options.key || req.url || 'global';
-  const key = `${keyBase}:${ip}`;
-
-  const existing = rateLimitStore.get(key);
-  if (!existing || now > existing.expiresAt) {
-    const counter: Counter = { count: 1, expiresAt: now + options.windowMs };
-    rateLimitStore.set(key, counter);
-    setHeaders(res, options.limit, options.limit - 1, counter.expiresAt);
-    return true;
+  for (const [key, value] of Array.from(rateLimitStore.entries())) {
+    if (now > value.resetTime) {
+      rateLimitStore.delete(key);
+    }
   }
+}, 60000); // Clean up every minute
 
-  if (existing.count >= options.limit) {
-    const retryAfterSec = Math.max(1, Math.ceil((existing.expiresAt - now) / 1000));
-    res.setHeader('Retry-After', String(retryAfterSec));
-    setHeaders(res, options.limit, 0, existing.expiresAt);
-    res.status(429).json({ error: 'Too many requests. Please try again later.' });
-    return false;
-  }
+// Production-ready Redis rate limiter (uncomment and configure for production)
+/*
+import Redis from 'ioredis';
 
-  existing.count += 1;
-  rateLimitStore.set(key, existing);
-  setHeaders(res, options.limit, Math.max(0, options.limit - existing.count), existing.expiresAt);
-  return true;
+const redis = new Redis(process.env.REDIS_URL);
+
+export function redisRateLimit(config: RateLimitConfig) {
+  return async (req: NextApiRequest, res: NextApiResponse): Promise<RateLimitResult> => {
+    try {
+      const ip = getClientIP(req);
+      const key = `rate_limit:${ip}:${req.url}`;
+      const { windowMs, max } = config;
+
+      const multi = redis.multi();
+      multi.incr(key);
+      multi.expire(key, Math.ceil(windowMs / 1000));
+
+      const results = await multi.exec();
+      const count = results?.[0]?.[1] as number || 0;
+
+      if (count > max) {
+        const ttl = await redis.ttl(key);
+        res.setHeader('X-RateLimit-Limit', max);
+        res.setHeader('X-RateLimit-Remaining', 0);
+        res.setHeader('X-RateLimit-Reset', new Date(Date.now() + ttl * 1000).toISOString());
+        
+        logger.warn(`Rate limit exceeded for IP: ${ip}`, req);
+        return { success: false, remaining: 0, resetTime: Date.now() + ttl * 1000 };
+      }
+
+      const ttl = await redis.ttl(key);
+      res.setHeader('X-RateLimit-Limit', max);
+      res.setHeader('X-RateLimit-Remaining', Math.max(0, max - count));
+      res.setHeader('X-RateLimit-Reset', new Date(Date.now() + ttl * 1000).toISOString());
+
+      return { 
+        success: true, 
+        remaining: Math.max(0, max - count), 
+        resetTime: Date.now() + ttl * 1000 
+      };
+    } catch (error) {
+      logger.error('Redis rate limiting error', req, error as Error);
+      return { success: true };
+    }
+  };
 }
-
-function setHeaders(res: NextApiResponse, limit: number, remaining: number, resetAtMs: number) {
-  res.setHeader('X-RateLimit-Limit', String(limit));
-  res.setHeader('X-RateLimit-Remaining', String(remaining));
-  res.setHeader('X-RateLimit-Reset', String(Math.ceil(resetAtMs / 1000)));
-}
-
-
+*/

@@ -1,67 +1,67 @@
 import { NextApiRequest, NextApiResponse } from 'next';
-import { PrismaClient } from '@prisma/client';
-import { requireAdmin } from '../../../utils/auth';
-
-const prisma = new PrismaClient();
+import { prisma } from '../../../lib/prisma';
+import { requireAdminAuth } from '../../../utils/adminSecurity';
 
 export default async function handler(req: NextApiRequest, res: NextApiResponse) {
   try {
-    requireAdmin(req);
-  } catch (err: any) {
-    return res.status(err.message.includes('Forbidden') ? 403 : 401).json({ error: err.message });
-  }
-
-  if (req.method === 'GET') {
-    try {
-      const orders = await prisma.order.findMany({
-        include: {
-          user: {
-            select: {
-              id: true,
-              name: true,
-              email: true,
-            },
-          },
-          items: {
-            include: {
-              gemstone: {
-                select: {
-                  id: true,
-                  name: true,
-                  type: true,
-                  images: true,
-                },
-              },
-            },
-          },
-        },
-        orderBy: { createdAt: 'desc' },
-      });
-      const parsedOrders = orders.map((order) => ({
-        ...order,
-        items: order.items.map((item) => ({
-          ...item,
-          gemstone: {
-            ...item.gemstone,
-            images: Array.isArray(item.gemstone.images)
-              ? item.gemstone.images
-              : JSON.parse(item.gemstone.images || '[]'),
-          },
-        })),
-      }));
-      console.log(
-        '[API/admin/orders] orders.length:',
-        parsedOrders.length,
-        'orders:',
-        parsedOrders,
-      );
-      res.status(200).json(parsedOrders);
-    } catch (error) {
-      console.error('[API/admin/orders] Error fetching orders:', error, error?.stack);
-      res.status(500).json({ error: 'Failed to fetch orders', details: error?.message || error });
+    // Authenticate admin user
+    const adminUser = await requireAdminAuth(req, res);
+    if (!adminUser) {
+      return; // Response already sent by requireAdminAuth
     }
-  } else {
-    res.setHeader('Allow', ['GET']);
-    res.status(405).end(`Method ${req.method} Not Allowed`);
+
+    if (req.method === 'GET') {
+      try {
+        const orders = await prisma.order.findMany({
+          include: {
+            user: {
+              select: {
+                id: true,
+                firstName: true,
+                lastName: true,
+                email: true
+              }
+            },
+            items: {
+              include: {
+                gemstone: {
+                  select: {
+                    id: true,
+                    name: true
+                  }
+                }
+              }
+            }
+          },
+          orderBy: {
+            createdAt: 'desc'
+          }
+        });
+
+        // Transform data to match frontend interface
+        const transformedOrders = orders.map(order => ({
+          id: order.id,
+          orderNumber: order.orderNumber,
+          customerName: `${order.user?.firstName || ''} ${order.user?.lastName || ''}`.trim() || order.user?.email || 'Unknown',
+          total: order.total,
+          status: order.status,
+          paymentStatus: order.paymentStatus,
+          items: order.items.length,
+          createdAt: order.createdAt,
+          updatedAt: order.updatedAt
+        }));
+
+        res.status(200).json(transformedOrders);
+      } catch (error) {
+        console.error('Error fetching orders:', error);
+        res.status(500).json({ error: 'Failed to fetch orders' });
+      }
+    } else {
+      res.setHeader('Allow', ['GET']);
+      res.status(405).end(`Method ${req.method} Not Allowed`);
+    }
+  } catch (error) {
+    console.error('Admin orders API error:', error);
+    res.status(500).json({ error: 'Internal server error' });
   }
 }

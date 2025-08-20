@@ -1,50 +1,42 @@
 import { NextApiRequest, NextApiResponse } from 'next';
-import jwt from 'jsonwebtoken';
-import { requireAdmin } from '../../../utils/auth';
-import { PrismaClient } from '@prisma/client';
-
+import { requireAdminAuth } from '../../../utils/adminSecurity';
 const JWT_SECRET = process.env.JWT_SECRET || 'dev_secret_key';
 
-const prisma = new PrismaClient();
+import { prisma } from '../../../lib/prisma';
 
 export default async function handler(req: NextApiRequest, res: NextApiResponse) {
   try {
-    requireAdmin(req);
+    const adminUser = await requireAdminAuth(req, res);
+    if (!adminUser) {
+      return; // Response already sent by requireAdminAuth
+    }
   } catch (err: any) {
-    return res.status(err.message.includes('Forbidden') ? 403 : 401).json({ error: err.message });
+    return res.status(401).json({ error: 'Authentication required' });
   }
 
   if (req.method === 'GET') {
     try {
-      let settings = await prisma.sEOSettings.findUnique({ where: { id: 1 } });
+      let settings = await prisma.sEO.findUnique({ where: { id: 1 } });
       if (!settings) {
         // Create default settings if none exist
-        settings = await prisma.sEOSettings.create({
+        settings = await prisma.sEO.create({
           data: {
             id: 1,
-            global: {
-              siteTitle: 'Shankarmala - Luxury Gemstone Collection',
-              siteDescription:
-                "Discover the finest gemstones from Shankarmala's heritage jewelry collection. GIA certified, worldwide shipping.",
-              siteKeywords:
-                'luxury gemstones, heritage jewelry, Shankarmala, precious stones, GIA certified',
-              siteUrl: 'https://shankarmala.com',
-              siteLanguage: 'en',
-              siteAuthor: 'Shankarmala',
-            },
-            pages: {},
-            social: {},
-            analytics: {},
-            structuredData: {},
+            page: 'global',
+            title: 'Shankarmala - Luxury Gemstone Collection',
+            description: "Discover the finest gemstones from Shankarmala's heritage jewelry collection. GIA certified, worldwide shipping.",
+            keywords: 'luxury gemstones, heritage jewelry, Shankarmala, precious stones, GIA certified',
+            ogImage: '/images/og-image.jpg',
           },
         });
       }
       res.status(200).json({
-        global: settings.global,
-        pages: settings.pages,
-        social: settings.social,
-        analytics: settings.analytics,
-        structuredData: settings.structuredData,
+        id: settings.id,
+        page: settings.page,
+        title: settings.title,
+        description: settings.description,
+        keywords: settings.keywords,
+        ogImage: settings.ogImage,
         updatedAt: settings.updatedAt,
       });
     } catch (error) {
@@ -54,40 +46,25 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
   } else if (req.method === 'PUT') {
     try {
       const seoData = req.body;
-      if (
-        !seoData.global ||
-        !seoData.pages ||
-        !seoData.social ||
-        !seoData.analytics ||
-        !seoData.structuredData
-      ) {
-        return res.status(400).json({ error: 'All SEO sections are required' });
+      if (!seoData.title || !seoData.description) {
+        return res.status(400).json({ error: 'Title and description are required' });
       }
-      if (!seoData.global.siteTitle || !seoData.global.siteDescription || !seoData.global.siteUrl) {
-        return res
-          .status(400)
-          .json({ error: 'Global site title, description, and URL are required' });
-      }
-      const urlRegex = /^https?:\/\/.+/;
-      if (!urlRegex.test(seoData.global.siteUrl)) {
-        return res.status(400).json({ error: 'Invalid site URL format' });
-      }
-      const updated = await prisma.sEOSettings.upsert({
+      const updated = await prisma.sEO.upsert({
         where: { id: 1 },
         update: {
-          global: seoData.global,
-          pages: seoData.pages,
-          social: seoData.social,
-          analytics: seoData.analytics,
-          structuredData: seoData.structuredData,
+          page: seoData.page || 'global',
+          title: seoData.title,
+          description: seoData.description,
+          keywords: seoData.keywords,
+          ogImage: seoData.ogImage,
         },
         create: {
           id: 1,
-          global: seoData.global,
-          pages: seoData.pages,
-          social: seoData.social,
-          analytics: seoData.analytics,
-          structuredData: seoData.structuredData,
+          page: seoData.page || 'global',
+          title: seoData.title,
+          description: seoData.description,
+          keywords: seoData.keywords,
+          ogImage: seoData.ogImage,
         },
       });
       res

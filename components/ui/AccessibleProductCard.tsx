@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { StarIcon, HeartIcon, EyeIcon } from '@heroicons/react/24/outline';
+import { Star, Heart, Eye } from 'lucide-react';
 import AccessibleButton from './AccessibleButton';
 import { useAccessibility } from './AccessibilityProvider';
 
@@ -115,7 +115,7 @@ const AccessibleProductCard: React.FC<AccessibleProductCardProps> = ({
               aria-label={`Quick view ${product.name}`}
               className="bg-white/95 hover:bg-white shadow-lg backdrop-blur-sm transition-all duration-300 hover:scale-110"
             >
-              <EyeIcon className="w-5 h-5" />
+              <Eye className="w-5 h-5" />
             </AccessibleButton>
 
             <AccessibleButton
@@ -125,7 +125,7 @@ const AccessibleProductCard: React.FC<AccessibleProductCardProps> = ({
               aria-label={`${isWishlisted ? 'Remove from' : 'Add to'} wishlist`}
               className="bg-white/95 hover:bg-white shadow-lg backdrop-blur-sm transition-all duration-300 hover:scale-110"
             >
-              <HeartIcon
+              <Heart
                 className={`w-5 h-5 transition-all duration-300 ${isWishlisted ? 'text-red-500 fill-current' : ''}`}
               />
             </AccessibleButton>
@@ -164,7 +164,7 @@ const AccessibleProductCard: React.FC<AccessibleProductCardProps> = ({
         <div className="flex items-center gap-2">
           <div className="flex gap-1" role="img" aria-label={`${product.rating} out of 5 stars`}>
             {[...Array(5)].map((_, i) => (
-              <StarIcon
+              <Star
                 key={i}
                 className={`w-4 h-4 transition-all duration-300 ${
                   i < Math.floor(product.rating)

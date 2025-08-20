@@ -2,26 +2,37 @@
 
 export interface User {
   id: number;
-  name: string;
+  firstName: string;
+  lastName: string;
   email?: string;
   createdAt?: string;
   role?: string;
   profileImage?: string;
+  // Legacy property for backward compatibility
+  name?: string;
 }
 
 export interface Gemstone {
   id: number;
   name: string;
-  type: string;
   description: string;
   price: number;
-  images: string[];
-  certification: string;
-  active?: boolean;
-  featured?: boolean;
-  createdAt?: string;
-  updatedAt?: string;
-  categoryId?: number;
+  salePrice?: number;
+  categoryId: number;
+  images: string;
+  weight?: number;
+  dimensions?: string;
+  clarity?: string;
+  color?: string;
+  cut?: string;
+  origin?: string;
+  certificate?: string;
+  stockCount: number;
+  lowStockThreshold: number;
+  featured: boolean;
+  active: boolean;
+  createdAt: Date;
+  updatedAt: Date;
   category?: Category;
 }
 
@@ -60,7 +71,11 @@ export interface CartItem {
   id: number;
   gemstoneId: number;
   quantity: number;
+  price: number;
   gemstone?: Gemstone;
+  // Legacy properties for backward compatibility
+  name?: string;
+  images?: string[];
 }
 
 export interface WishlistItem {
@@ -127,7 +142,8 @@ export interface Address {
   id: number;
   userId: number;
   type: string;
-  name: string;
+  firstName: string;
+  lastName: string;
   street: string;
   city: string;
   state: string;
@@ -137,6 +153,7 @@ export interface Address {
   createdAt: string;
   updatedAt: string;
   // Legacy properties for backward compatibility
+  name?: string;
   address?: string;
   zipCode?: string;
   phone?: string;
@@ -233,6 +250,19 @@ export interface SEOSettings {
   keywords: string;
   ogImage: string;
   canonicalUrl: string;
+}
+
+export interface SearchResult {
+  id: number;
+  name: string;
+  description: string;
+  price: number;
+  images: string[];
+  stockCount: number;
+  category?: {
+    id: number;
+    name: string;
+  };
 }
 
 export interface SiteSettings {

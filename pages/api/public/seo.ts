@@ -1,7 +1,5 @@
 import { NextApiRequest, NextApiResponse } from 'next';
-import { PrismaClient } from '@prisma/client';
-
-const prisma = new PrismaClient();
+import { prisma } from '../../../lib/prisma';
 
 export default async function handler(req: NextApiRequest, res: NextApiResponse) {
   if (req.method !== 'GET') {
@@ -9,20 +7,57 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
     return res.status(405).end(`Method ${req.method} Not Allowed`);
   }
   try {
-    const settings = await prisma.sEOSettings.findUnique({ where: { id: 1 } });
+    let settings = await prisma.sEO.findFirst();
+
+    // If no settings exist, return default values instead of 404
     if (!settings) {
-      return res.status(404).json({ error: 'SEO settings not found' });
+      return res.status(200).json({
+        global: {
+          siteTitle: 'Shankarmala - Luxury Gemstone Collection',
+          siteDescription:
+            "Discover the finest gemstones from Shankarmala's heritage jewelry collection. GIA certified, worldwide shipping.",
+          siteKeywords:
+            'luxury gemstones, heritage jewelry, Shankarmala, precious stones, GIA certified',
+          siteUrl: 'https://shankarmala.com',
+          siteLanguage: 'en',
+          siteAuthor: 'Shankarmala',
+        },
+        pages: {},
+        social: {},
+        analytics: {},
+        structuredData: {},
+        updatedAt: new Date(),
+      });
     }
+
     res.status(200).json({
-      global: settings.global,
-      pages: settings.pages,
-      social: settings.social,
-      analytics: settings.analytics,
-      structuredData: settings.structuredData,
+      id: settings.id,
+      page: settings.page,
+      title: settings.title,
+      description: settings.description,
+      keywords: settings.keywords,
+      ogImage: settings.ogImage,
       updatedAt: settings.updatedAt,
     });
   } catch (error) {
     console.error('Error fetching SEO settings:', error);
-    res.status(500).json({ error: 'Failed to fetch SEO settings' });
+    // Return default values on error instead of 500
+    res.status(200).json({
+      global: {
+        siteTitle: 'Shankarmala - Luxury Gemstone Collection',
+        siteDescription:
+          "Discover the finest gemstones from Shankarmala's heritage jewelry collection. GIA certified, worldwide shipping.",
+        siteKeywords:
+          'luxury gemstones, heritage jewelry, Shankarmala, precious stones, GIA certified',
+        siteUrl: 'https://shankarmala.com',
+        siteLanguage: 'en',
+        siteAuthor: 'Shankarmala',
+      },
+      pages: {},
+      social: {},
+      analytics: {},
+      structuredData: {},
+      updatedAt: new Date(),
+    });
   }
 }

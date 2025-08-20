@@ -206,7 +206,7 @@ const OrderTracking: React.FC<OrderTrackingProps> = ({
       {status === 'shipped' && (
         <div className="mt-4 p-3 bg-blue-50 border border-blue-200 rounded-lg">
           <p className="text-blue-800 text-sm">
-            📦 Your package is on its way! You'll receive updates as it moves through our delivery
+            📦 Your package is on its way! You&apos;ll receive updates as it moves through our delivery
             network.
           </p>
         </div>

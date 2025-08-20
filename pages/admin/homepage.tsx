@@ -77,7 +77,7 @@ const HomepageAdmin: React.FC = () => {
   // Optimized gemstones fetching with error handling
   const fetchGemstones = async () => {
     try {
-      console.log('📦 Fetching gemstones...');
+      // console.log('📦 Fetching gemstones...');
       const response = await fetch('/api/admin/gemstones', {
         credentials: 'include',
         headers: {
@@ -91,14 +91,14 @@ const HomepageAdmin: React.FC = () => {
       }
 
       const data = await response.json();
-      console.log(`✅ Fetched ${data.length} gemstones`);
+      // console.log(`✅ Fetched ${data.length} gemstones`);
 
       const featuredGemstones = data.filter((g: any) => g.featured);
-      console.log('⭐ Featured gemstones:', featuredGemstones.length);
-      console.log(
-        '⭐ Featured gemstones details:',
-        featuredGemstones.map((g: any) => ({ id: g.id, name: g.name, featured: g.featured })),
-      );
+      // console.log('⭐ Featured gemstones:', featuredGemstones.length);
+      // console.log(
+      //   '⭐ Featured gemstones details:',
+      //   featuredGemstones.map((g: any) => ({ id: g.id, name: g.name, featured: g.featured })),
+      // );
 
       setAllGemstones(data);
       setFeaturedIds(featuredGemstones.map((g: any) => g.id));
@@ -115,23 +115,23 @@ const HomepageAdmin: React.FC = () => {
   // Debug function to check featured status
   const debugFeaturedStatus = async () => {
     try {
-      console.log('🔍 Debug: Checking featured status...');
+      // console.log('🔍 Debug: Checking featured status...');
       const response = await fetch('/api/admin/gemstones', { credentials: 'include' });
       const data = await response.json();
 
       const featuredProducts = data.filter((g: any) => g.featured);
-      console.log(
-        '🔍 Debug: Featured products from API:',
-        featuredProducts.map((g: any) => ({ id: g.id, name: g.name, featured: g.featured })),
-      );
+      // console.log(
+      //   '🔍 Debug: Featured products from API:',
+      //   featuredProducts.map((g: any) => ({ id: g.id, name: g.name, featured: g.featured })),
+      // );
 
       // Also check public API
       const publicResponse = await fetch('/api/gemstones?featured=true');
       const publicData = await publicResponse.json();
-      console.log(
-        '🔍 Debug: Featured products from public API:',
-        publicData.map((g: any) => ({ id: g.id, name: g.name, featured: g.featured })),
-      );
+      // console.log(
+      //   '🔍 Debug: Featured products from public API:',
+      //   publicData.map((g: any) => ({ id: g.id, name: g.name, featured: g.featured })),
+      // );
     } catch (error) {
       console.error('🔍 Debug: Error checking featured status:', error);
     }
@@ -174,40 +174,41 @@ const HomepageAdmin: React.FC = () => {
 
   // Expert-level featured toggle with optimistic updates and rollback
   const handleToggleFeatured = async (id: number) => {
-    console.log('🔄 Toggle featured called for ID:', id);
-    console.log('🔐 Checking authentication status...');
+    // console.log('🔄 Toggle featured called for ID:', id);
+    // console.log('🔐 Checking authentication status...');
 
     const wasFeatured = featuredIds.includes(id);
-    console.log('📊 Current featured status:', wasFeatured);
+    // console.log('📊 Current featured status:', wasFeatured);
 
     try {
       // Check authentication first
-      const authCheck = await fetch('/api/users/me', { credentials: 'include' });
-      console.log('🔐 Auth check status:', authCheck.status);
-
+      const authCheck = await fetch('/api/admin/auth', { credentials: 'include' });
       if (!authCheck.ok) {
-        throw new Error('Authentication failed - please log in again');
+        router.push('/admin/login');
+        return;
+      }
+      const authData = await authCheck.json();
+      if (authData.user.role !== 'admin') {
+        router.push('/admin/login');
+        return;
       }
 
-      const user = await authCheck.json();
-      console.log('👤 Authenticated user:', user.name, user.role);
-
       // Optimistic update
-      console.log('⚡ Applying optimistic update...');
+      // console.log('⚡ Applying optimistic update...');
       setFeaturedIds((prev) => {
         const newIds = wasFeatured ? prev.filter((fid) => fid !== id) : [...prev, id];
-        console.log('📊 New featured IDs:', newIds);
+        // console.log('📊 New featured IDs:', newIds);
         return newIds;
       });
 
       setFeaturedOrder((prev) => {
         const newOrder = wasFeatured ? prev.filter((fid) => fid !== id) : [...prev, id];
-        console.log('📊 New featured order:', newOrder);
+        // console.log('📊 New featured order:', newOrder);
         return newOrder;
       });
 
       // API call
-      console.log('🌐 Making API call to toggle featured...');
+      // console.log('🌐 Making API call to toggle featured...');
       const response = await fetch('/api/admin/gemstones/featured', {
         method: 'PUT',
         headers: { 'Content-Type': 'application/json' },
@@ -218,18 +219,18 @@ const HomepageAdmin: React.FC = () => {
         }),
       });
 
-      console.log('📡 API response status:', response.status);
+      // console.log('📡 API response status:', response.status);
 
       if (!response.ok) {
         throw new Error(`Failed to toggle featured: ${response.status}`);
       }
 
       const result = await response.json();
-      console.log('✅ Toggle successful:', result.message);
+      // console.log('✅ Toggle successful:', result.message);
       toast.success(result.message);
 
       // Force refresh with a small delay to ensure database is updated
-      console.log('🔄 Refreshing gemstones data...');
+      // console.log('🔄 Refreshing gemstones data...');
       setTimeout(async () => {
         await fetchGemstones();
       }, 100);
@@ -333,19 +334,19 @@ const HomepageAdmin: React.FC = () => {
         setLoading(true);
         setError(null);
 
-        console.log('🔐 Checking authentication...');
-        const authRes = await fetch('/api/users/me', { credentials: 'include' });
+        // console.log('🔐 Checking authentication...');
+        const authRes = await fetch('/api/admin/auth', { credentials: 'include' });
 
         if (!authRes.ok) {
           throw new Error('Authentication failed');
         }
 
-        const user = await authRes.json();
-        if (user.role !== 'admin') {
+        const authData = await authRes.json();
+        if (authData.user.role !== 'admin') {
           throw new Error('Access denied - Admin role required');
         }
 
-        console.log('✅ Authentication successful');
+        // console.log('✅ Authentication successful');
 
         // Fetch data in parallel for better performance
         await Promise.all([fetchGemstones(), fetchHomepageData()]);
@@ -430,15 +431,15 @@ const HomepageAdmin: React.FC = () => {
               {/* Test Button */}
               <button
                 onClick={() => {
-                  console.log('🧪 Test button clicked');
-                  console.log('🧪 All gemstones:', allGemstones.length);
-                  console.log('🧪 Featured IDs:', featuredIds);
+                  // console.log('🧪 Test button clicked');
+                  // console.log('🧪 All gemstones:', allGemstones.length);
+                  // console.log('🧪 Featured IDs:', featuredIds);
                   if (allGemstones.length > 0) {
-                    console.log(
-                      '🧪 Testing with first gemstone:',
-                      allGemstones[0].name,
-                      allGemstones[0].id,
-                    );
+                    // console.log(
+                    //   '🧪 Testing with first gemstone:',
+                    //   allGemstones[0].name,
+                    //   allGemstones[0].id,
+                    // );
                     handleToggleFeatured(allGemstones[0].id);
                   }
                 }}
@@ -460,7 +461,7 @@ const HomepageAdmin: React.FC = () => {
               {/* Force Refresh Button */}
               <button
                 onClick={async () => {
-                  console.log('🔄 Force refreshing data...');
+                  // console.log('🔄 Force refreshing data...');
                   await fetchGemstones();
                   toast.success('Data refreshed');
                 }}
@@ -712,13 +713,13 @@ const HomepageAdmin: React.FC = () => {
               {/* BIG SIMPLE TEST BUTTON */}
               <button
                 onClick={() => {
-                  console.log('🎯 BIG TEST BUTTON CLICKED');
-                  console.log('🎯 All gemstones:', allGemstones.length);
-                  console.log('🎯 Featured IDs:', featuredIds);
+                  // console.log('🎯 BIG TEST BUTTON CLICKED');
+                  // console.log('🎯 All gemstones:', allGemstones.length);
+                  // console.log('🎯 Featured IDs:', featuredIds);
                   if (allGemstones.length > 0) {
                     const firstGem = allGemstones[0];
-                    console.log('🎯 Testing with first gemstone:', firstGem.name, firstGem.id);
-                    console.log('🎯 Current featured status:', featuredIds.includes(firstGem.id));
+                    // console.log('🎯 Testing with first gemstone:', firstGem.name, firstGem.id);
+                    // console.log('🎯 Current featured status:', featuredIds.includes(firstGem.id));
                     handleToggleFeatured(firstGem.id);
                   } else {
                     toast.error('No gemstones available to test');
@@ -861,26 +862,26 @@ const SortableProductCard = ({ gem, isFeatured, onToggleFeatured, isDragging }: 
     e.stopPropagation();
     e.preventDefault();
 
-    console.log('🎯 Toggle button clicked for gem ID:', gem.id);
-    console.log('🎯 Current featured status:', isFeatured);
-    console.log('🎯 Is toggling:', isToggling);
+    // console.log('🎯 Toggle button clicked for gem ID:', gem.id);
+    // console.log('🎯 Current featured status:', isFeatured);
+    // console.log('🎯 Is toggling:', isToggling);
 
     if (isToggling) {
-      console.log('⚠️ Already toggling, ignoring click');
+      // console.log('⚠️ Already toggling, ignoring click');
       return;
     }
 
-    console.log('🎯 Starting toggle process...');
+    // console.log('🎯 Starting toggle process...');
     setIsToggling(true);
 
     try {
-      console.log('🎯 Calling onToggleFeatured...');
+      // console.log('🎯 Calling onToggleFeatured...');
       await onToggleFeatured(gem.id);
-      console.log('🎯 Toggle completed successfully');
+      // console.log('🎯 Toggle completed successfully');
     } catch (error) {
       console.error('🎯 Toggle failed:', error);
     } finally {
-      console.log('🎯 Setting isToggling to false');
+      // console.log('🎯 Setting isToggling to false');
       setIsToggling(false);
     }
   };
@@ -915,7 +916,7 @@ const SortableProductCard = ({ gem, isFeatured, onToggleFeatured, isDragging }: 
       {/* Product Info */}
       <div className="space-y-2">
         <h3 className="font-semibold text-gray-900 text-sm truncate">{gem.name}</h3>
-        <p className="text-gray-600 text-xs truncate">{gem.type}</p>
+        <p className="text-gray-600 text-xs truncate">{gem.description?.substring(0, 30)}...</p>
         <p className="text-amber-600 font-bold text-sm">₹{gem.price.toLocaleString('en-IN')}</p>
       </div>
 

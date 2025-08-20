@@ -27,7 +27,7 @@ export {
 } from './AccessibleForm';
 
 // Card Components
-export { InfoCard, Card, CardHeader, CardBody, CardFooter } from './Card';
+export { InfoCard, Card, CardHeader, CardBody, CardFooter, CardContent, CardTitle } from './Card';
 
 // Product Card Component
 export { default as ProductCard } from './ProductCard';
@@ -63,3 +63,8 @@ export { Navigation, Breadcrumb, SecondaryNavigation, FooterNavigation } from '.
 
 export { default as Navbar } from './Navbar';
 export { ImageUploadWithEdit } from './ImageUploadWithEdit';
+
+// Additional UI Components
+export { Badge } from './badge';
+export { SelectContent, SelectItem, SelectTrigger, SelectValue } from './select';
+export { Slider } from './slider';

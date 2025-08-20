@@ -1,0 +1,119 @@
+
+> shankarmala-gemstore@1.0.0 dev
+> next
+
+  ▲ Next.js 13.5.11
+  - Local:        http://localhost:3000
+  - Environments: .env
+
+ ✓ Ready in 2.7s
+ ✓ Compiled /api/categories in 1063ms (135 modules)
+prisma:warn In production, we recommend using `prisma generate --no-engine` (See: `prisma generate --help`)
+prisma:info Calling http://localhost:51213/6.14.0/476edbc0c94f5d7c6c316704812bac7b760e852b0e43d05b30f21e344052aab0/graphql (n=0)
+[prisma][info] {
+  message: 'Calling http://localhost:51213/6.14.0/476edbc0c94f5d7c6c316704812bac7b760e852b0e43d05b30f21e344052aab0/graphql (n=0)',
+  timestamp: 2025-08-20T11:01:45.205Z,
+  target: ''
+}
+prisma:warn Attempt 1/3 failed for querying: Cannot fetch data from service:
+fetch failed
+[prisma][warn] {
+  message: 'Attempt 1/3 failed for querying: Cannot fetch data from service:\n' +
+    'fetch failed',
+  timestamp: 2025-08-20T11:01:45.223Z,
+  target: ''
+}
+prisma:warn Retrying after 32ms
+[prisma][warn] {
+  message: 'Retrying after 32ms',
+  timestamp: 2025-08-20T11:01:45.258Z,
+  target: ''
+}
+prisma:info Calling http://localhost:51213/6.14.0/476edbc0c94f5d7c6c316704812bac7b760e852b0e43d05b30f21e344052aab0/graphql (n=1)
+[prisma][info] {
+  message: 'Calling http://localhost:51213/6.14.0/476edbc0c94f5d7c6c316704812bac7b760e852b0e43d05b30f21e344052aab0/graphql (n=1)',
+  timestamp: 2025-08-20T11:01:45.259Z,
+  target: ''
+}
+prisma:warn Attempt 2/3 failed for querying: Cannot fetch data from service:
+fetch failed
+[prisma][warn] {
+  message: 'Attempt 2/3 failed for querying: Cannot fetch data from service:\n' +
+    'fetch failed',
+  timestamp: 2025-08-20T11:01:45.262Z,
+  target: ''
+}
+prisma:warn Retrying after 144ms
+[prisma][warn] {
+  message: 'Retrying after 144ms',
+  timestamp: 2025-08-20T11:01:45.408Z,
+  target: ''
+}
+prisma:info Calling http://localhost:51213/6.14.0/476edbc0c94f5d7c6c316704812bac7b760e852b0e43d05b30f21e344052aab0/graphql (n=2)
+[prisma][info] {
+  message: 'Calling http://localhost:51213/6.14.0/476edbc0c94f5d7c6c316704812bac7b760e852b0e43d05b30f21e344052aab0/graphql (n=2)',
+  timestamp: 2025-08-20T11:01:45.413Z,
+  target: ''
+}
+prisma:warn Attempt 3/3 failed for querying: Cannot fetch data from service:
+fetch failed
+[prisma][warn] {
+  message: 'Attempt 3/3 failed for querying: Cannot fetch data from service:\n' +
+    'fetch failed',
+  timestamp: 2025-08-20T11:01:45.418Z,
+  target: ''
+}
+prisma:warn Retrying after 214ms
+[prisma][warn] {
+  message: 'Retrying after 214ms',
+  timestamp: 2025-08-20T11:01:45.633Z,
+  target: ''
+}
+prisma:info Calling http://localhost:51213/6.14.0/476edbc0c94f5d7c6c316704812bac7b760e852b0e43d05b30f21e344052aab0/graphql (n=3)
+[prisma][info] {
+  message: 'Calling http://localhost:51213/6.14.0/476edbc0c94f5d7c6c316704812bac7b760e852b0e43d05b30f21e344052aab0/graphql (n=3)',
+  timestamp: 2025-08-20T11:01:45.634Z,
+  target: ''
+}
+prisma:error 
+Invalid `prisma.category.findMany()` invocation:
+
+
+Cannot fetch data from service:
+fetch failed
+[prisma][error] {
+  message: '\n' +
+    'Invalid `prisma.category.findMany()` invocation:\n' +
+    '\n' +
+    '\n' +
+    'Cannot fetch data from service:\n' +
+    'fetch failed',
+  target: 'category.findMany',
+  timestamp: 2025-08-20T11:01:45.644Z
+}
+Error fetching categories: PrismaClientKnownRequestError: 
+Invalid `prisma.category.findMany()` invocation:
+
+
+Cannot fetch data from service:
+fetch failed
+    at ei.handleRequestError (/Users/p62668/my-gemstone-store/node_modules/@prisma/client/runtime/library.js:121:7283)
+    at ei.handleAndLogRequestError (/Users/p62668/my-gemstone-store/node_modules/@prisma/client/runtime/library.js:121:6608)
+    at ei.request (/Users/p62668/my-gemstone-store/node_modules/@prisma/client/runtime/library.js:121:6315)
+    at process.processTicksAndRejections (node:internal/process/task_queues:95:5)
+    at async a (/Users/p62668/my-gemstone-store/node_modules/@prisma/client/runtime/library.js:130:9551)
+    at async handler (webpack-internal:///(api)/./pages/api/categories.ts:14:28) {
+  code: 'P5010',
+  meta: { modelName: 'Category' },
+  clientVersion: '6.14.0'
+}
+ ✓ Compiled in 308ms (119 modules)
+ ✓ Compiled in 118ms (119 modules)
+   Reload env: .env
+ ✓ Compiled in 4.5s (322 modules)
+ ✓ Compiled in 445ms (203 modules)
+ ✓ Compiled in 241ms (322 modules)
+ ✓ Compiled in 1919ms (203 modules)
+ ✓ Compiled in 1419ms (203 modules)
+ ✓ Compiled in 1287ms (203 modules)
+ ✓ Compiled in 836ms (203 modules)

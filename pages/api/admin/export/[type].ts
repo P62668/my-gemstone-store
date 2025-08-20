@@ -1,8 +1,7 @@
 import { NextApiRequest, NextApiResponse } from 'next';
-import { PrismaClient } from '@prisma/client';
 import { requireAdmin } from '../../../../utils/auth';
 
-const prisma = new PrismaClient();
+import { prisma } from '../../../../lib/prisma';
 
 export default async function handler(req: NextApiRequest, res: NextApiResponse) {
   try {
@@ -40,7 +39,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
           const items = order.items
             .map((item) => `${item.gemstone.name} (${item.quantity})`)
             .join('; ');
-          csvData += `${order.id},"${order.user.name || order.user.email}",${order.total},${order.status},"${items}",${order.createdAt.toISOString()}\n`;
+          csvData += `${order.id},"${order.user.firstName && order.user.lastName ? `${order.user.firstName} ${order.user.lastName}` : order.user.email}",${order.total},${order.status},"${items}",${order.createdAt.toISOString()}\n`;
         });
         filename = 'orders.csv';
         break;
@@ -56,7 +55,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
         csvData = 'User ID,Name,Email,Total Orders,Total Spent,Join Date\n';
         users.forEach((user) => {
           const totalSpent = user.orders.reduce((sum, order) => sum + order.total, 0);
-          csvData += `${user.id},"${user.name}","${user.email}",${user.orders.length},${totalSpent},${user.createdAt.toISOString()}\n`;
+          csvData += `${user.id},"${user.firstName && user.lastName ? `${user.firstName} ${user.lastName}` : user.email}","${user.email}",${user.orders.length},${totalSpent},${user.createdAt.toISOString()}\n`;
         });
         filename = 'users.csv';
         break;
@@ -73,7 +72,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
         csvData = 'ID,Name,Type,Category,Price,Certification,Total Sold,Images\n';
         gemstones.forEach((gem) => {
           const totalSold = gem.orderItems.reduce((sum, item) => sum + item.quantity, 0);
-          csvData += `${gem.id},"${gem.name}","${gem.type}","${gem.category?.name || 'Uncategorized'}",${gem.price},"${gem.certification}",${totalSold},"${gem.images}"\n`;
+          csvData += `${gem.id},"${gem.name}","${gem.category?.name || 'Uncategorized'}",${gem.price},"${gem.certificate || ''}",${totalSold},"${gem.images}"\n`;
         });
         filename = 'gemstones.csv';
         break;

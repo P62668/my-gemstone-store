@@ -11,9 +11,6 @@ interface AddictiveFeaturesProps {
 }
 
 const AddictiveFeatures: React.FC<AddictiveFeaturesProps> = ({
-  productId,
-  productName,
-  price,
   stockCount = 10,
   discount = 0,
 }) => {
@@ -48,8 +45,8 @@ const AddictiveFeatures: React.FC<AddictiveFeaturesProps> = ({
 
     const interval = setInterval(() => {
       const newActivity = {
-        name: names[Math.floor(Math.random() * names.length)],
-        action: actions[Math.floor(Math.random() * actions.length)],
+        name: names[Math.floor(Math.random() * names.length)]!,
+        action: actions[Math.floor(Math.random() * actions.length)]!,
         time: 'just now',
       };
 
@@ -69,6 +66,7 @@ const AddictiveFeatures: React.FC<AddictiveFeaturesProps> = ({
 
       return () => clearTimeout(timer);
     }
+    return undefined;
   }, [stockCount]);
 
   // Countdown timer
@@ -93,7 +91,7 @@ const AddictiveFeatures: React.FC<AddictiveFeaturesProps> = ({
   useEffect(() => {
     if (Math.random() > 0.7) {
       setLastPurchased({
-        name: ['Sarah', 'Mike', 'Emma', 'David'][Math.floor(Math.random() * 4)],
+        name: ['Sarah', 'Mike', 'Emma', 'David'][Math.floor(Math.random() * 4)]!,
         time: '2 minutes ago',
       });
     }

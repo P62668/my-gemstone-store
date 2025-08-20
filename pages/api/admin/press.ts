@@ -1,22 +1,22 @@
 import { NextApiRequest, NextApiResponse } from 'next';
-import { PrismaClient } from '@prisma/client';
-import jwt from 'jsonwebtoken';
-import { requireAdmin } from '../../../utils/auth';
+import { requireAdminAuth } from '../../../utils/adminSecurity';
 
-const prisma = new PrismaClient();
-const JWT_SECRET = process.env.JWT_SECRET || 'dev_secret_key';
+import { prisma } from '../../../lib/prisma';
 
 export default async function handler(req: NextApiRequest, res: NextApiResponse) {
   try {
-    requireAdmin(req);
+    const adminUser = await requireAdminAuth(req, res);
+    if (!adminUser) {
+      return; // Response already sent by requireAdminAuth
+    }
   } catch (err: any) {
-    return res.status(err.message.includes('Forbidden') ? 403 : 401).json({ error: err.message });
+    return res.status(401).json({ error: 'Authentication required' });
   }
 
   if (req.method === 'GET') {
     try {
       const press = await prisma.press.findMany({
-        orderBy: { order: 'asc' },
+        orderBy: { date: 'desc' },
       });
       res.status(200).json(press);
     } catch (error) {
@@ -25,12 +25,12 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
     }
   } else if (req.method === 'POST') {
     try {
-      const { title, content, order, active } = req.body;
+      const { title, content, active } = req.body;
       const pressItem = await prisma.press.create({
         data: {
           title,
           content,
-          order: order || 0,
+          date: new Date(),
           active: active !== undefined ? active : true,
         },
       });

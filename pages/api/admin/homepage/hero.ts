@@ -1,17 +1,18 @@
 import { NextApiRequest, NextApiResponse } from 'next';
-import { requireAdmin } from '../../../../utils/auth';
-import { PrismaClient } from '@prisma/client';
-
+import { requireAdminAuth } from '../../../../utils/adminSecurity';
 // For now, we'll use a simple in-memory approach or file-based storage
 // In a production environment, you'd want to use a proper database
 
-const prisma = new PrismaClient();
+import { prisma } from '../../../../lib/prisma';
 
 export default async function handler(req: NextApiRequest, res: NextApiResponse) {
   try {
-    requireAdmin(req);
+    const adminUser = await requireAdminAuth(req, res);
+    if (!adminUser) {
+      return; // Response already sent by requireAdminAuth
+    }
   } catch (err: any) {
-    return res.status(err.message.includes('Forbidden') ? 403 : 401).json({ error: err.message });
+    return res.status(401).json({ error: 'Authentication required' });
   }
 
   if (req.method === 'GET') {

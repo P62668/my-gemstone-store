@@ -154,7 +154,7 @@ export const GemstoneStorySection: React.FC<GemstoneStorySectionProps> = ({
                       ▶
                     </motion.span>
                   </div>
-                  <AnimatePresence>
+                  <AnimatePresence mode="wait">
                     {openIndex === i && (
                       <motion.div
                         initial={{ height: 0, opacity: 0 }}

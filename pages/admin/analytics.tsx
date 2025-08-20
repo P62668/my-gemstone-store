@@ -1,5 +1,5 @@
 import React, { useEffect, useState } from 'react';
-import Layout from '../../components/Layout';
+import AdminLayout from '../../components/AdminLayout';
 
 interface Analytics {
   totalSales: number;
@@ -84,24 +84,24 @@ const AdminAnalyticsPage: React.FC = () => {
 
   if (loading)
     return (
-      <Layout title="Admin Analytics - Kolkata Gems">
+      <AdminLayout title="Admin Analytics - Kolkata Gems">
         <div className="max-w-7xl mx-auto py-12 px-4">
           <div className="text-center text-gray-500">Loading analytics...</div>
         </div>
-      </Layout>
+      </AdminLayout>
     );
 
   if (error)
     return (
-      <Layout title="Admin Analytics - Kolkata Gems">
+      <AdminLayout title="Admin Analytics - Kolkata Gems">
         <div className="max-w-7xl mx-auto py-12 px-4">
           <div className="text-center text-red-600">{error}</div>
         </div>
-      </Layout>
+      </AdminLayout>
     );
 
   return (
-    <Layout title="Admin Analytics - Kolkata Gems">
+    <AdminLayout title="Admin Analytics - Kolkata Gems">
       <div className="max-w-7xl mx-auto py-12 px-4">
         <div className="flex justify-between items-center mb-8">
           <h1 className="text-4xl font-bold text-amber-900">Admin Analytics</h1>
@@ -252,7 +252,7 @@ const AdminAnalyticsPage: React.FC = () => {
           </div>
         </div>
       </div>
-    </Layout>
+    </AdminLayout>
   );
 };
 

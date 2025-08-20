@@ -80,14 +80,10 @@ const OrdersPage: React.FC = () => {
           if (Array.isArray(item.gemstone.images)) {
             imgs = item.gemstone.images;
           } else if (typeof item.gemstone.images === 'string') {
-            try {
-              const parsed = JSON.parse(item.gemstone.images);
-              if (Array.isArray(parsed)) imgs = parsed;
-              else if (typeof parsed === 'string') imgs = [parsed];
-              else imgs = [];
-            } catch {
-              if (item.gemstone.images.trim().length > 0) imgs = [item.gemstone.images.trim()];
-              else imgs = [];
+            if (item.gemstone.images.trim().length > 0) {
+              imgs = item.gemstone.images.split(',').map((img) => img.trim());
+            } else {
+              imgs = [];
             }
           }
           return imgs[0] || '/images/placeholder-gemstone.jpg';

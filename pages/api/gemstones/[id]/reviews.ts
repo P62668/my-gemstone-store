@@ -1,8 +1,7 @@
 import type { NextApiRequest, NextApiResponse } from 'next';
-import { PrismaClient } from '@prisma/client';
 import { getUserFromRequest } from '../../../../utils/auth';
 
-const prisma = new PrismaClient();
+import { prisma } from '../../../../lib/prisma';
 
 export default async function handler(req: NextApiRequest, res: NextApiResponse) {
   const { id } = req.query;
@@ -28,6 +27,9 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
     let user;
     try {
       user = getUserFromRequest(req);
+      if (!user) {
+        return res.status(401).json({ error: 'Authentication required' });
+      }
     } catch (err: any) {
       return res.status(401).json({ error: 'Authentication required' });
     }
@@ -61,14 +63,14 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
       // Get user display name
       const dbUser = await prisma.user.findUnique({
         where: { id: user.id },
-        select: { name: true },
+        select: { firstName: true, lastName: true },
       });
 
       const review = await prisma.review.create({
         data: {
           gemstoneId: Number(id),
           userId: user.id,
-          userName: dbUser?.name || 'Verified Buyer',
+
           rating: Number(rating),
           comment,
         },

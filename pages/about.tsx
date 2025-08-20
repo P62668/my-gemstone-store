@@ -1,6 +1,25 @@
 import React from 'react';
 import Head from 'next/head';
-import { motion } from 'framer-motion';
+import { motion, AnimatePresence } from 'framer-motion';
+import {
+  Award,
+  Shield,
+  Star,
+  Users,
+  Gem,
+  Clock,
+  MapPin,
+  Phone,
+  Mail,
+  Instagram,
+  Facebook,
+  Twitter,
+  Linkedin,
+  Sparkles,
+  Heart,
+  Crown,
+  Zap,
+} from 'lucide-react';
 
 const AboutPage: React.FC = () => {
   const teamMembers = [
@@ -29,24 +48,28 @@ const AboutPage: React.FC = () => {
 
   const values = [
     {
-      icon: '💎',
+      icon: <Gem className="w-8 h-8 text-amber-600" />,
       title: 'Authenticity',
       description: 'Every gemstone is certified and authenticated by leading laboratories.',
+      color: 'from-amber-500 to-orange-500',
     },
     {
-      icon: '🏛️',
+      icon: <Crown className="w-8 h-8 text-yellow-600" />,
       title: 'Heritage',
       description: "Preserving the rich legacy of Kolkata's gemstone traditions.",
+      color: 'from-yellow-500 to-amber-500',
     },
     {
-      icon: '✨',
+      icon: <Star className="w-8 h-8 text-orange-600" />,
       title: 'Excellence',
       description: 'Uncompromising quality in every piece we create and curate.',
+      color: 'from-orange-500 to-red-500',
     },
     {
-      icon: '🤝',
+      icon: <Shield className="w-8 h-8 text-green-600" />,
       title: 'Trust',
       description: 'Building lasting relationships through transparency and integrity.',
+      color: 'from-green-500 to-emerald-500',
     },
   ];
 
@@ -157,12 +180,13 @@ const AboutPage: React.FC = () => {
                 world&apos;s finest gemstones to discerning collectors and connoisseurs.
               </p>
               <motion.div
-                className="inline-flex items-center gap-2 bg-white/90 backdrop-blur-lg rounded-full px-6 py-3 shadow-lg border border-yellow-100"
-                whileHover={{ scale: 1.05 }}
+                className="inline-flex items-center gap-3 bg-gradient-to-r from-yellow-500 to-amber-500 text-white rounded-full px-8 py-4 shadow-xl border border-yellow-300"
+                whileHover={{ scale: 1.05, y: -2 }}
                 transition={{ duration: 0.3 }}
               >
-                <span className="text-yellow-600">🏛️</span>
-                <span className="font-semibold text-yellow-900 font-serif">Est. 1895</span>
+                <Crown className="w-6 h-6" />
+                <span className="font-bold font-serif text-lg">Est. 1895</span>
+                <Sparkles className="w-5 h-5" />
               </motion.div>
             </motion.div>
           </div>
@@ -266,19 +290,26 @@ const AboutPage: React.FC = () => {
               {values.map((value, idx) => (
                 <motion.div
                   key={value.title}
-                  className="text-center"
+                  className="group relative"
                   initial={{ opacity: 0, y: 30 }}
                   whileInView={{ opacity: 1, y: 0 }}
                   transition={{ duration: 0.6, delay: idx * 0.1 }}
                   viewport={{ once: true }}
+                  whileHover={{ y: -8 }}
                 >
-                  <div className="w-20 h-20 mx-auto mb-6 bg-gradient-to-br from-yellow-100 to-amber-100 rounded-2xl flex items-center justify-center text-3xl shadow-lg border border-yellow-200">
-                    {value.icon}
+                  <div className="bg-white/90 backdrop-blur-sm rounded-2xl shadow-xl border border-yellow-200/60 p-6 text-center transition-all duration-300 group-hover:shadow-2xl group-hover:border-yellow-300">
+                    <div
+                      className={`w-20 h-20 mx-auto mb-6 bg-gradient-to-br ${value.color} rounded-2xl flex items-center justify-center shadow-lg border border-white/20 group-hover:scale-110 transition-transform duration-300`}
+                    >
+                      {value.icon}
+                    </div>
+                    <h3 className="text-xl font-bold text-yellow-900 mb-3 font-serif group-hover:text-yellow-700 transition-colors duration-300">
+                      {value.title}
+                    </h3>
+                    <p className="text-yellow-700 font-serif leading-relaxed group-hover:text-yellow-600 transition-colors duration-300">
+                      {value.description}
+                    </p>
                   </div>
-                  <h3 className="text-xl font-bold text-yellow-900 mb-3 font-serif">
-                    {value.title}
-                  </h3>
-                  <p className="text-yellow-700 font-serif leading-relaxed">{value.description}</p>
                 </motion.div>
               ))}
             </div>
@@ -324,8 +355,14 @@ const AboutPage: React.FC = () => {
                   role="listitem"
                   aria-label={`${member.name}, ${member.role}`}
                 >
-                  <div className="h-64 bg-gradient-to-br from-yellow-100 to-amber-100 flex items-center justify-center">
-                    <div className="text-6xl">👤</div>
+                  <div className="h-64 bg-gradient-to-br from-yellow-100 to-amber-100 flex items-center justify-center relative overflow-hidden">
+                    <div className="absolute inset-0 bg-gradient-to-br from-yellow-200/50 to-amber-200/50"></div>
+                    <div className="relative z-10">
+                      <Users className="w-24 h-24 text-yellow-700" />
+                    </div>
+                    <div className="absolute top-4 right-4">
+                      <Award className="w-8 h-8 text-amber-600" />
+                    </div>
                   </div>
                   <div className="p-6">
                     <h3 className="text-xl font-bold text-yellow-900 mb-1 font-serif">
@@ -394,9 +431,7 @@ const AboutPage: React.FC = () => {
                 >
                   <div className="flex items-center mb-4">
                     {[...Array(testimonial.rating)].map((_, i) => (
-                      <span key={i} className="text-yellow-400 text-xl">
-                        ⭐
-                      </span>
+                      <Star key={i} className="w-5 h-5 text-yellow-400 fill-current" />
                     ))}
                   </div>
                   <p className="text-yellow-800 font-serif leading-relaxed mb-6">
@@ -431,9 +466,9 @@ const AboutPage: React.FC = () => {
                   Visit Our Heritage Gallery
                 </h2>
                 <div className="space-y-6 text-lg text-yellow-800 font-serif">
-                  <div className="flex items-start gap-4">
-                    <div className="w-12 h-12 bg-gradient-to-br from-yellow-100 to-amber-100 rounded-xl flex items-center justify-center text-yellow-600 text-xl flex-shrink-0">
-                      📍
+                  <div className="flex items-start gap-4 group">
+                    <div className="w-12 h-12 bg-gradient-to-br from-yellow-100 to-amber-100 rounded-xl flex items-center justify-center text-yellow-600 flex-shrink-0 group-hover:scale-110 transition-transform duration-300">
+                      <MapPin className="w-6 h-6" />
                     </div>
                     <div>
                       <h3 className="font-semibold text-yellow-900 mb-1">Address</h3>
@@ -446,9 +481,9 @@ const AboutPage: React.FC = () => {
                       </p>
                     </div>
                   </div>
-                  <div className="flex items-start gap-4">
-                    <div className="w-12 h-12 bg-gradient-to-br from-yellow-100 to-amber-100 rounded-xl flex items-center justify-center text-yellow-600 text-xl flex-shrink-0">
-                      📞
+                  <div className="flex items-start gap-4 group">
+                    <div className="w-12 h-12 bg-gradient-to-br from-yellow-100 to-amber-100 rounded-xl flex items-center justify-center text-yellow-600 flex-shrink-0 group-hover:scale-110 transition-transform duration-300">
+                      <Phone className="w-6 h-6" />
                     </div>
                     <div>
                       <h3 className="font-semibold text-yellow-900 mb-1">Contact</h3>
@@ -459,9 +494,9 @@ const AboutPage: React.FC = () => {
                       </p>
                     </div>
                   </div>
-                  <div className="flex items-start gap-4">
-                    <div className="w-12 h-12 bg-gradient-to-br from-yellow-100 to-amber-100 rounded-xl flex items-center justify-center text-yellow-600 text-xl flex-shrink-0">
-                      🕒
+                  <div className="flex items-start gap-4 group">
+                    <div className="w-12 h-12 bg-gradient-to-br from-yellow-100 to-amber-100 rounded-xl flex items-center justify-center text-yellow-600 flex-shrink-0 group-hover:scale-110 transition-transform duration-300">
+                      <Clock className="w-6 h-6" />
                     </div>
                     <div>
                       <h3 className="font-semibold text-yellow-900 mb-1">Hours</h3>

@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { Heart, ShoppingCart, Eye, Star, Share2, Clock, Fire, Sparkles } from 'lucide-react';
+import { Heart, ShoppingCart, Eye, Star, Share2, Clock, Flame, Sparkles } from 'lucide-react';
 import { toast } from 'react-hot-toast';
 import confetti from 'canvas-confetti';
 
@@ -43,7 +43,6 @@ const EnhancedProductCard: React.FC<EnhancedProductCardProps> = ({
   const [isHovered, setIsHovered] = useState(false);
   const [isWishlisted, setIsWishlisted] = useState(false);
   const [isAddingToCart, setIsAddingToCart] = useState(false);
-  const [showQuickView, setShowQuickView] = useState(false);
 
   const handleAddToCart = async (e: React.MouseEvent) => {
     e.stopPropagation();
@@ -159,7 +158,7 @@ const EnhancedProductCard: React.FC<EnhancedProductCardProps> = ({
                 exit={{ opacity: 0, scale: 0.8 }}
                 className="bg-orange-500 text-white text-xs px-2 py-1 rounded-full font-medium flex items-center"
               >
-                <Fire className="w-3 h-3 mr-1" />
+                <Flame className="w-3 h-3 mr-1" />
                 TRENDING
               </motion.span>
             )}

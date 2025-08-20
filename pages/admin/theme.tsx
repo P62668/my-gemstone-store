@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import Layout from '../../components/Layout';
+import AdminLayout from '../../components/AdminLayout';
 
 interface ThemeSettings {
   colors: {
@@ -243,7 +243,7 @@ const ThemeAdmin: React.FC = () => {
   ];
 
   return (
-    <Layout title="Theme Settings - Kolkata Gems">
+    <AdminLayout title="Theme Settings - Kolkata Gems">
       <div className="max-w-7xl mx-auto py-12 px-4">
         {/* Header */}
         <div className="mb-8">
@@ -559,7 +559,7 @@ const ThemeAdmin: React.FC = () => {
           </button>
         </div>
       </div>
-    </Layout>
+    </AdminLayout>
   );
 };
 

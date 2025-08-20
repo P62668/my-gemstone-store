@@ -1,63 +1,34 @@
-import React, { useEffect, useState } from 'react';
+import React from 'react';
 import Head from 'next/head';
 import Link from 'next/link';
 import Layout from '../components/Layout';
-
-interface WishlistItem {
-  id: number;
-  gemstoneId: number;
-  name?: string;
-  gemstone?: {
-    name: string;
-  };
-}
+import { useWishlist } from '../components/context/WishlistContext';
+import { apiClient } from '../utils/apiClient';
 
 export default function Wishlist() {
-  const [wishlist, setWishlist] = useState<WishlistItem[]>([]);
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState('');
+  const { items: wishlist, loading, removeFromWishlist, refreshWishlist } = useWishlist();
+  const [error, setError] = React.useState('');
 
-  useEffect(() => {
-    const fetchWishlist = async () => {
-      setLoading(true);
-      setError('');
-      try {
-        const res = await fetch('/api/users/wishlist');
-        if (!res.ok) throw new Error('Failed to fetch wishlist');
-        let data;
-        try {
-          data = await res.json();
-        } catch {
-          throw new Error('Wishlist data is corrupted or not valid JSON.');
-        }
-        if (!Array.isArray(data)) throw new Error('Wishlist data is not an array.');
-        setWishlist(data);
-      } catch (err) {
-        setError((err as Error).message || 'Failed to load wishlist');
-        setWishlist([]);
-      } finally {
-        setLoading(false);
-      }
-    };
-    fetchWishlist();
-  }, []);
-
-  const handleRemove = async (id: number) => {
-    setLoading(true);
+  const handleRemove = async (gemstoneId: number) => {
     setError('');
     try {
-      const res = await fetch('/api/users/wishlist', {
-        method: 'DELETE',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ id }),
-      });
-      if (!res.ok) throw new Error('Failed to remove from wishlist');
-      const updated = await res.json();
-      setWishlist(updated);
+      await removeFromWishlist(gemstoneId);
+      await refreshWishlist();
     } catch (err) {
       setError((err as Error).message || 'Failed to remove from wishlist');
-    } finally {
-      setLoading(false);
+    }
+  };
+
+  const handleAddToCart = async (gemstoneId: number) => {
+    try {
+      const res = await apiClient.post('/api/cart/add', { productId: gemstoneId, quantity: 1 }, { credentials: 'include' });
+      if (res.ok) {
+        alert('Added to cart successfully!');
+      } else {
+        alert('Failed to add to cart');
+      }
+    } catch (err) {
+      alert('Failed to add to cart');
     }
   };
 
@@ -97,7 +68,7 @@ export default function Wishlist() {
                 className="bg-white/90 rounded-2xl shadow-xl border border-amber-100 p-6 flex flex-col items-center"
               >
                 <span className="text-lg text-amber-900 font-semibold mb-2">
-                  {item.name || (item.gemstone && item.gemstone.name) || ''}
+                  {(item.gemstone && item.gemstone.name) || ''}
                 </span>
                 <Link
                   href={`/product/${item.gemstoneId}`}
@@ -105,12 +76,20 @@ export default function Wishlist() {
                 >
                   View Details
                 </Link>
-                <button
-                  onClick={() => handleRemove(item.id)}
-                  className="mt-2 px-4 py-2 rounded bg-amber-100 text-amber-900 font-semibold hover:bg-amber-200 transition"
-                >
-                  Remove
-                </button>
+                <div className="flex gap-2 mt-2">
+                  <button
+                    onClick={() => handleAddToCart(item.gemstoneId)}
+                    className="px-4 py-2 rounded bg-amber-600 text-white font-semibold hover:bg-amber-700 transition"
+                  >
+                    Add to Cart
+                  </button>
+                  <button
+                    onClick={() => handleRemove(item.id)}
+                    className="px-4 py-2 rounded bg-red-100 text-red-900 font-semibold hover:bg-red-200 transition"
+                  >
+                    Remove
+                  </button>
+                </div>
               </div>
             ))}
           </div>

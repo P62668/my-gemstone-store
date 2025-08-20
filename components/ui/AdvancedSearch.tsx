@@ -195,7 +195,7 @@ const AdvancedSearch: React.FC<AdvancedSearchProps> = ({
                     onChange={(e) =>
                       setSelectedFilters({
                         ...selectedFilters,
-                        priceRange: [parseInt(e.target.value) || 0, selectedFilters.priceRange[1]],
+                        priceRange: [parseInt(e.target.value) || 0, selectedFilters.priceRange[1] || 100000],
                       })
                     }
                     className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-amber-500 focus:border-transparent"
@@ -208,7 +208,7 @@ const AdvancedSearch: React.FC<AdvancedSearchProps> = ({
                       setSelectedFilters({
                         ...selectedFilters,
                         priceRange: [
-                          selectedFilters.priceRange[0],
+                          selectedFilters.priceRange[0] || 0,
                           parseInt(e.target.value) || 100000,
                         ],
                       })
@@ -346,7 +346,7 @@ const AdvancedSearch: React.FC<AdvancedSearchProps> = ({
             {/* No Results */}
             {query.length > 2 && suggestions.length === 0 && (
               <div className="p-4 text-center text-gray-500">
-                <p>No results found for "{query}"</p>
+                <p>No results found for &quot;{query}&quot;</p>
                 <p className="text-sm mt-1">Try different keywords or browse categories</p>
               </div>
             )}

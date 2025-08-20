@@ -1,24 +1,39 @@
-import React, { useState, useRef } from 'react';
+import React, { useState, useRef, useEffect } from 'react';
 import Link from 'next/link';
 import Layout from '../components/Layout';
 import { useUser } from '../components/context/UserContext';
 import { useRouter } from 'next/router';
 
-const LoginPage: React.FC = () => {
-  const [isOtpMode, setIsOtpMode] = useState(false);
+export default function Login() {
+  const [mounted, setMounted] = useState(false);
+  
+  useEffect(() => {
+    setMounted(true);
+  }, []);
+
   const [form, setForm] = useState({ email: '', password: '' });
+  const [formErrors, setFormErrors] = useState<{ email?: string; password?: string }>({});
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
   const [success, setSuccess] = useState('');
   const [showPassword, setShowPassword] = useState(false);
-  const [formErrors, setFormErrors] = useState<{ email?: string; password?: string }>({});
   const [forgotMode, setForgotMode] = useState(false);
   const [forgotEmail, setForgotEmail] = useState('');
   const [forgotSent, setForgotSent] = useState(false);
   const emailInputRef = useRef<HTMLInputElement>(null);
 
-  const { setUser } = useUser();
+  const { login } = useUser();
   const router = useRouter();
+
+  if (!mounted) {
+    return (
+      <Layout title="Login - Shankarmala Gemstore">
+        <div className="min-h-screen flex items-center justify-center">
+          <div className="animate-spin rounded-full h-32 w-32 border-b-2 border-amber-500"></div>
+        </div>
+      </Layout>
+    );
+  }
 
   // Real-time validation
   const handleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -50,33 +65,34 @@ const LoginPage: React.FC = () => {
     if (Object.keys(errors).length > 0) return;
     setLoading(true);
     try {
-      const res = await fetch('/api/users/login', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          email: form.email,
-          password: form.password,
-        }),
-      });
-      const data = await res.json();
-      if (!res.ok) throw new Error(data.error || 'Login failed');
-      setSuccess('Login successful!');
-      // Fetch user info and update context
-      const userRes = await fetch('/api/users/me');
-      if (userRes.ok) {
-        const userData = await userRes.json();
-        setUser(userData);
+      const success = await login(form.email, form.password);
+      if (success) {
+        setSuccess('Login successful! Redirecting...');
         setForm({ email: '', password: '' });
-        if (userData.role === 'admin') {
-          router.push('/admin');
+        
+        // Wait a moment to show success message
+        await new Promise(resolve => setTimeout(resolve, 1500));
+        
+        // Check user role and redirect
+        const userRes = await fetch('/api/users/me', { credentials: 'include' });
+        if (userRes.ok) {
+          const userData = await userRes.json();
+          if (userData.role === 'admin') {
+            router.push('/admin');
+          } else {
+            // Check if there's a redirect parameter
+            const redirectTo = router.query.redirect as string;
+            router.push(redirectTo || '/');
+          }
         } else {
-          router.push('/');
+          throw new Error('Authentication verification failed');
         }
       } else {
-        throw new Error('Failed to fetch user data');
+        throw new Error('Invalid email or password. Please try again.');
       }
     } catch (err: any) {
-      setError(err.message);
+      setError(err.message || 'Login failed. Please try again.');
+      setSuccess('');
     } finally {
       setLoading(false);
     }
@@ -223,12 +239,26 @@ const LoginPage: React.FC = () => {
               )}
               <button
                 type="submit"
-                className="mt-4 bg-amber-600 text-white px-6 py-3 rounded-xl font-bold hover:bg-amber-700 transition"
+                className={`mt-4 px-6 py-3 rounded-xl font-bold transition-all duration-200 ${
+                  loading
+                    ? 'bg-amber-400 cursor-not-allowed'
+                    : 'bg-amber-600 hover:bg-amber-700 hover:shadow-lg transform hover:-translate-y-0.5'
+                } text-white`}
                 disabled={loading}
                 aria-busy={loading}
                 aria-label="Login"
               >
-                {loading ? 'Logging in...' : 'Login'}
+                {loading ? (
+                  <div className="flex items-center justify-center">
+                    <svg className="animate-spin -ml-1 mr-3 h-5 w-5 text-white" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+                      <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
+                      <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+                    </svg>
+                    Logging in...
+                  </div>
+                ) : (
+                  'Login to Your Account'
+                )}
               </button>
               <button
                 type="button"
@@ -243,13 +273,23 @@ const LoginPage: React.FC = () => {
                 Forgot password?
               </button>
               {error && (
-                <div className="text-red-600 text-sm mt-2" role="alert">
-                  {error}
+                <div className="mt-4 p-3 bg-red-50 border border-red-200 rounded-lg" role="alert">
+                  <div className="flex items-center">
+                    <svg className="w-5 h-5 text-red-500 mr-2" fill="currentColor" viewBox="0 0 20 20">
+                      <path fillRule="evenodd" d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zm-7 4a1 1 0 11-2 0 1 1 0 012 0zm-1-9a1 1 0 00-1 1v4a1 1 0 102 0V6a1 1 0 00-1-1z" clipRule="evenodd" />
+                    </svg>
+                    <span className="text-red-700 text-sm font-medium">{error}</span>
+                  </div>
                 </div>
               )}
               {success && (
-                <div className="text-green-700 text-sm mt-2" role="status">
-                  {success}
+                <div className="mt-4 p-3 bg-green-50 border border-green-200 rounded-lg" role="status">
+                  <div className="flex items-center">
+                    <svg className="w-5 h-5 text-green-500 mr-2" fill="currentColor" viewBox="0 0 20 20">
+                      <path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" clipRule="evenodd" />
+                    </svg>
+                    <span className="text-green-700 text-sm font-medium">{success}</span>
+                  </div>
                 </div>
               )}
             </form>
@@ -306,7 +346,7 @@ const LoginPage: React.FC = () => {
             </form>
           )}
           <div className="mt-4 text-center text-sm">
-            <span>Don't have an account? </span>
+            <span>Don&apos;t have an account? </span>
             <Link href="/signup" className="text-amber-700 font-semibold hover:underline">
               Sign Up
             </Link>
@@ -316,4 +356,3 @@ const LoginPage: React.FC = () => {
     </Layout>
   );
 };
-export default LoginPage;

@@ -1,5 +1,6 @@
 import React, { useEffect, useState } from 'react';
 import { useRouter } from 'next/router';
+import Head from 'next/head';
 import AdminLayout from '../../components/AdminLayout';
 import ExpertImageManager from '../../components/ui/ExpertImageManager';
 import { motion, AnimatePresence } from 'framer-motion';
@@ -56,21 +57,21 @@ const AdminGemstonesPage: React.FC = () => {
 
   const checkAuthAndFetch = async () => {
     try {
-      // Check if user is authenticated by calling the /api/users/me endpoint
-      const res = await fetch('/api/users/me', { credentials: 'include' });
+      // Check if user is authenticated by calling the admin auth endpoint
+      const res = await fetch('/api/admin/auth', { credentials: 'include' });
       if (!res.ok) {
         router.push('/admin/login');
         return;
       }
-      const user = await res.json();
-      if (user.role !== 'admin') {
+      const authData = await res.json();
+      if (authData.user.role !== 'admin') {
         router.push('/admin/login');
         return;
       }
       fetchGems();
       fetchCategories();
     } catch (error) {
-      console.error('Auth check failed:', error);
+      console.error('Admin auth check failed:', error);
       router.push('/admin/login');
     }
   };
@@ -82,7 +83,10 @@ const AdminGemstonesPage: React.FC = () => {
       const res = await fetch('/api/admin/gemstones', { credentials: 'include' });
       if (!res.ok) throw new Error('Failed to fetch gemstones');
       const data = await res.json();
-      setGems(data.map((g: any) => ({ ...g, images: Array.isArray(g.images) ? g.images : [] })));
+      setGems(data.map((g: any) => ({ 
+        ...g, 
+        images: typeof g.images === 'string' ? JSON.parse(g.images) : (Array.isArray(g.images) ? g.images : [])
+      })));
     } catch (err: any) {
       setError(err.message);
     } finally {
@@ -131,7 +135,10 @@ const AdminGemstonesPage: React.FC = () => {
         });
         if (!res.ok) throw new Error('Failed to update gemstone');
         const updatedGemstone = await res.json();
-        setGems((prev) => prev.map((gem) => (gem.id === editingId ? updatedGemstone : gem)));
+        setGems((prev) => prev.map((gem) => (gem.id === editingId ? {
+          ...updatedGemstone,
+          images: typeof updatedGemstone.images === 'string' ? JSON.parse(updatedGemstone.images) : (Array.isArray(updatedGemstone.images) ? updatedGemstone.images : [])
+        } : gem)));
       } else {
         // Add new gemstone
         const res = await fetch('/api/admin/gemstones', {
@@ -142,7 +149,10 @@ const AdminGemstonesPage: React.FC = () => {
         });
         if (!res.ok) throw new Error('Failed to create gemstone');
         const newGemstone = await res.json();
-        setGems((prev) => [...prev, newGemstone]);
+        setGems((prev) => [...prev, {
+          ...newGemstone,
+          images: typeof newGemstone.images === 'string' ? JSON.parse(newGemstone.images) : (Array.isArray(newGemstone.images) ? newGemstone.images : [])
+        }]);
       }
 
       setForm(emptyGem);
@@ -231,7 +241,6 @@ const AdminGemstonesPage: React.FC = () => {
   const filteredGems = gems.filter((gem) => {
     const matchesSearch =
       gem.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
-      gem.type.toLowerCase().includes(searchQuery.toLowerCase()) ||
       gem.description.toLowerCase().includes(searchQuery.toLowerCase());
     const matchesCategory = categoryFilter === '' || gem.categoryId === categoryFilter;
     return matchesSearch && matchesCategory;
@@ -498,20 +507,36 @@ const AdminGemstonesPage: React.FC = () => {
                     </td>
                     <td className="px-6 py-4">
                       <div className="flex items-center space-x-3">
-                        <div className="w-12 h-12 rounded-lg bg-gradient-to-br from-amber-200 to-orange-200 flex items-center justify-center text-2xl">
-                          💎
+                        <div className="w-12 h-12 rounded-lg overflow-hidden bg-gradient-to-br from-amber-200 to-orange-200 flex items-center justify-center">
+                          {gem.images && gem.images.length > 0 ? (
+                            <img
+                              src={gem.images[0]}
+                              alt={gem.name}
+                              className="w-full h-full object-cover"
+                              onError={(e) => {
+                                e.currentTarget.src = '/images/placeholder-gemstone.jpg';
+                              }}
+                            />
+                          ) : (
+                            <span className="text-2xl">💎</span>
+                          )}
                         </div>
                         <div>
                           <div className="font-semibold text-amber-900">{gem.name}</div>
                           <div className="text-sm text-amber-600">
                             {gem.description.substring(0, 50)}...
                           </div>
+                          {gem.images && gem.images.length > 1 && (
+                            <div className="text-xs text-amber-500">
+                              +{gem.images.length - 1} more images
+                            </div>
+                          )}
                         </div>
                       </div>
                     </td>
                     <td className="px-6 py-4">
                       <span className="inline-flex items-center px-3 py-1 rounded-full text-xs font-medium bg-blue-100 text-blue-800">
-                        {gem.type}
+                        {categories.find((c) => c.id === gem.categoryId)?.name || 'Uncategorized'}
                       </span>
                     </td>
                     <td className="px-6 py-4">
@@ -695,14 +720,9 @@ const AdminGemstonesPage: React.FC = () => {
                   <div>
                     <ExpertImageManager
                       images={Array.isArray(form.images) ? form.images : []}
-                      onChange={handleImagesChange}
+                      onImagesChange={handleImagesChange}
                       maxImages={5}
-                      aspectRatio={1}
-                      label="Product Images"
-                      helperText="Upload high-quality images of the gemstone (JPG, PNG, WebP). Max 5MB per image."
-                      required={false}
-                      disabled={false}
-                      showAspectRatioOptions={true}
+                      className="w-full"
                     />
                   </div>
 

@@ -1,6 +1,26 @@
 import React, { useState } from 'react';
 import Head from 'next/head';
-import { motion } from 'framer-motion';
+import { motion, AnimatePresence } from 'framer-motion';
+import {
+  Phone,
+  Mail,
+  MapPin,
+  Clock,
+  MessageCircle,
+  User,
+  Calendar,
+  Send,
+  CheckCircle,
+  AlertCircle,
+  Sparkles,
+  Crown,
+  Award,
+  Shield,
+  Facebook,
+  Instagram,
+  Twitter,
+  Linkedin,
+} from 'lucide-react';
 
 const ContactPage: React.FC = () => {
   const [formData, setFormData] = useState({
@@ -44,22 +64,25 @@ const ContactPage: React.FC = () => {
 
   const contactMethods = [
     {
-      icon: '📞',
+      icon: <Phone className="w-8 h-8 text-amber-600" />,
       title: 'Phone',
       details: ['+91 33 1234 5678', '+91 98765 43210'],
       description: 'Speak directly with our gemstone experts',
+      color: 'from-blue-500 to-cyan-500',
     },
     {
-      icon: '✉️',
+      icon: <Mail className="w-8 h-8 text-amber-600" />,
       title: 'Email',
       details: ['info@heritagegems.com', 'appointments@heritagegems.com'],
       description: 'Send us detailed inquiries and requests',
+      color: 'from-green-500 to-emerald-500',
     },
     {
-      icon: '📍',
+      icon: <MapPin className="w-8 h-8 text-amber-600" />,
       title: 'Visit Us',
       details: ['123 Heritage Lane, Park Street', 'Kolkata, West Bengal 700016'],
       description: 'Experience our collection in person',
+      color: 'from-orange-500 to-red-500',
     },
   ];
 
@@ -227,7 +250,9 @@ const ContactPage: React.FC = () => {
                   viewport={{ once: true }}
                   whileHover={{ y: -5 }}
                 >
-                  <div className="w-16 h-16 mx-auto mb-6 bg-gradient-to-br from-yellow-100 to-amber-100 rounded-2xl flex items-center justify-center text-3xl shadow-lg border border-yellow-200">
+                  <div
+                    className={`w-20 h-20 mx-auto mb-6 bg-gradient-to-br ${method.color} rounded-2xl flex items-center justify-center shadow-lg border border-white/20 group-hover:scale-110 transition-transform duration-300`}
+                  >
                     {method.icon}
                   </div>
                   <h3 className="text-xl font-bold text-yellow-900 mb-3 font-serif">
@@ -289,8 +314,9 @@ const ContactPage: React.FC = () => {
                   role="form"
                 >
                   <div className="grid grid-cols-1 sm:grid-cols-2 gap-6">
-                    <div>
-                      <label className="block text-sm font-semibold text-yellow-700 mb-2 font-serif">
+                    <div className="relative">
+                      <label className="block text-sm font-semibold text-yellow-700 mb-2 font-serif flex items-center gap-2">
+                        <User className="w-4 h-4" />
                         Full Name *
                       </label>
                       <input
@@ -298,12 +324,14 @@ const ContactPage: React.FC = () => {
                         required
                         value={formData.name}
                         onChange={(e) => updateFormData('name', e.target.value)}
-                        className="w-full px-4 py-3 border border-yellow-200 rounded-xl focus:ring-4 focus:ring-yellow-200/40 focus:border-yellow-400 transition-all duration-300 bg-white/80 backdrop-blur"
+                        className="w-full pl-12 pr-4 py-3 border border-yellow-200 rounded-xl focus:ring-4 focus:ring-yellow-200/40 focus:border-yellow-400 transition-all duration-300 bg-white/80 backdrop-blur"
                         placeholder="Enter your full name"
                       />
+                      <User className="absolute left-4 top-10 w-5 h-5 text-yellow-600" />
                     </div>
-                    <div>
-                      <label className="block text-sm font-semibold text-yellow-700 mb-2 font-serif">
+                    <div className="relative">
+                      <label className="block text-sm font-semibold text-yellow-700 mb-2 font-serif flex items-center gap-2">
+                        <Mail className="w-4 h-4" />
                         Email Address *
                       </label>
                       <input
@@ -311,34 +339,38 @@ const ContactPage: React.FC = () => {
                         required
                         value={formData.email}
                         onChange={(e) => updateFormData('email', e.target.value)}
-                        className="w-full px-4 py-3 border border-yellow-200 rounded-xl focus:ring-4 focus:ring-yellow-200/40 focus:border-yellow-400 transition-all duration-300 bg-white/80 backdrop-blur"
+                        className="w-full pl-12 pr-4 py-3 border border-yellow-200 rounded-xl focus:ring-4 focus:ring-yellow-200/40 focus:border-yellow-400 transition-all duration-300 bg-white/80 backdrop-blur"
                         placeholder="Enter your email"
                       />
+                      <Mail className="absolute left-4 top-10 w-5 h-5 text-yellow-600" />
                     </div>
                   </div>
 
                   <div className="grid grid-cols-1 sm:grid-cols-2 gap-6">
-                    <div>
-                      <label className="block text-sm font-semibold text-yellow-700 mb-2 font-serif">
+                    <div className="relative">
+                      <label className="block text-sm font-semibold text-yellow-700 mb-2 font-serif flex items-center gap-2">
+                        <Phone className="w-4 h-4" />
                         Phone Number
                       </label>
                       <input
                         type="tel"
                         value={formData.phone}
                         onChange={(e) => updateFormData('phone', e.target.value)}
-                        className="w-full px-4 py-3 border border-yellow-200 rounded-xl focus:ring-4 focus:ring-yellow-200/40 focus:border-yellow-400 transition-all duration-300 bg-white/80 backdrop-blur"
+                        className="w-full pl-12 pr-4 py-3 border border-yellow-200 rounded-xl focus:ring-4 focus:ring-yellow-200/40 focus:border-yellow-400 transition-all duration-300 bg-white/80 backdrop-blur"
                         placeholder="Enter your phone number"
                       />
+                      <Phone className="absolute left-4 top-10 w-5 h-5 text-yellow-600" />
                     </div>
-                    <div>
-                      <label className="block text-sm font-semibold text-yellow-700 mb-2 font-serif">
+                    <div className="relative">
+                      <label className="block text-sm font-semibold text-yellow-700 mb-2 font-serif flex items-center gap-2">
+                        <MessageCircle className="w-4 h-4" />
                         Subject *
                       </label>
                       <select
                         required
                         value={formData.subject}
                         onChange={(e) => updateFormData('subject', e.target.value)}
-                        className="w-full px-4 py-3 border border-yellow-200 rounded-xl focus:ring-4 focus:ring-yellow-200/40 focus:border-yellow-400 transition-all duration-300 bg-white/80 backdrop-blur"
+                        className="w-full pl-12 pr-4 py-3 border border-yellow-200 rounded-xl focus:ring-4 focus:ring-yellow-200/40 focus:border-yellow-400 transition-all duration-300 bg-white/80 backdrop-blur"
                       >
                         <option value="">Select a subject</option>
                         <option value="appointment">Schedule Appointment</option>
@@ -347,11 +379,13 @@ const ContactPage: React.FC = () => {
                         <option value="support">Customer Support</option>
                         <option value="other">Other</option>
                       </select>
+                      <MessageCircle className="absolute left-4 top-10 w-5 h-5 text-yellow-600" />
                     </div>
                   </div>
 
                   <div>
-                    <label className="block text-sm font-semibold text-yellow-700 mb-2 font-serif">
+                    <label className="block text-sm font-semibold text-yellow-700 mb-2 font-serif flex items-center gap-2">
+                      <MessageCircle className="w-4 h-4" />
                       Message *
                     </label>
                     <textarea
@@ -359,9 +393,10 @@ const ContactPage: React.FC = () => {
                       rows={6}
                       value={formData.message}
                       onChange={(e) => updateFormData('message', e.target.value)}
-                      className="w-full px-4 py-3 border border-yellow-200 rounded-xl focus:ring-4 focus:ring-yellow-200/40 focus:border-yellow-400 transition-all duration-300 bg-white/80 backdrop-blur resize-none"
+                      className="w-full pl-12 pr-4 py-3 border border-yellow-200 rounded-xl focus:ring-4 focus:ring-yellow-200/40 focus:border-yellow-400 transition-all duration-300 bg-white/80 backdrop-blur resize-none"
                       placeholder="Tell us about your inquiry..."
                     />
+                    <MessageCircle className="absolute left-4 top-10 w-5 h-5 text-yellow-600" />
                   </div>
 
                   <div>
@@ -394,11 +429,21 @@ const ContactPage: React.FC = () => {
                   <motion.button
                     type="submit"
                     disabled={isSubmitting}
-                    className="w-full bg-gradient-to-r from-yellow-500 to-amber-500 hover:from-yellow-600 hover:to-amber-600 text-white py-4 px-8 rounded-xl font-bold shadow-lg transition-all duration-300 focus:outline-none focus:ring-4 focus:ring-yellow-300/40 disabled:opacity-50 disabled:cursor-not-allowed"
+                    className="w-full bg-gradient-to-r from-yellow-500 to-amber-500 hover:from-yellow-600 hover:to-amber-600 text-white py-4 px-8 rounded-xl font-bold shadow-lg transition-all duration-300 focus:outline-none focus:ring-4 focus:ring-yellow-300/40 disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-3"
                     whileHover={{ scale: 1.02 }}
                     whileTap={{ scale: 0.98 }}
                   >
-                    {isSubmitting ? 'Sending...' : 'Send Message'}
+                    {isSubmitting ? (
+                      <>
+                        <div className="animate-spin rounded-full h-5 w-5 border-b-2 border-white"></div>
+                        Sending...
+                      </>
+                    ) : (
+                      <>
+                        <Send className="w-5 h-5" />
+                        Send Message
+                      </>
+                    )}
                   </motion.button>
                 </form>
               </motion.div>
@@ -454,16 +499,33 @@ const ContactPage: React.FC = () => {
                   <h3 className="text-xl font-bold text-yellow-900 mb-4 font-serif">Follow Us</h3>
                   <div className="flex gap-4">
                     {[
-                      { icon: '📘', label: 'Facebook' },
-                      { icon: '📷', label: 'Instagram' },
-                      { icon: '🐦', label: 'Twitter' },
-                      { icon: '💼', label: 'LinkedIn' },
+                      {
+                        icon: <Facebook className="w-6 h-6 text-blue-600" />,
+                        label: 'Facebook',
+                        color: 'hover:bg-blue-50',
+                      },
+                      {
+                        icon: <Instagram className="w-6 h-6 text-pink-600" />,
+                        label: 'Instagram',
+                        color: 'hover:bg-pink-50',
+                      },
+                      {
+                        icon: <Twitter className="w-6 h-6 text-sky-600" />,
+                        label: 'Twitter',
+                        color: 'hover:bg-sky-50',
+                      },
+                      {
+                        icon: <Linkedin className="w-6 h-6 text-blue-700" />,
+                        label: 'LinkedIn',
+                        color: 'hover:bg-blue-50',
+                      },
                     ].map((social) => (
                       <motion.button
                         key={social.label}
-                        className="w-12 h-12 bg-white/80 rounded-xl border border-yellow-200 flex items-center justify-center text-xl hover:bg-yellow-50 transition-colors"
-                        whileHover={{ scale: 1.1 }}
+                        className={`w-12 h-12 bg-white/80 rounded-xl border border-yellow-200 flex items-center justify-center hover:bg-yellow-50 transition-colors ${social.color}`}
+                        whileHover={{ scale: 1.1, y: -2 }}
                         whileTap={{ scale: 0.9 }}
+                        aria-label={`Follow us on ${social.label}`}
                       >
                         {social.icon}
                       </motion.button>

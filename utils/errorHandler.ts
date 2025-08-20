@@ -1,85 +1,154 @@
 import { NextApiRequest, NextApiResponse } from 'next';
+import { logger } from './logger';
 
-export interface ApiError {
-  error: string;
-  details?: string;
-  code?: string;
+export interface ApiError extends Error {
   statusCode?: number;
+  code?: string;
+  isOperational?: boolean;
 }
 
-export const handleApiError = (
-  error: any,
-  req: NextApiRequest,
-  res: NextApiResponse,
-  defaultMessage = 'Internal server error',
-): void => {
-  console.error(`API Error [${req.method} ${req.url}]:`, error);
+export class AppError extends Error implements ApiError {
+  public readonly statusCode: number;
+  public readonly code: string;
+  public readonly isOperational: boolean;
 
-  let statusCode = 500;
-  let message = defaultMessage;
-  let code = 'INTERNAL_ERROR';
-  let details = '';
+  constructor(message: string, statusCode: number = 500, code: string = 'INTERNAL_ERROR') {
+    super(message);
+    this.statusCode = statusCode;
+    this.code = code;
+    this.isOperational = true;
 
-  if (error.name === 'PrismaClientKnownRequestError') {
-    statusCode = 400;
-    message = 'Database operation failed';
-    code = 'DATABASE_ERROR';
-    details = error.message;
-  } else if (error.name === 'PrismaClientValidationError') {
-    statusCode = 400;
-    message = 'Invalid data provided';
-    code = 'VALIDATION_ERROR';
-    details = error.message;
-  } else if (error.message === 'Not authenticated') {
-    statusCode = 401;
-    message = 'Authentication required. Please log in again.';
-    code = 'AUTH_REQUIRED';
-    details = error.message;
-  } else if (error.message === 'Forbidden') {
-    statusCode = 403;
-    message = 'Access denied. Insufficient permissions.';
-    code = 'FORBIDDEN';
-    details = error.message;
-  } else if (error.message === 'Not found') {
-    statusCode = 404;
-    message = 'Resource not found';
-    code = 'NOT_FOUND';
-    details = error.message;
-  } else if (error.message && error.message !== defaultMessage) {
-    message = error.message;
-    details = error.stack || '';
+    Error.captureStackTrace(this, this.constructor);
+  }
+}
+
+export class ValidationError extends AppError {
+  constructor(message: string) {
+    super(message, 400, 'VALIDATION_ERROR');
+  }
+}
+
+export class AuthenticationError extends AppError {
+  constructor(message: string = 'Authentication required') {
+    super(message, 401, 'AUTHENTICATION_ERROR');
+  }
+}
+
+export class AuthorizationError extends AppError {
+  constructor(message: string = 'Insufficient permissions') {
+    super(message, 403, 'AUTHORIZATION_ERROR');
+  }
+}
+
+export class NotFoundError extends AppError {
+  constructor(message: string = 'Resource not found') {
+    super(message, 404, 'NOT_FOUND');
+  }
+}
+
+export class ConflictError extends AppError {
+  constructor(message: string = 'Resource conflict') {
+    super(message, 409, 'CONFLICT');
+  }
+}
+
+export class RateLimitError extends AppError {
+  constructor(message: string = 'Too many requests') {
+    super(message, 429, 'RATE_LIMIT_EXCEEDED');
+  }
+}
+
+export function handleApiError(error: unknown, req: NextApiRequest, res: NextApiResponse): void {
+  let apiError: ApiError;
+
+  // Convert to ApiError if it's not already
+  if (error instanceof AppError) {
+    apiError = error;
+  } else if (error instanceof Error) {
+    apiError = new AppError(error.message);
+  } else {
+    apiError = new AppError('An unexpected error occurred');
   }
 
-  const errorResponse: ApiError = {
-    error: message,
-    details,
-    code,
-    statusCode,
+  // Log error with context
+  const logContext = {
+    method: req.method,
+    url: req.url,
+    userAgent: req.headers['user-agent'],
+    ip: req.headers['x-forwarded-for'] || req.socket.remoteAddress,
+    errorCode: apiError.code,
+    statusCode: apiError.statusCode,
+    message: apiError.message,
+    stack: process.env.NODE_ENV === 'development' ? apiError.stack : undefined,
   };
 
-  res.status(statusCode).json(errorResponse);
-};
+  if (apiError.statusCode && apiError.statusCode >= 500) {
+    logger.error('Server error', undefined, logContext);
+  } else {
+    logger.warn('Client error', logContext);
+  }
 
-export const validateRequiredFields = (
-  data: any,
-  requiredFields: string[],
-): { isValid: boolean; missingFields: string[] } => {
-  const missingFields = requiredFields.filter((field) => !data[field]);
-  return {
-    isValid: missingFields.length === 0,
-    missingFields,
+  // Send error response
+  const response: any = {
+    error: {
+      message: apiError.message,
+      code: apiError.code,
+    },
   };
-};
 
-export const sanitizeInput = (input: string): string => {
-  return input.trim().replace(/[<>]/g, '');
-};
+  // Include stack trace in development
+  if (process.env.NODE_ENV === 'development' && apiError.stack) {
+    response.error.stack = apiError.stack;
+  }
 
-export const validateEmail = (email: string): boolean => {
+  // Set appropriate headers
+  res.status(apiError.statusCode || 500);
+  
+  // Set rate limit headers if applicable
+  if (apiError instanceof RateLimitError) {
+    res.setHeader('Retry-After', '60');
+  }
+
+  res.json(response);
+}
+
+export function withErrorHandler(handler: Function) {
+  return async (req: NextApiRequest, res: NextApiResponse) => {
+    try {
+      await handler(req, res);
+    } catch (error) {
+      handleApiError(error, req, res);
+    }
+  };
+}
+
+export function validateRequiredFields(body: any, fields: string[]): void {
+  const missingFields = fields.filter(field => !body[field]);
+  if (missingFields.length > 0) {
+    throw new ValidationError(`Missing required fields: ${missingFields.join(', ')}`);
+  }
+}
+
+export function validateEmail(email: string): void {
   const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
-  return emailRegex.test(email);
-};
+  if (!emailRegex.test(email)) {
+    throw new ValidationError('Invalid email format');
+  }
+}
 
-export const validatePassword = (password: string): boolean => {
-  return password.length >= 6;
-};
+export function validatePassword(password: string): void {
+  if (password.length < 6) {
+    throw new ValidationError('Password must be at least 6 characters long');
+  }
+}
+
+export function sanitizeInput(input: string): string {
+  return input.trim().replace(/[<>]/g, '');
+}
+
+export function validatePaginationParams(query: any): { page: number; limit: number } {
+  const page = Math.max(1, parseInt(query.page as string) || 1);
+  const limit = Math.min(100, Math.max(1, parseInt(query.limit as string) || 10));
+  
+  return { page, limit };
+}

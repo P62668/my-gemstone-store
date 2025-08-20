@@ -1,7 +1,5 @@
 import { NextApiRequest, NextApiResponse } from 'next';
-import { PrismaClient } from '@prisma/client';
-
-const prisma = new PrismaClient();
+// // import { prisma } from '../../../lib/prisma';
 
 export default async function handler(req: NextApiRequest, res: NextApiResponse) {
   if (req.method !== 'GET') {
@@ -9,18 +7,29 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
     return res.status(405).end(`Method ${req.method} Not Allowed`);
   }
   try {
-    const settings = await prisma.navigationSettings.findUnique({ where: { id: 1 } });
-    if (!settings) {
-      return res.status(404).json({ error: 'Navigation settings not found' });
-    }
+    // Return default navigation (no database dependency)
     res.status(200).json({
-      mainMenu: settings.menuItems,
-      footerMenu: settings.footerLinks,
-      socialLinks: settings.socialLinks,
-      updatedAt: settings.updatedAt,
+      mainMenu: [
+        { label: 'Home', href: '/' },
+        { label: 'Shop', href: '/shop' },
+        { label: 'About', href: '/about' },
+        { label: 'Contact', href: '/contact' }
+      ],
+      footerMenu: [
+        { label: 'About Us', href: '/about' },
+        { label: 'Contact', href: '/contact' },
+        { label: 'Terms', href: '/terms' },
+        { label: 'Privacy', href: '/privacy' }
+      ],
+      socialLinks: [
+        { platform: 'facebook', url: 'https://facebook.com' },
+        { platform: 'instagram', url: 'https://instagram.com' },
+        { platform: 'twitter', url: 'https://twitter.com' }
+      ],
+      updatedAt: new Date().toISOString(),
     });
   } catch (error) {
     console.error('Error fetching navigation settings:', error);
-    res.status(500).json({ error: 'Failed to fetch navigation settings' });
+    return res.status(500).json({ error: 'Failed to fetch navigation settings' });
   }
 }

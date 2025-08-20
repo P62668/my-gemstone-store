@@ -1,6 +1,5 @@
 import React, { useState, useEffect } from 'react';
 import Image from 'next/image';
-import Head from 'next/head';
 import Layout from '../components/Layout';
 import { motion, AnimatePresence } from 'framer-motion';
 import Link from 'next/link';
@@ -79,10 +78,6 @@ const CategoriesPage: React.FC = () => {
 
   if (loading) {
     return (
-      <>
-        <Head>
-          <title>Gemstone Categories - Shankarmala Gemstore</title>
-        </Head>
         <Layout title="Gemstone Categories - Shankarmala">
           <div className="max-w-7xl mx-auto py-12 px-4">
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8">
@@ -95,22 +90,16 @@ const CategoriesPage: React.FC = () => {
             </div>
           </div>
         </Layout>
-      </>
     );
   }
 
   if (error) {
     return (
-      <>
-        <Head>
-          <title>Gemstone Categories - Shankarmala Gemstore</title>
-        </Head>
         <Layout title="Gemstone Categories - Shankarmala">
           <div className="max-w-7xl mx-auto py-12 px-4">
             <div className="text-center text-red-600">{error}</div>
           </div>
         </Layout>
-      </>
     );
   }
 
@@ -131,35 +120,7 @@ const CategoriesPage: React.FC = () => {
   };
 
   return (
-    <>
-      <Head>
-        <title>Gemstone Categories - Shankarmala Gemstore</title>
-        <meta
-          name="description"
-          content="Browse all gemstone categories at Shankarmala Gemstore. Discover luxury, certified gems and jewelry."
-        />
-        <link rel="canonical" href="https://shankarmala.com/categories" />
-        <meta property="og:title" content="Gemstone Categories - Shankarmala Gemstore" />
-        <meta
-          property="og:description"
-          content="Browse all gemstone categories at Shankarmala Gemstore. Discover luxury, certified gems and jewelry."
-        />
-        <meta property="og:type" content="website" />
-        <meta property="og:url" content="https://shankarmala.com/categories" />
-        <meta property="og:image" content="/images/placeholder-gemstone.jpg" />
-        <meta name="twitter:card" content="summary_large_image" />
-        <meta name="twitter:title" content="Gemstone Categories - Shankarmala Gemstore" />
-        <meta
-          name="twitter:description"
-          content="Browse all gemstone categories at Shankarmala Gemstore. Discover luxury, certified gems and jewelry."
-        />
-        <meta name="twitter:image" content="/images/placeholder-gemstone.jpg" />
-        <script
-          type="application/ld+json"
-          dangerouslySetInnerHTML={{ __html: JSON.stringify(categoriesJsonLd) }}
-        />
-      </Head>
-      <Layout title="Gemstone Categories - Shankarmala">
+      <Layout title="Gemstone Categories - Shankarmala" structuredData={categoriesJsonLd}>
         <div className="min-h-screen bg-gradient-to-br from-amber-50 via-yellow-50 to-orange-50">
           <section className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 pb-20">
             <div className="flex flex-wrap gap-3 mb-8 justify-center">
@@ -183,7 +144,7 @@ const CategoriesPage: React.FC = () => {
               </button>
             </div>
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8">
-              <AnimatePresence>
+              <AnimatePresence mode="wait">
                 {filteredCategories.map((category, idx) => (
                   <motion.div
                     key={category.id}
@@ -304,7 +265,6 @@ const CategoriesPage: React.FC = () => {
           </section>
         </div>
       </Layout>
-    </>
   );
 };
 

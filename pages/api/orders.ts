@@ -1,25 +1,15 @@
 import { NextApiRequest, NextApiResponse } from 'next';
-import { PrismaClient } from '@prisma/client';
-import { getUserFromRequest } from '../../utils/auth';
+import { withAuth, AuthenticatedRequest } from '../../utils/authMiddleware';
 import nodemailer from 'nodemailer';
 
-const prisma = new PrismaClient();
+import { prisma } from '../../lib/prisma';
 
-export default async function handler(req: NextApiRequest, res: NextApiResponse) {
-  let userId;
-  let user;
-  try {
-    console.log('[API/orders] Request headers:', req.headers);
-    user = getUserFromRequest(req);
-    userId = user.id;
-    console.log('[API/orders] Decoded user:', user);
-  } catch (err: any) {
-    console.error('[API/orders] Auth error:', err);
-    if (err.message === 'Not authenticated' || err.message === 'Invalid or expired token') {
-      return res.status(401).json({ error: err.message });
-    }
-    return res.status(500).json({ error: 'Internal server error' });
+export default withAuth(async function handler(req: AuthenticatedRequest, res: NextApiResponse) {
+  const user = req.user;
+  if (!user || !user.id) {
+    return res.status(401).json({ error: 'Authentication required' });
   }
+  const userId = user.id;
 
   if (req.method === 'GET') {
     try {
@@ -31,7 +21,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
               gemstone: {
                 select: {
                   name: true,
-                  type: true,
+                  certificate: true,
                   images: true,
                 },
               },
@@ -42,15 +32,27 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
       });
       const parsedOrders = orders.map((order) => ({
         ...order,
-        items: order.items.map((item) => ({
-          ...item,
-          gemstone: {
-            ...item.gemstone,
-            images: Array.isArray(item.gemstone.images)
-              ? item.gemstone.images
-              : JSON.parse(item.gemstone.images || '[]'),
-          },
-        })),
+        items: order.items.map((item) => {
+          let parsedImages = [];
+          try {
+            if (typeof item.gemstone.images === 'string' && item.gemstone.images.trim()) {
+              parsedImages = JSON.parse(item.gemstone.images);
+            } else if (Array.isArray(item.gemstone.images)) {
+              parsedImages = item.gemstone.images;
+            }
+          } catch (error) {
+            console.error('Error parsing images for gemstone:', item.gemstone.name, error);
+            parsedImages = [];
+          }
+          
+          return {
+            ...item,
+            gemstone: {
+              ...item.gemstone,
+              images: parsedImages,
+            },
+          };
+        }),
       }));
       console.log(
         '[API/orders] userId:',
@@ -62,8 +64,8 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
       );
       res.status(200).json(parsedOrders);
     } catch (error) {
-      console.error('[API/orders] Error fetching orders for user', userId, error, error?.stack);
-      res.status(500).json({ error: 'Failed to fetch orders', details: error?.message || error });
+      console.error('[API/orders] Error fetching orders for user', userId, error);
+      res.status(500).json({ error: 'Failed to fetch orders' });
     }
   } else if (req.method === 'POST') {
     try {
@@ -89,12 +91,19 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
             .json({ error: `Gemstone with id ${item.gemstoneId} does not exist.` });
         }
       }
+      // Generate unique order number
+      const timestamp = Date.now().toString();
+      const random = Math.random().toString(36).substring(2, 8).toUpperCase();
+      const orderNumber = `SM-${timestamp}-${random}`;
+
       // Create order and items
       const order = await prisma.order.create({
         data: {
           userId,
+          orderNumber,
           total,
           status,
+          shippingAddress: JSON.stringify({}), // Default empty address
           items: {
             create: items.map((item) => ({
               gemstoneId: item.gemstoneId,
@@ -144,11 +153,11 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
       console.log('[API/orders] Created order:', order);
       res.status(201).json({ ...order, emailWarning });
     } catch (error) {
-      console.error('[API/orders] Error creating order for user', userId, error, error?.stack);
-      res.status(500).json({ error: 'Failed to create order', details: error?.message || error });
+      console.error('[API/orders] Error creating order for user', userId, error);
+      res.status(500).json({ error: 'Failed to create order' });
     }
   } else {
     res.setHeader('Allow', ['GET', 'POST']);
     res.status(405).end(`Method ${req.method} Not Allowed`);
   }
-}
+});

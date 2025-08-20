@@ -65,12 +65,14 @@ const TestimonialSlider: React.FC<TestimonialSliderProps> = ({
 
   // Touch/swipe handlers
   const handleTouchStart = (e: React.TouchEvent) => {
-    setIsDragging(true);
-    setStartX(e.touches[0].clientX);
-    setCurrentX(e.touches[0].clientX);
+    if (e.touches[0]) {
+      setIsDragging(true);
+      setStartX(e.touches[0].clientX);
+      setCurrentX(e.touches[0].clientX);
+    }
   };
   const handleTouchMove = (e: React.TouchEvent) => {
-    if (!isDragging) return;
+    if (!isDragging || !e.touches[0]) return;
     setCurrentX(e.touches[0].clientX);
   };
   const handleTouchEnd = () => {
@@ -149,16 +151,17 @@ const TestimonialSlider: React.FC<TestimonialSliderProps> = ({
           </button>
           {/* Testimonial Card */}
           <AnimatePresence mode="wait">
-            <motion.div
-              key={testimonial.name}
-              variants={fadeVariants}
-              initial="initial"
-              animate="animate"
-              exit="exit"
-              transition={{ duration: 0.6 }}
-              className="relative w-full max-w-xl bg-white/80 backdrop-blur-lg rounded-3xl shadow-2xl border-4 border-purple-100 px-8 py-10 flex flex-col items-center text-center"
-              style={{ boxShadow: '0 8px 48px #a855f733' }}
-            >
+            {testimonial && (
+              <motion.div
+                key={testimonial.name}
+                variants={fadeVariants}
+                initial="initial"
+                animate="animate"
+                exit="exit"
+                transition={{ duration: 0.6 }}
+                className="relative w-full max-w-xl bg-white/80 backdrop-blur-lg rounded-3xl shadow-2xl border-4 border-purple-100 px-8 py-10 flex flex-col items-center text-center"
+                style={{ boxShadow: '0 8px 48px #a855f733' }}
+              >
               {/* Sparkle accent */}
               <motion.div
                 className="absolute top-6 right-8 w-4 h-4 bg-gradient-to-br from-purple-200 to-violet-300 rounded-full opacity-60"
@@ -189,6 +192,7 @@ const TestimonialSlider: React.FC<TestimonialSliderProps> = ({
                 <span className="text-sm text-purple-700">{testimonial.role}</span>
               </div>
             </motion.div>
+            )}
           </AnimatePresence>
           {/* Right Arrow (desktop) */}
           <button

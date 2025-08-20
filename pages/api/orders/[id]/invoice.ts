@@ -1,9 +1,8 @@
 import { NextApiRequest, NextApiResponse } from 'next';
-import { PrismaClient } from '@prisma/client';
 import { getUserFromRequest } from '../../../../utils/auth';
 import PDFDocument from 'pdfkit';
 
-const prisma = new PrismaClient();
+import { prisma } from '../../../../lib/prisma';
 
 export default async function handler(req: NextApiRequest, res: NextApiResponse) {
   if (req.method !== 'GET') {
@@ -14,6 +13,9 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
   let user;
   try {
     user = getUserFromRequest(req);
+    if (!user) {
+      return res.status(401).json({ error: 'Not authenticated' });
+    }
   } catch (err) {
     return res.status(401).json({ error: 'Not authenticated' });
   }
@@ -47,7 +49,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
     doc.moveDown();
     doc.fontSize(14).fillColor('black').text(`Order ID: #${order.id}`);
     doc.text(`Date: ${new Date(order.createdAt).toLocaleString()}`);
-    doc.text(`Customer: ${order.user.name} (${order.user.email})`);
+    doc.text(`Customer: ${order.user.firstName} ${order.user.lastName} (${order.user.email})`);
     doc.moveDown();
     // Items
     doc.fontSize(16).fillColor('#b45309').text('Items:', { underline: true });

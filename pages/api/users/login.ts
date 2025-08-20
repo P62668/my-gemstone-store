@@ -1,55 +1,121 @@
-import type { NextApiRequest, NextApiResponse } from 'next';
-import { PrismaClient } from '@prisma/client';
-import bcrypt from 'bcryptjs';
-import jwt from 'jsonwebtoken';
-import { enforceRateLimit } from '../../../utils/rateLimit';
+import { NextApiRequest, NextApiResponse } from 'next';
+import { generateToken, generateRefreshToken, authenticateUser } from '../../../utils/auth';
+import { prisma } from '../../../lib/prisma';
+import { logger } from '../../../utils/logger';
+import { validateEmail } from '../../../utils/validation';
+import { setSecureCookie } from '../../../utils/cookieParser';
 
-const prisma = new PrismaClient();
+interface LoginRequest {
+  email: string;
+  password: string;
+}
 
-const JWT_SECRET = process.env.JWT_SECRET || 'dev_secret_key';
+interface LoginResponse {
+  token: string;
+  user: {
+    id: number;
+    email: string;
+    firstName?: string;
+    lastName?: string;
+    role: string;
+  };
+}
 
-export default async function handler(req: NextApiRequest, res: NextApiResponse) {
+interface ApiResponse<T> {
+  success: boolean;
+  data?: T;
+  error?: {
+    message: string;
+    code: string;
+  };
+}
+
+const loginSchema = {
+  email: { required: true, type: 'string', pattern: /^[^\s@]+@[^\s@]+\.[^\s@]+$/ },
+  password: { required: true, type: 'string', minLength: 8 },
+};
+
+async function loginHandler(
+  req: NextApiRequest,
+  res: NextApiResponse<ApiResponse<LoginResponse>>
+): Promise<void> {
   if (req.method !== 'POST') {
-    return res.status(405).json({ error: 'Method not allowed' });
+    res.status(405).json({
+      success: false,
+      error: { message: 'Method not allowed', code: 'METHOD_NOT_ALLOWED' },
+    });
+    return;
   }
-  if (!enforceRateLimit(req, res, { limit: 10, windowMs: 60_000, key: 'login' })) return;
-  const { email, password } = req.body;
-  if (!email || !password) {
-    return res.status(400).json({ error: 'Email and password are required.' });
-  }
+
   try {
-    const user = await prisma.user.findUnique({
-      where: { email },
-      select: { id: true, name: true, email: true, password: true, createdAt: true, role: true },
-    });
-    if (!user) {
-      return res.status(401).json({ error: 'Invalid email or password.' });
+    // Lightweight trace log for debugging
+    console.info('[auth] Login handler invoked');
+
+    // Validate request body
+    const { email, password } = req.body as LoginRequest;
+
+    if (!email || !password) {
+      res.status(400).json({
+        success: false,
+        error: { message: 'Email and password are required', code: 'MISSING_CREDENTIALS' },
+      });
+      return;
     }
-    const isMatch = await bcrypt.compare(password, user.password);
-    if (!isMatch) {
-      return res.status(401).json({ error: 'Invalid email or password.' });
+
+    if (!validateEmail(email)) {
+      res.status(400).json({
+        success: false,
+        error: { message: 'Invalid email format', code: 'INVALID_EMAIL' },
+      });
+      return;
     }
-    // Issue JWT and set as httpOnly cookie
-    const token = jwt.sign({ id: user.id, email: user.email, role: user.role }, JWT_SECRET, {
-      expiresIn: '7d',
+
+    // Trace the email attempting login (avoid logging password)
+    console.info('[auth] Attempting login for:', email.toLowerCase());
+
+    // Authenticate user
+    const user = await authenticateUser(email, password);
+
+    console.info('[auth] authenticateUser returned for:', user.email, 'id:', user.id);
+
+    // Generate tokens
+    const token = generateToken(user);
+    const refreshToken = generateRefreshToken(user.id);
+
+    // Set secure cookies using the new utility
+    setSecureCookie(res, 'token', token, {
+      maxAge: 7 * 24 * 60 * 60 * 1000, // 7 days
     });
-    // Set cookie flags for production and development
-    const isProd = process.env.NODE_ENV === 'production';
-    let cookieString = `token=${token}; HttpOnly; Path=/; Max-Age=604800; SameSite=Strict`;
-    if (isProd) cookieString += '; Secure; Priority=High';
-    res.setHeader('Set-Cookie', cookieString);
-    res.setHeader('Access-Control-Allow-Credentials', 'true');
-    return res.status(200).json({
-      id: user.id,
-      name: user.name,
-      email: user.email,
-      role: user.role,
-      createdAt: user.createdAt,
+    
+    setSecureCookie(res, 'refreshToken', refreshToken, {
+      maxAge: 30 * 24 * 60 * 60 * 1000, // 30 days
     });
-  } catch (err: unknown) {
-    if (err instanceof Error) {
-      return res.status(500).json({ error: err.message });
-    }
-    return res.status(500).json({ error: 'Internal server error' });
+
+    // Log successful login
+    logger.info(`User logged in: ${user.email}`, req);
+
+    res.status(200).json({
+      success: true,
+      data: {
+        token,
+        user: {
+          id: user.id,
+          email: user.email,
+          firstName: user.firstName,
+          lastName: user.lastName,
+          role: user.role,
+        },
+      },
+    });
+  } catch (error) {
+    logger.error('Login failed', req, error as Error);
+    console.error('[auth] Login failed error:', (error as Error).message);
+    
+    res.status(401).json({
+      success: false,
+      error: { message: 'Invalid credentials', code: 'INVALID_CREDENTIALS' },
+    });
   }
 }
+
+export default loginHandler;

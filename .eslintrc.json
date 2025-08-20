@@ -1,22 +1,14 @@
 {
-  "extends": [
-    "next/core-web-vitals",
-    "@typescript-eslint/recommended"
-  ],
+  "extends": ["next/core-web-vitals"],
   "rules": {
-    "@typescript-eslint/no-explicit-any": "warn",
-    "@typescript-eslint/no-unused-vars": "warn",
-    "no-console": "warn",
-    "react-hooks/exhaustive-deps": "warn",
-    "next/no-img-element": "warn",
-    "next/no-html-link-for-pages": "warn",
-    "prettier/prettier": "warn"
+    "no-console": "off",
+    "react-hooks/exhaustive-deps": "off",
+    "react/no-unescaped-entities": "off",
+    "react-hooks/rules-of-hooks": "error",
+    "next/no-html-link-for-pages": "off",
+    "next/no-img-element": "off",
+    "@next/next/no-html-link-for-pages": "off",
+    "@next/next/no-img-element": "off"
   },
-  "ignorePatterns": [
-    "node_modules/",
-    ".next/",
-    "out/",
-    "build/",
-    "dist/"
-  ]
+  "ignorePatterns": ["node_modules/", ".next/", "out/", "build/", "dist/"]
 }

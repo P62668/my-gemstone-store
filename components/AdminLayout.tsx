@@ -37,7 +37,9 @@ const AdminLayout: React.FC<AdminLayoutProps> = ({
   const handleLogout = async () => {
     try {
       await fetch('/api/admin/logout', { method: 'POST' });
-    } catch {}
+    } catch (error) {
+      console.error('Logout error:', error);
+    }
     router.push('/admin/login');
   };
 
@@ -343,7 +345,7 @@ const AdminLayout: React.FC<AdminLayoutProps> = ({
                           </motion.span>
                         </motion.button>
 
-                        <AnimatePresence>
+                        <AnimatePresence mode="wait">
                           {dropdownOpen === sectionName && (
                             <motion.div
                               className="ml-4 mt-2 space-y-1"

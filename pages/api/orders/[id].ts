@@ -1,24 +1,22 @@
-import { NextApiRequest, NextApiResponse } from 'next';
-import { PrismaClient } from '@prisma/client';
-import { getUserFromRequest } from '../../../utils/auth';
+import { NextApiResponse } from 'next';
+import { withAuth, AuthenticatedRequest } from '../../../utils/authMiddleware';
+import { prisma } from '../../../lib/prisma';
 
-const prisma = new PrismaClient();
-
-export default async function handler(req: NextApiRequest, res: NextApiResponse) {
+export default withAuth(async function handler(req: AuthenticatedRequest, res: NextApiResponse) {
   if (req.method !== 'GET' && req.method !== 'PATCH') {
     res.setHeader('Allow', ['GET', 'PATCH']);
     return res.status(405).end(`Method ${req.method} Not Allowed`);
   }
   const { id, history } = req.query;
-  let user;
-  try {
-    user = getUserFromRequest(req);
-  } catch (err: any) {
-    return res.status(401).json({ error: 'Not authenticated' });
-  }
+
   const orderId = Number(id);
   if (isNaN(orderId)) {
     return res.status(400).json({ error: 'Invalid order ID' });
+  }
+
+  const user = req.user;
+  if (!user || !user.id) {
+    return res.status(401).json({ error: 'Not authenticated' });
   }
 
   // Handle PATCH request for order cancellation
@@ -58,7 +56,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
               gemstone: {
                 select: {
                   name: true,
-                  type: true,
+                  certificate: true,
                   images: true,
                 },
               },
@@ -83,9 +81,14 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
           ...item,
           gemstone: {
             ...item.gemstone,
-            images: Array.isArray(item.gemstone.images)
-              ? item.gemstone.images
-              : JSON.parse(item.gemstone.images || '[]'),
+            images:
+              typeof item.gemstone.images === 'string'
+                ? item.gemstone.images
+                  ? item.gemstone.images.split(',').map((img) => img.trim())
+                  : []
+                : Array.isArray(item.gemstone.images)
+                  ? item.gemstone.images
+                  : [],
           },
         })),
       };
@@ -105,7 +108,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
             gemstone: {
               select: {
                 name: true,
-                type: true,
+                certificate: true,
                 images: true,
               },
             },
@@ -127,9 +130,14 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
         ...item,
         gemstone: {
           ...item.gemstone,
-          images: Array.isArray(item.gemstone.images)
-            ? item.gemstone.images
-            : JSON.parse(item.gemstone.images || '[]'),
+          images:
+            typeof item.gemstone.images === 'string'
+              ? item.gemstone.images
+                ? item.gemstone.images.split(',').map((img) => img.trim())
+                : []
+              : Array.isArray(item.gemstone.images)
+                ? item.gemstone.images
+                : [],
         },
       })),
     };
@@ -153,4 +161,4 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
       .status(500)
       .json({ error: 'Failed to fetch order', details: (error as any)?.message || error });
   }
-}
+});

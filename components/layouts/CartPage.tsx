@@ -3,11 +3,11 @@ import { H1, H2, H3, BodyText, Button } from '../ui';
 import { useCart } from '../context/CartContext';
 
 const CartPage: React.FC = () => {
-  const { cart, updateQuantity, removeFromCart } = useCart();
+  const { items: cart, updateQuantity, removeFromCart } = useCart();
   const [promoCode, setPromoCode] = useState('');
   const [shippingMethod, setShippingMethod] = useState('standard');
 
-  const subtotal = cart.reduce((sum, item) => sum + item.price * item.quantity, 0);
+  const subtotal = cart.reduce((sum, item) => sum + (item.gemstone?.price || 0) * item.quantity, 0);
   const shipping = shippingMethod === 'express' ? 50 : 25;
   const tax = subtotal * 0.08; // 8% tax
   const total = subtotal + shipping + tax;
@@ -15,9 +15,9 @@ const CartPage: React.FC = () => {
   const handleCheckout = async () => {
     try {
       const orderItems = cart.map((item) => ({
-        gemstoneId: item.id,
+        gemstoneId: item.gemstone?.id || 0,
         quantity: item.quantity,
-        price: item.price,
+        price: item.gemstone?.price || 0,
       }));
       const response = await fetch('/api/orders', {
         method: 'POST',
@@ -96,7 +96,7 @@ const CartPage: React.FC = () => {
                       key={item.id}
                       className="flex gap-4 p-4 border border-gray-200 rounded-lg"
                       role="region"
-                      aria-label={`Cart item: ${item.name}`}
+                      aria-label={`Cart item: ${item.gemstone?.name || 'Unknown Product'}`}
                     >
                       {/* Item Image */}
                       <div className="w-24 h-24 bg-gray-100 rounded-lg overflow-hidden flex-shrink-0">
@@ -113,10 +113,10 @@ const CartPage: React.FC = () => {
                             <H3 className="font-semibold text-gray-900 truncate">{item.name}</H3>
                             <div className="flex items-center gap-2 mt-1">
                               <span className="px-2 py-1 bg-blue-100 text-blue-800 text-xs font-medium rounded-full">
-                                {item.type}
+                                Gemstone
                               </span>
                               <span className="px-2 py-1 bg-green-100 text-green-800 text-xs font-medium rounded-full">
-                                {item.certification}
+                                GIA Certified
                               </span>
                             </div>
                           </div>

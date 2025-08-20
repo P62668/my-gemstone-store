@@ -1,8 +1,6 @@
 import { NextApiRequest, NextApiResponse } from 'next';
-import { requireAdmin } from '../../../../utils/auth';
-import { PrismaClient } from '@prisma/client';
-
-const prisma = new PrismaClient();
+import { requireAdminAuth } from '../../../../utils/adminSecurity';
+import { prisma } from '../../../../lib/prisma';
 
 // Default sections to create if none exist
 const defaultSections = [
@@ -66,9 +64,12 @@ const defaultSections = [
 
 export default async function handler(req: NextApiRequest, res: NextApiResponse) {
   try {
-    requireAdmin(req);
+    const adminUser = await requireAdminAuth(req, res);
+    if (!adminUser) {
+      return; // Response already sent by requireAdminAuth
+    }
   } catch (err: any) {
-    return res.status(err.message.includes('Forbidden') ? 403 : 401).json({ error: err.message });
+    return res.status(401).json({ error: 'Authentication required' });
   }
 
   if (req.method === 'GET') {

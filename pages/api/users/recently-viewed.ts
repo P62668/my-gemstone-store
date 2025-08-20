@@ -1,26 +1,20 @@
 import type { NextApiRequest, NextApiResponse } from 'next';
-import { PrismaClient } from '@prisma/client';
-import jwt from 'jsonwebtoken';
+import { withAuth, AuthenticatedRequest } from '../../../utils/authMiddleware';
 
-const prisma = new PrismaClient();
-const JWT_SECRET = process.env.JWT_SECRET || 'dev_secret_key';
+// Use singleton pattern for Prisma client
+import { prisma } from '../../../lib/prisma';
 
-export default async function handler(req: NextApiRequest, res: NextApiResponse) {
-  const { cookie } = req.headers;
-  if (!cookie) return res.status(401).json({ error: 'Not authenticated' });
-  const tokenMatch = cookie.match(/token=([^;]+)/);
-  if (!tokenMatch) return res.status(401).json({ error: 'Not authenticated' });
-  const token = tokenMatch[1];
-  let decoded;
-  try {
-    decoded = jwt.verify(token, JWT_SECRET) as { id: number };
-  } catch (err: any) {
-    return res.status(401).json({ error: 'Invalid or expired token' });
+
+
+export default withAuth(async function handler(req: AuthenticatedRequest, res: NextApiResponse) {
+  const user = req.user;
+  if (!user || !user.id) {
+    return res.status(401).json({ error: 'Authentication required' });
   }
   if (req.method === 'GET') {
     try {
       const recentlyViewed = await prisma.recentlyViewed.findMany({
-        where: { userId: decoded.id },
+        where: { userId: user.id },
         include: { gemstone: true },
         orderBy: { viewedAt: 'desc' },
         take: 20,
@@ -34,4 +28,4 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
   } else {
     return res.status(405).json({ error: 'Method not allowed' });
   }
-}
+});

@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import Layout from '../../components/Layout';
+import AdminLayout from '../../components/AdminLayout';
 
 interface SEOSettings {
   global: {
@@ -233,7 +233,7 @@ const SEOAdmin: React.FC = () => {
   ];
 
   return (
-    <Layout title="SEO Settings - Kolkata Gems">
+    <AdminLayout title="SEO Settings - Kolkata Gems">
       <div className="max-w-7xl mx-auto py-12 px-4">
         {/* Header */}
         <div className="mb-8">
@@ -646,7 +646,7 @@ const SEOAdmin: React.FC = () => {
           </button>
         </div>
       </div>
-    </Layout>
+    </AdminLayout>
   );
 };
 

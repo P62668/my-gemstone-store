@@ -1,40 +1,45 @@
 import type { AppProps } from 'next/app';
-import type { ComponentType } from 'react';
-import '../styles/globals.css';
+import { SessionProvider } from 'next-auth/react';
+import { Toaster } from 'react-hot-toast';
 import { CartProvider } from '../components/context/CartContext';
 import { UserProvider } from '../components/context/UserContext';
-import Head from 'next/head';
-import { Toaster } from 'react-hot-toast';
+import { WishlistProvider } from '../components/context/WishlistContext';
+import '../styles/globals.css';
 
-// Global polyfills for browser compatibility
-if (typeof window !== 'undefined') {
-  // Polyfill for process object
-  if (!(window as any).process) {
-    (window as any).process = { env: {} };
-  }
-
-  // Polyfill for global object
-  if (!(window as any).global) {
-    (window as any).global = window;
-  }
-}
-
-function App({ Component, pageProps }: AppProps) {
-  const PageComponent = Component as ComponentType<any>;
+export default function App({ Component, pageProps: { session, ...pageProps } }: AppProps) {
   return (
-    <>
-      <Head>
-        <link rel="icon" href="/images/favicon.ico" />
-        <meta name="viewport" content="width=device-width, initial-scale=1" />
-      </Head>
-      <Toaster position="top-center" toastOptions={{ duration: 4000 }} />
+    <SessionProvider session={session}>
       <UserProvider>
         <CartProvider>
-          <PageComponent {...pageProps} />
+          <WishlistProvider>
+            <Component {...pageProps} />
+            <Toaster
+              position="top-right"
+              toastOptions={{
+                duration: 4000,
+                style: {
+                  background: '#363636',
+                  color: '#fff',
+                },
+                success: {
+                  duration: 3000,
+                  iconTheme: {
+                    primary: '#10b981',
+                    secondary: '#fff',
+                  },
+                },
+                error: {
+                  duration: 5000,
+                  iconTheme: {
+                    primary: '#ef4444',
+                    secondary: '#fff',
+                  },
+                },
+              }}
+            />
+          </WishlistProvider>
         </CartProvider>
       </UserProvider>
-    </>
+    </SessionProvider>
   );
 }
-
-export default App;

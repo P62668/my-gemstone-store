@@ -1,23 +1,22 @@
 import type { NextApiRequest, NextApiResponse } from 'next';
-import { PrismaClient } from '@prisma/client';
 import bcrypt from 'bcryptjs';
 import jwt from 'jsonwebtoken';
 import { enforceRateLimit } from '../../../utils/rateLimit';
 import { sendMail } from '../../../utils/mailer';
 
-const prisma = new PrismaClient();
+import { prisma } from '../../../lib/prisma';
 const JWT_SECRET = process.env.JWT_SECRET || 'dev_secret_key';
 
 export default async function handler(req: NextApiRequest, res: NextApiResponse) {
   if (req.method !== 'POST') {
     return res.status(405).json({ error: 'Method not allowed' });
   }
-  if (!enforceRateLimit(req, res, { limit: 5, windowMs: 60_000, key: 'signup' })) return;
+  if (!enforceRateLimit(req, res, { max: 5, windowMs: 60_000, key: 'signup' })) return;
 
-  const { name, email, password } = req.body;
+  const { firstName, lastName, email, password } = req.body;
 
-  if (!name || !email || !password) {
-    return res.status(400).json({ error: 'Name, email, and password are required.' });
+  if (!firstName || !lastName || !email || !password) {
+    return res.status(400).json({ error: 'First name, last name, email, and password are required.' });
   }
 
   if (password.length < 6) {
@@ -37,25 +36,24 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
     // Create user
     const user = await prisma.user.create({
       data: {
-        name,
+        firstName,
+        lastName,
         email,
         password: hashedPassword,
         role: 'user',
+        active: true,
       },
     });
 
-    // Generate email verification token and send mail (best effort)
+    // Send welcome email (best effort)
     try {
-      const emailVerifyToken = Math.random().toString(36).slice(2) + Date.now().toString(36);
-      await prisma.user.update({ where: { id: user.id }, data: { emailVerifyToken } });
-      const verifyUrl = `${process.env.PUBLIC_BASE_URL || 'http://localhost:3000'}/verify-email?token=${emailVerifyToken}`;
       await sendMail({
         to: user.email,
-        subject: 'Verify your Shankarmala account',
-        html: `<p>Welcome to Shankarmala!</p><p>Please verify your email by clicking the link below:</p><p><a href="${verifyUrl}">${verifyUrl}</a></p>`,
+        subject: 'Welcome to Shankarmala!',
+        html: `<p>Welcome to Shankarmala!</p><p>Thank you for creating your account. You can now start exploring our luxury gemstone collection.</p>`,
       });
     } catch (mailErr) {
-      console.warn('Email verification send failed:', mailErr);
+      console.warn('Welcome email send failed:', mailErr);
     }
 
     // Issue JWT and set as httpOnly cookie
@@ -69,7 +67,8 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
 
     return res.status(201).json({
       id: user.id,
-      name: user.name,
+      firstName: user.firstName,
+      lastName: user.lastName,
       email: user.email,
       role: user.role,
       createdAt: user.createdAt,

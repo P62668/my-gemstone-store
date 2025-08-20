@@ -1,5 +1,5 @@
-import React, { useState, useEffect } from 'react';
-import Layout from '../../components/Layout';
+import React, { useState } from 'react';
+import AdminLayout from '../../components/AdminLayout';
 
 interface MenuItem {
   id: string;
@@ -74,7 +74,7 @@ const NavigationAdmin: React.FC = () => {
     menuType: keyof NavigationConfig,
     id: string,
     field: keyof MenuItem,
-    value: any,
+    value: string | number | boolean,
   ) => {
     setNavigation((prev) => ({
       ...prev,
@@ -244,7 +244,7 @@ const NavigationAdmin: React.FC = () => {
   };
 
   return (
-    <Layout title="Navigation Management - Kolkata Gems">
+    <AdminLayout title="Navigation Management - Kolkata Gems">
       <div className="max-w-7xl mx-auto py-12 px-4">
         {/* Header */}
         <div className="mb-8">
@@ -400,7 +400,7 @@ const NavigationAdmin: React.FC = () => {
           </button>
         </div>
       </div>
-    </Layout>
+    </AdminLayout>
   );
 };
 

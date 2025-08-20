@@ -1,38 +1,70 @@
 import { NextApiRequest, NextApiResponse } from 'next';
-import { PrismaClient } from '@prisma/client';
+import { processGemstonesData, processHomepageSectionData } from '../../../utils/dataProcessor';
 
-const prisma = new PrismaClient();
+import { prisma } from '../../../lib/prisma';
 
 export default async function handler(req: NextApiRequest, res: NextApiResponse) {
   if (req.method !== 'GET') {
     res.setHeader('Allow', ['GET']);
     return res.status(405).end(`Method ${req.method} Not Allowed`);
   }
+  
   try {
-    const allSections = await prisma.homepageSection.findMany({ orderBy: { order: 'asc' } });
-    console.log('Public homepage - All sections from DB:', allSections);
+    // Fetch homepage sections and featured products in parallel
+    const [allSections, featuredProducts] = await Promise.all([
+      prisma.homepageSection.findMany({ 
+        orderBy: { order: 'asc' },
+        where: { active: true }
+      }),
+      prisma.gemstone.findMany({
+        where: { 
+          featured: true,
+          active: true 
+        },
+        include: {
+          category: {
+            select: {
+              id: true,
+              name: true
+            }
+          }
+        },
+        take: 6,
+        orderBy: {
+          createdAt: 'desc'
+        }
+      })
+    ]);
 
     const hero = allSections.find((s) => s.key === 'hero');
     const sections = allSections.filter((s) => s.key !== 'hero');
 
-    console.log('Public homepage - Hero section:', hero);
-    console.log('Public homepage - Other sections:', sections);
+    // Process featured products
+    const processedProducts = processGemstonesData(featuredProducts);
+
+    // Process sections
+    const processedSections = sections.map((s) => {
+      const processed = processHomepageSectionData(s);
+      if (s.key === 'featured_products' && processed) {
+        return {
+          ...processed,
+          products: processedProducts
+        };
+      }
+      return processed;
+    }).filter(Boolean);
 
     const response = {
-      hero: hero ? hero.content : null,
-      sections: sections.map((s) => ({
-        key: s.key,
-        ...(s.content as any),
-        order: s.order,
-        active: s.active,
-      })),
+      hero: hero ? processHomepageSectionData(hero)?.content : null,
+      sections: processedSections,
       updatedAt: allSections.length > 0 ? allSections[0].updatedAt : null,
     };
 
-    console.log('Public homepage - Final response:', response);
-    res.status(200).json(response);
+    return res.status(200).json(response);
   } catch (error) {
-    console.error('Error fetching homepage settings:', error);
-    res.status(500).json({ error: 'Failed to fetch homepage settings' });
+    console.error('Error fetching homepage data:', error);
+    return res.status(500).json({ error: 'Failed to fetch homepage settings' });
+  } finally {
+    await prisma.$disconnect();
   }
 }

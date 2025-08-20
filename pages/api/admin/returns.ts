@@ -1,14 +1,15 @@
-import type { NextApiRequest, NextApiResponse } from 'next';
-import { PrismaClient } from '@prisma/client';
-import { requireAdmin } from '../../../utils/auth';
-
-const prisma = new PrismaClient();
+import { NextApiRequest, NextApiResponse } from 'next';
+import { requireAdminAuth } from '../../../utils/adminSecurity';
+import { prisma } from '../../../lib/prisma';
 
 export default async function handler(req: NextApiRequest, res: NextApiResponse) {
   try {
-    requireAdmin(req);
+    const adminUser = await requireAdminAuth(req, res);
+    if (!adminUser) {
+      return; // Response already sent by requireAdminAuth
+    }
   } catch (err: any) {
-    return res.status(err.message.includes('Forbidden') ? 403 : 401).json({ error: err.message });
+    return res.status(401).json({ error: 'Authentication required' });
   }
 
   if (req.method === 'GET') {
@@ -31,7 +32,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
             order: {
               include: {
                 user: {
-                  select: { name: true, email: true },
+                  select: { firstName: true, lastName: true, email: true },
                 },
                 items: {
                   include: {
@@ -41,7 +42,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
               },
             },
           },
-          orderBy: { returnDate: 'desc' },
+          orderBy: { createdAt: 'desc' },
           skip,
           take: limitNum,
         }),
@@ -85,7 +86,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
           order: {
             include: {
               user: {
-                select: { name: true, email: true },
+                select: { firstName: true, lastName: true, email: true },
               },
               items: {
                 include: {
@@ -97,14 +98,14 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
         },
       });
 
-      // If approved, create refund record
+      // If approved, update order status (refund handling would be done separately)
       if (status === 'approved' && refundAmount) {
-        await prisma.refund.create({
-          data: {
-            orderId: returnRequest.orderId,
-            amount: parseFloat(refundAmount),
-            reason: returnRequest.reason,
-            status: 'pending',
+        // Update order to reflect return status
+        await prisma.order.update({
+          where: { id: returnRequest.orderId },
+          data: { 
+            status: 'returned',
+            updatedAt: new Date()
           },
         });
       }

@@ -58,7 +58,7 @@ const GemstoneGrid: React.FC = () => {
             />
             <div className="p-4 flex-1 flex flex-col">
               <h3 className="text-lg font-semibold mb-1">{gem.name}</h3>
-              <p className="text-sm text-gray-500 mb-2">{gem.type}</p>
+              <p className="text-sm text-gray-500 mb-2">{gem.description?.substring(0, 50)}...</p>
               <p className="text-xl font-bold text-indigo-600 mb-2">
                 ${gem.price.toLocaleString()}
               </p>

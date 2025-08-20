@@ -94,7 +94,7 @@ export const ImageUploadWithEdit: React.FC<ImageUploadWithEditProps> = ({
   };
 
   // Cropper callbacks
-  const onCropComplete = useCallback((_, croppedPixels) => {
+  const onCropComplete = useCallback((_: any, croppedPixels: any) => {
     setCroppedAreaPixels(croppedPixels);
   }, []);
 

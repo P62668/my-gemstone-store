@@ -2,7 +2,6 @@ import React, { useState, useEffect } from 'react';
 import Head from 'next/head';
 import { useRouter } from 'next/router';
 import { H1, H2, H3, BodyText, Button, ProductCard, SearchInput, Select } from '../ui';
-import { sampleGemstones } from '../../utils/sample-data';
 import { Gemstone } from '../../interfaces';
 
 const ShopGrid: React.FC = () => {
@@ -256,7 +255,7 @@ const ShopGrid: React.FC = () => {
                   {filteredGemstones.map((gemstone) => (
                     <ProductCard
                       key={gemstone.id}
-                      gemstone={gemstone}
+                      product={gemstone}
                       onViewDetails={handleViewDetails}
                     />
                   ))}

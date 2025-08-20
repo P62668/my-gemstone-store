@@ -1,0 +1,12 @@
+// Minimal environment utilities for runtime checks
+export function requireEnv(name: string): string {
+  const v = process.env[name];
+  if (!v) {
+    throw new Error(`Missing required environment variable: ${name}. Set ${name} in your environment or .env file.`);
+  }
+  return v;
+}
+
+export function getEnv(name: string, fallback?: string): string | undefined {
+  return process.env[name] ?? fallback;
+}

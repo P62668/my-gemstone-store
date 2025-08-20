@@ -5,6 +5,21 @@ import { useRouter } from 'next/router';
 import Link from 'next/link';
 import Layout from '../components/Layout';
 import { useCart } from '../components/context/CartContext';
+import { motion, AnimatePresence } from 'framer-motion';
+import {
+  CreditCard,
+  Shield,
+  Truck,
+  CheckCircle,
+  Lock,
+  Sparkles,
+  ArrowRight,
+  MapPin,
+  User,
+  Phone,
+  Mail,
+  Home,
+} from 'lucide-react';
 import toast from 'react-hot-toast';
 
 interface CheckoutForm {
@@ -30,7 +45,7 @@ interface Address {
 }
 
 const CheckoutPage: React.FC = () => {
-  const { cart, clearCart } = useCart();
+  const { items: cart, clearCart } = useCart();
   const router = useRouter();
   const [loading, setLoading] = useState(false);
   const [showConfirm, setShowConfirm] = useState(false);
@@ -416,129 +431,230 @@ const CheckoutPage: React.FC = () => {
           dangerouslySetInnerHTML={{ __html: JSON.stringify(seoJsonLd) }}
         />
       </Head>
-      {/* Progress Bar */}
-      <div className="max-w-4xl mx-auto py-12 px-4">
-        <h1 className="text-4xl font-extrabold tracking-tight text-amber-900 mb-10 text-center font-serif">
-          Checkout
-        </h1>
-        {/* Step Progress Indicator */}
-        <ol
-          className="flex justify-center mb-8 gap-4 text-sm font-medium"
-          aria-label="Checkout steps"
+      {/* Premium Checkout Header */}
+      <div className="max-w-6xl mx-auto py-12 px-4">
+        <motion.div
+          className="text-center mb-12"
+          initial={{ opacity: 0, y: 20 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ duration: 0.6 }}
         >
-          <li
-            className={`flex items-center gap-2 ${step === 1 ? 'text-amber-700' : 'text-gray-400'}`}
+          <motion.div
+            initial={{ scale: 0.8 }}
+            animate={{ scale: 1 }}
+            className="inline-flex items-center space-x-2 bg-gradient-to-r from-amber-500 to-orange-500 text-white px-4 py-2 rounded-full text-sm font-medium mb-4"
           >
-            1. Shipping
-          </li>
-          <li className="text-gray-400">→</li>
-          <li
-            className={`flex items-center gap-2 ${step === 2 ? 'text-amber-700' : 'text-gray-400'}`}
-          >
-            2. Billing
-          </li>
-          <li className="text-gray-400">→</li>
-          <li
-            className={`flex items-center gap-2 ${step === 3 ? 'text-amber-700' : 'text-gray-400'}`}
-          >
-            3. Review
-          </li>
-        </ol>
+            <Lock className="w-4 h-4" />
+            <span>Secure Checkout</span>
+          </motion.div>
+          <h1 className="text-5xl font-bold text-gray-900 mb-4 bg-gradient-to-r from-amber-600 to-orange-600 bg-clip-text text-transparent">
+            Complete Your Purchase
+          </h1>
+          <p className="text-xl text-gray-600 max-w-2xl mx-auto">
+            Secure checkout for your premium gemstone collection
+          </p>
+        </motion.div>
 
-        {success && (
-          <div
-            className="bg-green-50 border border-green-200 rounded-xl p-4 mb-6"
-            aria-live="polite"
-            role="status"
-          >
-            <div className="text-green-800">{success}</div>
-          </div>
-        )}
-
-        {error && (
-          <div
-            className="bg-red-50 border border-red-200 rounded-xl p-4 mb-6"
-            aria-live="polite"
-            role="alert"
-          >
-            <div className="text-red-800">{error}</div>
-          </div>
-        )}
-
-        {/* Loading Overlay */}
-        {loading && (
-          <div
-            className="fixed inset-0 bg-white/70 z-50 flex items-center justify-center"
-            role="alert"
-            aria-busy="true"
-          >
-            <div className="flex flex-col items-center gap-4">
-              <svg
-                className="animate-spin h-10 w-10 text-amber-600"
-                xmlns="http://www.w3.org/2000/svg"
-                fill="none"
-                viewBox="0 0 24 24"
+        {/* Premium Step Progress Indicator */}
+        <motion.div
+          className="flex justify-center mb-12"
+          initial={{ opacity: 0, y: 20 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ duration: 0.6, delay: 0.2 }}
+        >
+          <div className="flex items-center space-x-8">
+            <div
+              className={`flex items-center space-x-3 ${step >= 1 ? 'text-amber-600' : 'text-gray-400'}`}
+            >
+              <div
+                className={`w-10 h-10 rounded-full flex items-center justify-center border-2 ${step >= 1 ? 'bg-amber-600 border-amber-600 text-white' : 'border-gray-300'}`}
               >
-                <circle
-                  className="opacity-25"
-                  cx="12"
-                  cy="12"
-                  r="10"
-                  stroke="currentColor"
-                  strokeWidth="4"
-                ></circle>
-                <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8v8z"></path>
-              </svg>
-              <span className="text-amber-700 font-semibold">Processing your order...</span>
+                {step > 1 ? (
+                  <CheckCircle className="w-5 h-5" />
+                ) : (
+                  <span className="font-bold">1</span>
+                )}
+              </div>
+              <span className="font-semibold">Shipping</span>
+            </div>
+            <div className={`w-16 h-0.5 ${step >= 2 ? 'bg-amber-600' : 'bg-gray-300'}`}></div>
+            <div
+              className={`flex items-center space-x-3 ${step >= 2 ? 'text-amber-600' : 'text-gray-400'}`}
+            >
+              <div
+                className={`w-10 h-10 rounded-full flex items-center justify-center border-2 ${step >= 2 ? 'bg-amber-600 border-amber-600 text-white' : 'border-gray-300'}`}
+              >
+                {step > 2 ? (
+                  <CheckCircle className="w-5 h-5" />
+                ) : (
+                  <span className="font-bold">2</span>
+                )}
+              </div>
+              <span className="font-semibold">Payment</span>
+            </div>
+            <div className={`w-16 h-0.5 ${step >= 3 ? 'bg-amber-600' : 'bg-gray-300'}`}></div>
+            <div
+              className={`flex items-center space-x-3 ${step >= 3 ? 'text-amber-600' : 'text-gray-400'}`}
+            >
+              <div
+                className={`w-10 h-10 rounded-full flex items-center justify-center border-2 ${step >= 3 ? 'bg-amber-600 border-amber-600 text-white' : 'border-gray-300'}`}
+              >
+                <span className="font-bold">3</span>
+              </div>
+              <span className="font-semibold">Review</span>
             </div>
           </div>
-        )}
+        </motion.div>
 
-        {/* Confirmation Modal */}
-        {showConfirm && (
-          <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40">
-            <div className="bg-white rounded-2xl shadow-2xl p-8 max-w-md w-full border border-amber-100">
-              <h2 className="text-xl font-bold text-amber-900 mb-4 font-serif">
-                Confirm Your Order
-              </h2>
-              <div className="mb-4">
-                <div className="font-semibold text-amber-700 mb-1">Shipping Address</div>
-                <div className="text-gray-700 text-sm">
-                  {form.fullName}, {form.address}, {form.city}, {form.state}, {form.postalCode},{' '}
-                  {form.phone}
+        <AnimatePresence>
+          {success && (
+            <motion.div
+              initial={{ opacity: 0, y: -20 }}
+              animate={{ opacity: 1, y: 0 }}
+              exit={{ opacity: 0, y: -20 }}
+              className="bg-gradient-to-r from-green-50 to-emerald-50 border border-green-200 rounded-2xl p-6 mb-8"
+              aria-live="polite"
+              role="status"
+            >
+              <div className="flex items-center space-x-3">
+                <div className="w-10 h-10 bg-green-100 rounded-full flex items-center justify-center">
+                  <CheckCircle className="w-5 h-5 text-green-600" />
                 </div>
+                <div className="text-green-800 font-medium">{success}</div>
               </div>
-              <div className="mb-4">
-                <div className="font-semibold text-amber-700 mb-1">Billing Address</div>
-                <div className="text-gray-700 text-sm">
-                  {useShippingForBilling
-                    ? `${form.fullName}, ${form.address}, ${form.city}, ${form.state}, ${form.postalCode}, ${form.phone}`
-                    : `${billingForm.fullName}, ${billingForm.address}, ${billingForm.city}, ${billingForm.state}, ${billingForm.postalCode}, ${billingForm.phone}`}
+            </motion.div>
+          )}
+
+          {error && (
+            <motion.div
+              initial={{ opacity: 0, y: -20 }}
+              animate={{ opacity: 1, y: 0 }}
+              exit={{ opacity: 0, y: -20 }}
+              className="bg-gradient-to-r from-red-50 to-pink-50 border border-red-200 rounded-2xl p-6 mb-8"
+              aria-live="polite"
+              role="alert"
+            >
+              <div className="flex items-center space-x-3">
+                <div className="w-10 h-10 bg-red-100 rounded-full flex items-center justify-center">
+                  <Shield className="w-5 h-5 text-red-600" />
                 </div>
+                <div className="text-red-800 font-medium">{error}</div>
               </div>
-              <div className="mb-4">
-                <div className="font-semibold text-amber-700 mb-1">Order Total</div>
-                <div className="text-amber-900 font-bold text-lg">
-                  ₹{total.toLocaleString('en-IN')}
+            </motion.div>
+          )}
+        </AnimatePresence>
+
+        {/* Premium Loading Overlay */}
+        <AnimatePresence>
+          {loading && (
+            <motion.div
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              exit={{ opacity: 0 }}
+              className="fixed inset-0 bg-white/90 backdrop-blur-sm z-50 flex items-center justify-center"
+              role="alert"
+              aria-busy="true"
+            >
+              <motion.div
+                initial={{ scale: 0.8, opacity: 0 }}
+                animate={{ scale: 1, opacity: 1 }}
+                className="flex flex-col items-center gap-6 bg-white rounded-3xl p-8 shadow-2xl border border-amber-100"
+              >
+                <div className="w-16 h-16 bg-gradient-to-br from-amber-500 to-orange-500 rounded-full flex items-center justify-center">
+                  <motion.div
+                    animate={{ rotate: 360 }}
+                    transition={{ duration: 2, repeat: Infinity, ease: 'linear' }}
+                    className="w-8 h-8 border-4 border-white border-t-transparent rounded-full"
+                  />
                 </div>
-              </div>
-              <div className="flex gap-4 mt-6">
-                <button
-                  onClick={() => setShowConfirm(false)}
-                  className="flex-1 bg-gray-200 text-gray-700 px-4 py-2 rounded-xl font-semibold hover:bg-gray-300 transition"
-                >
-                  Cancel
-                </button>
-                <button
-                  onClick={handlePlaceOrder}
-                  className="flex-1 bg-amber-600 text-white px-4 py-2 rounded-xl font-bold hover:bg-amber-700 transition"
-                >
-                  Confirm & Place Order
-                </button>
-              </div>
-            </div>
-          </div>
-        )}
+                <div className="text-center">
+                  <h3 className="text-xl font-bold text-gray-900 mb-2">Processing Your Order</h3>
+                  <p className="text-gray-600">Securing your premium gemstones...</p>
+                </div>
+              </motion.div>
+            </motion.div>
+          )}
+        </AnimatePresence>
+
+        {/* Premium Confirmation Modal */}
+        <AnimatePresence>
+          {showConfirm && (
+            <motion.div
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              exit={{ opacity: 0 }}
+              className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm"
+            >
+              <motion.div
+                initial={{ scale: 0.8, opacity: 0 }}
+                animate={{ scale: 1, opacity: 1 }}
+                exit={{ scale: 0.8, opacity: 0 }}
+                className="bg-white rounded-3xl shadow-2xl p-8 max-w-lg w-full border border-amber-100 mx-4"
+              >
+                <div className="text-center mb-6">
+                  <div className="w-16 h-16 bg-gradient-to-br from-amber-500 to-orange-500 rounded-full flex items-center justify-center mx-auto mb-4">
+                    <Sparkles className="w-8 h-8 text-white" />
+                  </div>
+                  <h2 className="text-2xl font-bold text-gray-900 mb-2">Confirm Your Order</h2>
+                  <p className="text-gray-600">
+                    Please review your order details before proceeding
+                  </p>
+                </div>
+
+                <div className="space-y-4 mb-6">
+                  <div className="bg-amber-50 rounded-xl p-4">
+                    <div className="flex items-center space-x-2 mb-2">
+                      <MapPin className="w-4 h-4 text-amber-600" />
+                      <div className="font-semibold text-amber-800">Shipping Address</div>
+                    </div>
+                    <div className="text-gray-700 text-sm">
+                      {form.fullName}, {form.address}, {form.city}, {form.state}, {form.postalCode},{' '}
+                      {form.phone}
+                    </div>
+                  </div>
+
+                  <div className="bg-blue-50 rounded-xl p-4">
+                    <div className="flex items-center space-x-2 mb-2">
+                      <CreditCard className="w-4 h-4 text-blue-600" />
+                      <div className="font-semibold text-blue-800">Billing Address</div>
+                    </div>
+                    <div className="text-gray-700 text-sm">
+                      {useShippingForBilling
+                        ? `${form.fullName}, ${form.address}, ${form.city}, ${form.state}, ${form.postalCode}, ${form.phone}`
+                        : `${billingForm.fullName}, ${billingForm.address}, ${billingForm.city}, ${billingForm.state}, ${billingForm.postalCode}, ${billingForm.phone}`}
+                    </div>
+                  </div>
+
+                  <div className="bg-green-50 rounded-xl p-4">
+                    <div className="flex items-center space-x-2 mb-2">
+                      <Truck className="w-4 h-4 text-green-600" />
+                      <div className="font-semibold text-green-800">Order Total</div>
+                    </div>
+                    <div className="text-2xl font-bold text-gray-900">
+                      ₹{total.toLocaleString('en-IN')}
+                    </div>
+                  </div>
+                </div>
+
+                <div className="flex gap-4">
+                  <button
+                    onClick={() => setShowConfirm(false)}
+                    className="flex-1 bg-gray-100 text-gray-700 px-6 py-3 rounded-xl font-semibold hover:bg-gray-200 transition-colors"
+                  >
+                    Cancel
+                  </button>
+                  <button
+                    onClick={handlePlaceOrder}
+                    className="flex-1 bg-gradient-to-r from-amber-600 to-orange-600 text-white px-6 py-3 rounded-xl font-bold hover:shadow-lg transition-all duration-200 flex items-center justify-center space-x-2"
+                  >
+                    <span>Confirm & Place Order</span>
+                    <ArrowRight className="w-4 h-4" />
+                  </button>
+                </div>
+              </motion.div>
+            </motion.div>
+          )}
+        </AnimatePresence>
 
         <div className="grid grid-cols-1 md:grid-cols-2 gap-12">
           {/* Shipping & Payment Form */}
@@ -1041,15 +1157,23 @@ const CheckoutPage: React.FC = () => {
                 </div>
               </div>
             </div>
-            <button
-              type="submit"
-              className="mt-6 bg-amber-600 text-white px-8 py-4 rounded-2xl font-bold text-lg shadow-lg hover:bg-amber-700 transition-all focus:outline-none focus:ring-2 focus:ring-amber-500 disabled:opacity-50 disabled:cursor-not-allowed font-serif tracking-wide"
-              disabled={loading}
-              aria-busy={loading}
-              aria-label="Place Order"
-            >
-              {loading ? 'Processing Order...' : 'Place Order'}
-            </button>
+            <div className="mt-6 flex gap-4">
+              <Link
+                href="/cart"
+                className="flex-1 bg-gray-600 text-white px-8 py-4 rounded-2xl font-bold text-lg shadow-lg hover:bg-gray-700 transition-all focus:outline-none focus:ring-2 focus:ring-gray-500 font-serif tracking-wide text-center"
+              >
+                Back to Cart
+              </Link>
+              <button
+                type="submit"
+                className="flex-1 bg-amber-600 text-white px-8 py-4 rounded-2xl font-bold text-lg shadow-lg hover:bg-amber-700 transition-all focus:outline-none focus:ring-2 focus:ring-amber-500 disabled:opacity-50 disabled:cursor-not-allowed font-serif tracking-wide"
+                disabled={loading}
+                aria-busy={loading}
+                aria-label="Place Order"
+              >
+                {loading ? 'Processing Order...' : 'Place Order'}
+              </button>
+            </div>
             <div className="text-xs text-gray-500 mt-2 text-center" aria-live="polite">
               <span className="inline-flex items-center gap-1">
                 <svg
@@ -1085,7 +1209,7 @@ const CheckoutPage: React.FC = () => {
                         ? item.images[0]
                         : '/images/placeholder-gemstone.jpg'
                     }
-                    alt={item.name}
+                    alt={item.name || 'Product image'}
                     width={64}
                     height={64}
                     className="w-16 h-16 rounded-xl object-cover border border-amber-200 shadow-sm"

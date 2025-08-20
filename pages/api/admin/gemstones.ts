@@ -1,74 +1,184 @@
 import { NextApiRequest, NextApiResponse } from 'next';
-import { PrismaClient } from '@prisma/client';
-import { requireAdmin } from '../../../utils/auth';
-
-const prisma = new PrismaClient();
+import { prisma } from '../../../lib/prisma';
+import { requireAdminAuth } from '../../../utils/adminSecurity';
+import { logger } from '../../../utils/logger';
 
 export default async function handler(req: NextApiRequest, res: NextApiResponse) {
   try {
-    requireAdmin(req);
-  } catch (err: any) {
-    return res.status(err.message.includes('Forbidden') ? 403 : 401).json({ error: err.message });
-  }
+    // Authenticate admin user
+    const adminUser = await requireAdminAuth(req, res);
+    if (!adminUser) {
+      return; // Response already sent by requireAdminAuth
+    }
 
-  if (req.method === 'GET') {
-    try {
-      const gemstones = await prisma.gemstone.findMany({
-        include: {
-          category: true,
-        },
-        orderBy: { createdAt: 'desc' },
-      });
+    if (req.method === 'GET') {
+      try {
+        const gemstones = await prisma.gemstone.findMany({
+          include: {
+            category: true,
+          },
+          orderBy: { createdAt: 'desc' },
+        });
+        
+        // Parse images for each gemstone
+        const gemstonesWithParsedImages = gemstones.map(gemstone => {
+          let parsedImages = [];
+          try {
+            if (typeof gemstone.images === 'string' && gemstone.images.trim()) {
+              parsedImages = JSON.parse(gemstone.images);
+            } else if (Array.isArray(gemstone.images)) {
+              parsedImages = gemstone.images;
+            }
+          } catch (error) {
+            console.error('Error parsing images for gemstone:', gemstone.id, error);
+            parsedImages = [];
+          }
+          
+          return {
+            ...gemstone,
+            images: parsedImages
+          };
+        });
+        
+        res.status(200).json(gemstonesWithParsedImages);
+      } catch (error) {
+        logger.error('Error fetching gemstones', error, {
+          message: 'Failed to fetch gemstones',
+          ip: req.headers['x-forwarded-for'] || req.socket.remoteAddress,
+          userAgent: req.headers['user-agent']
+        });
+        res.status(500).json({ error: 'Failed to fetch gemstones' });
+      }
+    } else if (req.method === 'POST') {
+      try {
+        const { 
+          name, 
+          description, 
+          price, 
+          salePrice, 
+          categoryId, 
+          images, 
+          weight, 
+          dimensions, 
+          clarity, 
+          color, 
+          cut, 
+          origin, 
+          certificate, 
+          stockCount, 
+          stockQuantity, 
+          lowStockThreshold, 
+          featured, 
+          active 
+        } = req.body;
 
-      // Process the gemstones to handle images field properly
-      const processedGemstones = gemstones.map((gem) => ({
-        ...gem,
-        images: (() => {
-          if (Array.isArray(gem.images)) return gem.images;
-          if (typeof gem.images === 'string') {
+        // Validate required fields
+        if (!name || !description || !price || !categoryId) {
+          return res.status(400).json({
+            success: false,
+            error: 'Name, description, price, and category are required'
+          });
+        }
+
+        // Validate price
+        if (isNaN(parseFloat(price)) || parseFloat(price) <= 0) {
+          return res.status(400).json({
+            success: false,
+            error: 'Price must be a positive number'
+          });
+        }
+
+        // Check if category exists
+        const category = await prisma.category.findUnique({
+          where: { id: parseInt(categoryId) }
+        });
+
+        if (!category) {
+          return res.status(400).json({
+            success: false,
+            error: 'Category not found'
+          });
+        }
+
+        // Handle images field properly - ensure it's always a JSON string
+        let imagesString = '[]';
+        if (images) {
+          if (Array.isArray(images)) {
+            imagesString = JSON.stringify(images);
+          } else if (typeof images === 'string') {
             try {
-              const parsed = JSON.parse(gem.images);
-              if (Array.isArray(parsed)) return parsed;
-              if (typeof parsed === 'string') return [parsed];
+              // Validate if it's already a JSON string
+              JSON.parse(images);
+              imagesString = images;
             } catch {
-              if (gem.images.trim().startsWith('/')) return [gem.images.trim()];
-              return [];
+              // If not valid JSON, treat as single image
+              imagesString = JSON.stringify([images]);
             }
           }
-          return [];
-        })(),
-      }));
+        }
 
-      res.status(200).json(processedGemstones);
-    } catch (error) {
-      console.error('Error fetching gemstones:', error);
-      res.status(500).json({ error: 'Failed to fetch gemstones' });
+        const gemstone = await prisma.gemstone.create({
+          data: {
+            name: name.trim(),
+            description: description.trim(),
+            price: parseFloat(price),
+            salePrice: salePrice ? parseFloat(salePrice) : null,
+            categoryId: parseInt(categoryId),
+            images: imagesString,
+            weight: weight ? parseFloat(weight) : null,
+            dimensions: dimensions || null,
+            clarity: clarity || null,
+            color: color || null,
+            cut: cut || null,
+            origin: origin || null,
+            certificate: certificate || null,
+            stockCount: stockCount ? parseInt(stockCount) : 0,
+            stockQuantity: stockQuantity ? parseInt(stockQuantity) : 0,
+            lowStockThreshold: lowStockThreshold ? parseInt(lowStockThreshold) : 5,
+            featured: featured || false,
+            active: active !== undefined ? active : true,
+          },
+          include: {
+            category: true,
+          },
+        });
+
+        logger.info('Gemstone created successfully', {
+          message: 'Gemstone created',
+          gemstoneId: gemstone.id,
+          gemstoneName: gemstone.name,
+          ip: req.headers['x-forwarded-for'] || req.socket.remoteAddress,
+          userAgent: req.headers['user-agent']
+        });
+
+        res.status(201).json(gemstone);
+      } catch (error: any) {
+        logger.error('Error creating gemstone', error, {
+          message: 'Failed to create gemstone',
+          requestBody: req.body,
+          ip: req.headers['x-forwarded-for'] || req.socket.remoteAddress,
+          userAgent: req.headers['user-agent']
+        });
+
+        // Handle specific Prisma errors
+        if (error.code === 'P2002') {
+          res.status(409).json({ error: 'A gemstone with this name already exists' });
+        } else if (error.code === 'P2003') {
+          res.status(400).json({ error: 'Selected category does not exist' });
+        } else {
+          res.status(500).json({ error: 'Failed to create gemstone' });
+        }
+      }
+    } else {
+      res.setHeader('Allow', ['GET', 'POST']);
+      res.status(405).end(`Method ${req.method} Not Allowed`);
     }
-  } else if (req.method === 'POST') {
-    try {
-      const { name, type, description, price, images, certification, categoryId, active, order } =
-        req.body;
-      const gemstone = await prisma.gemstone.create({
-        data: {
-          name,
-          type,
-          description,
-          price: parseFloat(price),
-          images: JSON.stringify(images || []),
-          certification,
-          categoryId: categoryId ? parseInt(categoryId) : null,
-        },
-        include: {
-          category: true,
-        },
-      });
-      res.status(201).json(gemstone);
-    } catch (error) {
-      console.error('Error creating gemstone:', error);
-      res.status(500).json({ error: 'Failed to create gemstone' });
-    }
-  } else {
-    res.setHeader('Allow', ['GET', 'POST']);
-    res.status(405).end(`Method ${req.method} Not Allowed`);
+  } catch (error) {
+    logger.error('Admin gemstones API error', error, {
+      message: 'Internal server error in gemstones API',
+      ip: req.headers['x-forwarded-for'] || req.socket.remoteAddress,
+      userAgent: req.headers['user-agent']
+    });
+    res.status(500).json({ error: 'Internal server error' });
   }
 }
