@@ -2,9 +2,10 @@ import { NextApiRequest, NextApiResponse } from 'next';
 import { hashPassword, generateToken } from '../../../utils/auth';
 import { logger } from '../../../utils/logger';
 import jwt from 'jsonwebtoken';
+import { getEnv, requireEnv } from '../../../utils/env';
 
 import { prisma } from '../../../lib/prisma';
-const JWT_SECRET = process.env.JWT_SECRET || 'your-super-secret-jwt-key-change-in-production';
+const JWT_SECRET = process.env.NODE_ENV === 'production' ? requireEnv('JWT_SECRET') : getEnv('JWT_SECRET') || 'dev-secret';
 
 export default async function handler(req: NextApiRequest, res: NextApiResponse) {
   if (req.method !== 'POST') {
@@ -81,9 +82,10 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
     }, JWT_SECRET, { expiresIn: '30d' });
 
     // Set secure cookies
+    const secureFlags = process.env.NODE_ENV === 'production' ? '; Secure; Priority=High' : '';
     res.setHeader('Set-Cookie', [
-      `token=${token}; HttpOnly; Path=/; Max-Age=86400; SameSite=Strict`,
-      `refreshToken=${refreshToken}; HttpOnly; Path=/; Max-Age=604800; SameSite=Strict`
+      `token=${token}; HttpOnly; Path=/; Max-Age=86400; SameSite=Strict${secureFlags}`,
+      `refreshToken=${refreshToken}; HttpOnly; Path=/; Max-Age=604800; SameSite=Strict${secureFlags}`
     ]);
 
     logger.info('User registration successful', {

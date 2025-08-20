@@ -117,3 +117,117 @@ fetch failed
  ✓ Compiled in 1419ms (203 modules)
  ✓ Compiled in 1287ms (203 modules)
  ✓ Compiled in 836ms (203 modules)
+ ✓ Compiled in 1467ms (203 modules)
+ ✓ Compiled in 1517ms (203 modules)
+ ✓ Compiled in 1152ms (322 modules)
+ ✓ Compiled in 418ms (322 modules)
+ ✓ Compiled in 1462ms (322 modules)
+ ✓ Compiled in 2.7s (330 modules)
+ ✓ Compiled / in 1376ms (675 modules)
+ ✓ Compiled /_error in 109ms (675 modules)
+Error: Cannot find module '/Users/p62668/my-gemstone-store/.next/server/pages/_document.js'
+Require stack:
+- /Users/p62668/my-gemstone-store/node_modules/next/dist/server/require.js
+- /Users/p62668/my-gemstone-store/node_modules/next/dist/server/load-components.js
+- /Users/p62668/my-gemstone-store/node_modules/next/dist/build/utils.js
+- /Users/p62668/my-gemstone-store/node_modules/next/dist/server/dev/hot-middleware.js
+- /Users/p62668/my-gemstone-store/node_modules/next/dist/server/dev/hot-reloader-webpack.js
+- /Users/p62668/my-gemstone-store/node_modules/next/dist/server/lib/router-utils/setup-dev-bundler.js
+- /Users/p62668/my-gemstone-store/node_modules/next/dist/server/lib/router-server.js
+- /Users/p62668/my-gemstone-store/node_modules/next/dist/server/lib/start-server.js
+    at Module._resolveFilename (node:internal/modules/cjs/loader:1212:15)
+    at /Users/p62668/my-gemstone-store/node_modules/next/dist/server/require-hook.js:54:36
+    at Module._load (node:internal/modules/cjs/loader:1043:27)
+    at Module.require (node:internal/modules/cjs/loader:1298:19)
+    at mod.require (/Users/p62668/my-gemstone-store/node_modules/next/dist/server/require-hook.js:64:28)
+    at require (node:internal/modules/helpers:182:18)
+    at requirePage (/Users/p62668/my-gemstone-store/node_modules/next/dist/server/require.js:109:84)
+    at /Users/p62668/my-gemstone-store/node_modules/next/dist/server/load-components.js:55:65
+    at async Promise.all (index 0)
+    at async loadComponentsImpl (/Users/p62668/my-gemstone-store/node_modules/next/dist/server/load-components.js:54:33)
+    at async DevServer.findPageComponentsImpl (/Users/p62668/my-gemstone-store/node_modules/next/dist/server/next-server.js:439:36) {
+  code: 'MODULE_NOT_FOUND',
+  requireStack: [
+    '/Users/p62668/my-gemstone-store/node_modules/next/dist/server/require.js',
+    '/Users/p62668/my-gemstone-store/node_modules/next/dist/server/load-components.js',
+    '/Users/p62668/my-gemstone-store/node_modules/next/dist/build/utils.js',
+    '/Users/p62668/my-gemstone-store/node_modules/next/dist/server/dev/hot-middleware.js',
+    '/Users/p62668/my-gemstone-store/node_modules/next/dist/server/dev/hot-reloader-webpack.js',
+    '/Users/p62668/my-gemstone-store/node_modules/next/dist/server/lib/router-utils/setup-dev-bundler.js',
+    '/Users/p62668/my-gemstone-store/node_modules/next/dist/server/lib/router-server.js',
+    '/Users/p62668/my-gemstone-store/node_modules/next/dist/server/lib/start-server.js'
+  ]
+}
+ ⨯ Error: Cannot find module '/Users/p62668/my-gemstone-store/.next/server/pages/_document.js'
+Require stack:
+- /Users/p62668/my-gemstone-store/node_modules/next/dist/server/require.js
+- /Users/p62668/my-gemstone-store/node_modules/next/dist/server/load-components.js
+- /Users/p62668/my-gemstone-store/node_modules/next/dist/build/utils.js
+- /Users/p62668/my-gemstone-store/node_modules/next/dist/server/dev/hot-middleware.js
+- /Users/p62668/my-gemstone-store/node_modules/next/dist/server/dev/hot-reloader-webpack.js
+- /Users/p62668/my-gemstone-store/node_modules/next/dist/server/lib/router-utils/setup-dev-bundler.js
+- /Users/p62668/my-gemstone-store/node_modules/next/dist/server/lib/router-server.js
+- /Users/p62668/my-gemstone-store/node_modules/next/dist/server/lib/start-server.js
+    at Module._resolveFilename (node:internal/modules/cjs/loader:1212:15)
+    at /Users/p62668/my-gemstone-store/node_modules/next/dist/server/require-hook.js:54:36
+    at Module._load (node:internal/modules/cjs/loader:1043:27)
+    at Module.require (node:internal/modules/cjs/loader:1298:19)
+    at mod.require (/Users/p62668/my-gemstone-store/node_modules/next/dist/server/require-hook.js:64:28)
+    at require (node:internal/modules/helpers:182:18)
+    at requirePage (/Users/p62668/my-gemstone-store/node_modules/next/dist/server/require.js:109:84)
+    at /Users/p62668/my-gemstone-store/node_modules/next/dist/server/load-components.js:55:65
+    at async Promise.all (index 0)
+    at async loadComponentsImpl (/Users/p62668/my-gemstone-store/node_modules/next/dist/server/load-components.js:54:33)
+    at async DevServer.findPageComponentsImpl (/Users/p62668/my-gemstone-store/node_modules/next/dist/server/next-server.js:439:36) {
+  code: 'MODULE_NOT_FOUND',
+  requireStack: [
+    '/Users/p62668/my-gemstone-store/node_modules/next/dist/server/require.js',
+    '/Users/p62668/my-gemstone-store/node_modules/next/dist/server/load-components.js',
+    '/Users/p62668/my-gemstone-store/node_modules/next/dist/build/utils.js',
+    '/Users/p62668/my-gemstone-store/node_modules/next/dist/server/dev/hot-middleware.js',
+    '/Users/p62668/my-gemstone-store/node_modules/next/dist/server/dev/hot-reloader-webpack.js',
+    '/Users/p62668/my-gemstone-store/node_modules/next/dist/server/lib/router-utils/setup-dev-bundler.js',
+    '/Users/p62668/my-gemstone-store/node_modules/next/dist/server/lib/router-server.js',
+    '/Users/p62668/my-gemstone-store/node_modules/next/dist/server/lib/start-server.js'
+  ],
+  page: '/'
+}
+Error: Cannot find module '/Users/p62668/my-gemstone-store/.next/server/pages/_document.js'
+Require stack:
+- /Users/p62668/my-gemstone-store/node_modules/next/dist/server/require.js
+- /Users/p62668/my-gemstone-store/node_modules/next/dist/server/load-components.js
+- /Users/p62668/my-gemstone-store/node_modules/next/dist/build/utils.js
+- /Users/p62668/my-gemstone-store/node_modules/next/dist/server/dev/hot-middleware.js
+- /Users/p62668/my-gemstone-store/node_modules/next/dist/server/dev/hot-reloader-webpack.js
+- /Users/p62668/my-gemstone-store/node_modules/next/dist/server/lib/router-utils/setup-dev-bundler.js
+- /Users/p62668/my-gemstone-store/node_modules/next/dist/server/lib/router-server.js
+- /Users/p62668/my-gemstone-store/node_modules/next/dist/server/lib/start-server.js
+    at Module._resolveFilename (node:internal/modules/cjs/loader:1212:15)
+    at /Users/p62668/my-gemstone-store/node_modules/next/dist/server/require-hook.js:54:36
+    at Module._load (node:internal/modules/cjs/loader:1043:27)
+    at Module.require (node:internal/modules/cjs/loader:1298:19)
+    at mod.require (/Users/p62668/my-gemstone-store/node_modules/next/dist/server/require-hook.js:64:28)
+    at require (node:internal/modules/helpers:182:18)
+    at requirePage (/Users/p62668/my-gemstone-store/node_modules/next/dist/server/require.js:109:84)
+    at /Users/p62668/my-gemstone-store/node_modules/next/dist/server/load-components.js:55:65
+    at async Promise.all (index 0)
+    at async loadComponentsImpl (/Users/p62668/my-gemstone-store/node_modules/next/dist/server/load-components.js:54:33)
+    at async DevServer.findPageComponentsImpl (/Users/p62668/my-gemstone-store/node_modules/next/dist/server/next-server.js:439:36) {
+  code: 'MODULE_NOT_FOUND',
+  requireStack: [
+    '/Users/p62668/my-gemstone-store/node_modules/next/dist/server/require.js',
+    '/Users/p62668/my-gemstone-store/node_modules/next/dist/server/load-components.js',
+    '/Users/p62668/my-gemstone-store/node_modules/next/dist/build/utils.js',
+    '/Users/p62668/my-gemstone-store/node_modules/next/dist/server/dev/hot-middleware.js',
+    '/Users/p62668/my-gemstone-store/node_modules/next/dist/server/dev/hot-reloader-webpack.js',
+    '/Users/p62668/my-gemstone-store/node_modules/next/dist/server/lib/router-utils/setup-dev-bundler.js',
+    '/Users/p62668/my-gemstone-store/node_modules/next/dist/server/lib/router-server.js',
+    '/Users/p62668/my-gemstone-store/node_modules/next/dist/server/lib/start-server.js'
+  ]
+}
+ ✓ Compiled in 1613ms (330 modules)
+ ✓ Compiled in 1142ms (209 modules)
+ ✓ Compiled in 1743ms (209 modules)
+ ✓ Compiled in 879ms (209 modules)
+ ✓ Compiled in 1256ms (209 modules)
+[?25h

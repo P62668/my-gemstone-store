@@ -1,5 +1,5 @@
 import type { NextApiRequest, NextApiResponse } from 'next';
-import { getUserFromRequest } from '../../utils/auth';
+import { getUserFromRequest } from '../../utils/getUser';
 
 import { prisma } from '../../lib/prisma';
 
@@ -40,7 +40,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
     }
   } else if (req.method === 'POST') {
     try {
-      const user = getUserFromRequest(req);
+      const user = await getUserFromRequest(req);
       if (!user) {
         return res.status(401).json({ error: 'Authentication required' });
       }

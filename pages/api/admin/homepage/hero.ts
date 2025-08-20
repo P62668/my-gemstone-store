@@ -1,16 +1,11 @@
 import { NextApiRequest, NextApiResponse } from 'next';
-import { requireAdminAuth } from '../../../../utils/adminSecurity';
-// For now, we'll use a simple in-memory approach or file-based storage
-// In a production environment, you'd want to use a proper database
-
+import { withAdminAuth } from '../../../../utils/authMiddleware';
 import { prisma } from '../../../../lib/prisma';
 
-export default async function handler(req: NextApiRequest, res: NextApiResponse) {
+async function handler(req: NextApiRequest, res: NextApiResponse) {
   try {
-    const adminUser = await requireAdminAuth(req, res);
-    if (!adminUser) {
-      return; // Response already sent by requireAdminAuth
-    }
+    const adminUser = (req as any).user;
+    if (!adminUser) return res.status(401).json({ error: 'Authentication required' });
   } catch (err: any) {
     return res.status(401).json({ error: 'Authentication required' });
   }
@@ -99,3 +94,5 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
     res.status(405).end(`Method ${req.method} Not Allowed`);
   }
 }
+
+export default withAdminAuth(handler);

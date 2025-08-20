@@ -1,5 +1,5 @@
 import type { NextApiRequest, NextApiResponse } from 'next';
-import { getUserFromRequest } from '../../../utils/auth';
+import { getUserFromRequest } from '../../../utils/getUser';
 
 // Use singleton pattern for Prisma client
 import { prisma } from '../../../lib/prisma';
@@ -9,7 +9,7 @@ import { prisma } from '../../../lib/prisma';
 export default async function handler(req: NextApiRequest, res: NextApiResponse) {
   let user;
   try {
-    user = getUserFromRequest(req);
+    user = await getUserFromRequest(req);
   } catch (err: any) {
     return res.status(401).json({ error: err.message });
   }

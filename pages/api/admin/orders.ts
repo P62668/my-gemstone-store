@@ -1,14 +1,12 @@
 import { NextApiRequest, NextApiResponse } from 'next';
 import { prisma } from '../../../lib/prisma';
-import { requireAdminAuth } from '../../../utils/adminSecurity';
+import { withAdminAuth } from '../../../utils/authMiddleware';
+import { logger } from '../../../utils/logger';
 
-export default async function handler(req: NextApiRequest, res: NextApiResponse) {
+async function handler(req: NextApiRequest, res: NextApiResponse) {
   try {
-    // Authenticate admin user
-    const adminUser = await requireAdminAuth(req, res);
-    if (!adminUser) {
-      return; // Response already sent by requireAdminAuth
-    }
+    const adminUser = (req as any).user;
+    if (!adminUser) return res.status(401).json({ success: false, error: 'Authentication required' });
 
     if (req.method === 'GET') {
       try {
@@ -53,7 +51,11 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
 
         res.status(200).json(transformedOrders);
       } catch (error) {
-        console.error('Error fetching orders:', error);
+        logger.error('Error fetching orders', error, {
+          message: 'Failed to fetch orders',
+          ip: req.headers['x-forwarded-for'] || req.socket.remoteAddress,
+          userAgent: req.headers['user-agent']
+        });
         res.status(500).json({ error: 'Failed to fetch orders' });
       }
     } else {
@@ -61,7 +63,14 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
       res.status(405).end(`Method ${req.method} Not Allowed`);
     }
   } catch (error) {
-    console.error('Admin orders API error:', error);
-    res.status(500).json({ error: 'Internal server error' });
+    logger.error('API Handler Error', req, error as Error);
+    const statusCode = (error as any)?.statusCode || 500;
+    const message = (error as any)?.message || 'Internal server error';
+    res.status(statusCode).json({
+      success: false,
+      error: message,
+    });
   }
 }
+
+export default withAdminAuth(handler);

@@ -1,8 +1,8 @@
 import { NextApiRequest, NextApiResponse } from 'next';
-import { requireAdminAuth } from '../../../utils/adminSecurity';
+import { withAdminAuth } from '../../../utils/authMiddleware';
 import { logger } from '../../../utils/logger';
 
-export default async function handler(req: NextApiRequest, res: NextApiResponse) {
+async function handler(req: NextApiRequest, res: NextApiResponse) {
   if (req.method !== 'GET') {
     return res.status(405).json({ 
       success: false, 
@@ -11,13 +11,9 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
   }
 
   try {
-    // Authenticate admin user
-    const adminUser = await requireAdminAuth(req, res);
-    if (!adminUser) {
-      return; // Response already sent by requireAdminAuth
-    }
+    // At this point withAdminAuth has validated and attached user
+    const adminUser = (req as any).user;
 
-    // Return admin user data
     res.status(200).json({
       success: true,
       user: {
@@ -31,7 +27,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
 
   } catch (error) {
     const errorMessage = error instanceof Error ? error.message : 'Unknown error occurred';
-    
+
     logger.error('Admin auth check error', error, {
       message: 'Admin authentication check failed',
       errorMessage,
@@ -39,13 +35,15 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
       userAgent: req.headers['user-agent']
     });
 
-    res.status(401).json({
+    res.status(500).json({
       success: false,
       error: {
-        message: 'Authentication required',
-        code: 'AUTH_REQUIRED'
+        message: 'Internal server error',
+        code: 'INTERNAL_ERROR'
       }
     });
   }
 }
+
+export default withAdminAuth(handler);
 

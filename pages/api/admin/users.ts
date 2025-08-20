@@ -1,14 +1,11 @@
 import { NextApiRequest, NextApiResponse } from 'next';
 import { prisma } from '../../../lib/prisma';
-import { requireAdminAuth } from '../../../utils/adminSecurity';
+import { withAdminAuth } from '../../../utils/authMiddleware';
 
-export default async function handler(req: NextApiRequest, res: NextApiResponse) {
+async function handler(req: NextApiRequest, res: NextApiResponse) {
   try {
-    // Authenticate admin user
-    const adminUser = await requireAdminAuth(req, res);
-    if (!adminUser) {
-      return; // Response already sent by requireAdminAuth
-    }
+    const adminUser = (req as any).user;
+    if (!adminUser) return res.status(401).json({ success: false, error: 'Authentication required' });
 
     if (req.method === 'GET') {
       try {
@@ -59,3 +56,5 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
     res.status(500).json({ error: 'Internal server error' });
   }
 }
+
+export default withAdminAuth(handler);

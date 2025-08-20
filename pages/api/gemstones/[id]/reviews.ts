@@ -1,5 +1,5 @@
 import type { NextApiRequest, NextApiResponse } from 'next';
-import { getUserFromRequest } from '../../../../utils/auth';
+import { getUserFromRequest } from '../../../../utils/getUser';
 
 import { prisma } from '../../../../lib/prisma';
 
@@ -26,7 +26,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
     // Authenticated reviews only; reviewer must have purchased the product
     let user;
     try {
-      user = getUserFromRequest(req);
+      user = await getUserFromRequest(req);
       if (!user) {
         return res.status(401).json({ error: 'Authentication required' });
       }

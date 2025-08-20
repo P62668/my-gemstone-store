@@ -1,6 +1,6 @@
 import type { NextApiRequest, NextApiResponse } from 'next';
 import bcrypt from 'bcryptjs';
-import { getUserFromRequest } from '../../../utils/auth';
+import { getUserFromRequest } from '../../../utils/getUser';
 
 // Use singleton pattern for Prisma client
 import { prisma } from '../../../lib/prisma';
@@ -13,7 +13,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
   }
   let user;
   try {
-    user = getUserFromRequest(req);
+    user = await getUserFromRequest(req);
     if (!user) {
       return res.status(401).json({ error: 'Authentication required' });
     }

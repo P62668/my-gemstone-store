@@ -1,8 +1,8 @@
 import { NextApiRequest, NextApiResponse } from 'next';
 import { prisma } from '../../../lib/prisma';
-import { requireAdminAuth } from '../../../utils/adminSecurity';
+import { withAdminAuth } from '../../../utils/authMiddleware';
 
-export default async function handler(req: NextApiRequest, res: NextApiResponse) {
+async function handler(req: NextApiRequest, res: NextApiResponse) {
   if (req.method !== 'GET') {
     return res.status(405).json({ 
       success: false,
@@ -11,11 +11,8 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
   }
 
   try {
-    // Authenticate admin user
-    const adminUser = await requireAdminAuth(req, res);
-    if (!adminUser) {
-      return; // Response already sent by requireAdminAuth
-    }
+    const adminUser = (req as any).user;
+    if (!adminUser) return res.status(401).json({ success: false, error: 'Authentication required' });
 
     // Get basic counts with error handling
     let userCount = 0, orderCount = 0, gemstoneCount = 0, categoryCount = 0;
@@ -166,3 +163,5 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
     });
   }
 }
+
+export default withAdminAuth(handler);

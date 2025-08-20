@@ -1,6 +1,6 @@
 import { NextApiRequest, NextApiResponse } from 'next';
 import { prisma } from '../../../lib/prisma';
-import { requireAdminAuth } from '../../../utils/adminSecurity';
+import { withAdminAuth } from '../../../utils/authMiddleware';
 import { logger } from '../../../utils/logger';
 
 // Cache for analytics data (in production, use Redis)
@@ -109,7 +109,7 @@ async function generateUserGrowthData() {
   }
 }
 
-export default async function handler(req: NextApiRequest, res: NextApiResponse) {
+async function handler(req: NextApiRequest, res: NextApiResponse) {
   if (req.method !== 'GET') {
     return res.status(405).json({ 
       success: false, 
@@ -118,11 +118,8 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
   }
 
   try {
-    // Authenticate admin user
-    const adminUser = await requireAdminAuth(req, res);
-    if (!adminUser) {
-      return; // Response already sent by requireAdminAuth
-    }
+    const adminUser = (req as any).user;
+    if (!adminUser) return res.status(401).json({ success: false, error: { message: 'Authentication required', code: 'AUTHENTICATION_ERROR' } });
 
     // Check cache first
     if (analyticsCache && Date.now() - analyticsCache.timestamp < CACHE_DURATION) {
@@ -400,6 +397,8 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
     });
   }
 }
+
+export default withAdminAuth(handler);
 
 // Clear cache endpoint (for admin use)
 export async function clearAnalyticsCache() {

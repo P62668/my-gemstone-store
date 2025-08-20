@@ -2,7 +2,7 @@ import type { NextApiRequest, NextApiResponse } from 'next';
 import multer from 'multer';
 import fs from 'fs';
 import path from 'path';
-import { requireAdminAuth } from '../../utils/adminSecurity';
+import { withAdminAuth } from '../../utils/authMiddleware';
 import { logger } from '../../utils/logger';
 
 export const config = {
@@ -64,7 +64,7 @@ const uploadMiddleware = (req: any, res: any): Promise<any> => {
   });
 };
 
-export default async function handler(req: NextApiRequest, res: NextApiResponse) {
+async function handler(req: NextApiRequest, res: NextApiResponse) {
   if (req.method !== 'POST') {
     return res.status(405).json({ 
       success: false,
@@ -73,11 +73,9 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
   }
 
   try {
-    // Authenticate admin user
-    const adminUser = await requireAdminAuth(req, res);
-    if (!adminUser) {
-      return; // Response already sent by requireAdminAuth
-    }
+    // Admin user is attached by withAdminAuth
+    const adminUser = (req as any).user;
+    if (!adminUser) return res.status(401).json({ success: false, error: 'Authentication required' });
 
     // Handle file upload
     const file = await uploadMiddleware(req, res);
@@ -155,3 +153,5 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
     });
   }
 }
+
+export default withAdminAuth(handler);

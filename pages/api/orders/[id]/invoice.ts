@@ -1,5 +1,5 @@
 import { NextApiRequest, NextApiResponse } from 'next';
-import { getUserFromRequest } from '../../../../utils/auth';
+import { getUserFromRequest } from '../../../../utils/getUser';
 import PDFDocument from 'pdfkit';
 
 import { prisma } from '../../../../lib/prisma';
@@ -12,7 +12,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
   const { id } = req.query;
   let user;
   try {
-    user = getUserFromRequest(req);
+    user = await getUserFromRequest(req);
     if (!user) {
       return res.status(401).json({ error: 'Not authenticated' });
     }

@@ -1,10 +1,13 @@
 import type { AppProps } from 'next/app';
 import { SessionProvider } from 'next-auth/react';
-import { Toaster } from 'react-hot-toast';
+import dynamic from 'next/dynamic';
 import { CartProvider } from '../components/context/CartContext';
 import { UserProvider } from '../components/context/UserContext';
 import { WishlistProvider } from '../components/context/WishlistContext';
 import '../styles/globals.css';
+
+// Load Toaster dynamically on client only to avoid SSR issues
+const Toaster = dynamic(() => import('react-hot-toast').then(mod => mod.Toaster), { ssr: false });
 
 export default function App({ Component, pageProps: { session, ...pageProps } }: AppProps) {
   return (

@@ -3,6 +3,7 @@ import bcrypt from 'bcryptjs';
 import jwt from 'jsonwebtoken';
 import { prisma } from '../lib/prisma';
 import { logger } from './logger';
+import { getEnv, requireEnv } from './env';
 
 export interface User {
   id: number;
@@ -26,7 +27,10 @@ export interface JWTPayload {
 }
 
 // JWT Configuration
-const JWT_SECRET: string = process.env.JWT_SECRET || 'your-super-secret-jwt-key-change-in-production';
+const JWT_SECRET: string =
+  process.env.NODE_ENV === 'production'
+    ? requireEnv('JWT_SECRET')
+    : process.env.JWT_SECRET || process.env.NEXTAUTH_SECRET || 'dev-secret';
 const JWT_EXPIRES_IN = process.env.JWT_EXPIRES_IN || '7d';
 const REFRESH_TOKEN_EXPIRES_IN = process.env.REFRESH_TOKEN_EXPIRES_IN || '30d';
 

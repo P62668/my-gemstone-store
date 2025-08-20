@@ -2,21 +2,24 @@ import { NextApiResponse } from 'next';
 import { withAuth, AuthenticatedRequest } from '../../../utils/authMiddleware';
 import { prisma } from '../../../lib/prisma';
 
-export default withAuth(async function handler(req: AuthenticatedRequest, res: NextApiResponse) {
+export default withAuth(async function handler(req: AuthenticatedRequest, res: NextApiResponse): Promise<void> {
   if (req.method !== 'GET' && req.method !== 'PATCH') {
     res.setHeader('Allow', ['GET', 'PATCH']);
-    return res.status(405).end(`Method ${req.method} Not Allowed`);
+    res.status(405).end(`Method ${req.method} Not Allowed`);
+    return;
   }
   const { id, history } = req.query;
 
   const orderId = Number(id);
   if (isNaN(orderId)) {
-    return res.status(400).json({ error: 'Invalid order ID' });
+    res.status(400).json({ error: 'Invalid order ID' });
+    return;
   }
 
   const user = req.user;
   if (!user || !user.id) {
-    return res.status(401).json({ error: 'Not authenticated' });
+    res.status(401).json({ error: 'Not authenticated' });
+    return;
   }
 
   // Handle PATCH request for order cancellation
@@ -25,7 +28,8 @@ export default withAuth(async function handler(req: AuthenticatedRequest, res: N
       const { status } = req.body;
 
       if (status !== 'cancelled') {
-        return res.status(400).json({ error: 'Only cancellation is allowed' });
+        res.status(400).json({ error: 'Only cancellation is allowed' });
+        return;
       }
 
       const order = await prisma.order.findUnique({
@@ -33,17 +37,20 @@ export default withAuth(async function handler(req: AuthenticatedRequest, res: N
       });
 
       if (!order) {
-        return res.status(404).json({ error: 'Order not found' });
+        res.status(404).json({ error: 'Order not found' });
+        return;
       }
 
       // Only allow if user owns the order or is admin
       if (order.userId !== user.id && user.role !== 'admin') {
-        return res.status(403).json({ error: 'Forbidden' });
+        res.status(403).json({ error: 'Forbidden' });
+        return;
       }
 
       // Check if order can be cancelled
       if (order.status === 'delivered' || order.status === 'cancelled') {
-        return res.status(400).json({ error: 'Order cannot be cancelled' });
+        res.status(400).json({ error: 'Order cannot be cancelled' });
+        return;
       }
 
       // Update order status
@@ -87,18 +94,21 @@ export default withAuth(async function handler(req: AuthenticatedRequest, res: N
                   ? item.gemstone.images.split(',').map((img) => img.trim())
                   : []
                 : Array.isArray(item.gemstone.images)
-                  ? item.gemstone.images
-                  : [],
+                ? item.gemstone.images
+                : [],
           },
         })),
       };
 
-      return res.status(200).json(parsedOrder);
+      res.status(200).json(parsedOrder);
+      return;
     } catch (error) {
       console.error('[API/orders/[id]] PATCH error:', error);
-      return res.status(500).json({ error: 'Failed to update order' });
+      res.status(500).json({ error: 'Failed to update order' });
+      return;
     }
   }
+
   try {
     const order = await prisma.order.findUnique({
       where: { id: orderId },
@@ -117,11 +127,13 @@ export default withAuth(async function handler(req: AuthenticatedRequest, res: N
       },
     });
     if (!order) {
-      return res.status(404).json({ error: 'Order not found' });
+      res.status(404).json({ error: 'Order not found' });
+      return;
     }
     // Only allow if user owns the order or is admin
     if (order.userId !== user.id && user.role !== 'admin') {
-      return res.status(403).json({ error: 'Forbidden' });
+      res.status(403).json({ error: 'Forbidden' });
+      return;
     }
     // Parse gemstone images
     const parsedOrder = {
@@ -136,8 +148,8 @@ export default withAuth(async function handler(req: AuthenticatedRequest, res: N
                 ? item.gemstone.images.split(',').map((img) => img.trim())
                 : []
               : Array.isArray(item.gemstone.images)
-                ? item.gemstone.images
-                : [],
+              ? item.gemstone.images
+              : [],
         },
       })),
     };
@@ -146,7 +158,8 @@ export default withAuth(async function handler(req: AuthenticatedRequest, res: N
         where: { orderId },
         orderBy: { createdAt: 'asc' },
       });
-      return res.status(200).json({ order: parsedOrder, history: statusHistory });
+      res.status(200).json({ order: parsedOrder, history: statusHistory });
+      return;
     }
     res.status(200).json(parsedOrder);
   } catch (error) {

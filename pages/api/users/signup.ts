@@ -3,9 +3,10 @@ import bcrypt from 'bcryptjs';
 import jwt from 'jsonwebtoken';
 import { enforceRateLimit } from '../../../utils/rateLimit';
 import { sendMail } from '../../../utils/mailer';
+import { getEnv, requireEnv } from '../../../utils/env';
 
 import { prisma } from '../../../lib/prisma';
-const JWT_SECRET = process.env.JWT_SECRET || 'dev_secret_key';
+const JWT_SECRET = process.env.NODE_ENV === 'production' ? requireEnv('JWT_SECRET') : getEnv('JWT_SECRET') || process.env.NEXTAUTH_SECRET || 'dev-secret';
 
 export default async function handler(req: NextApiRequest, res: NextApiResponse) {
   if (req.method !== 'POST') {

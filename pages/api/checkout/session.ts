@@ -1,6 +1,6 @@
 import Stripe from 'stripe';
 import type { NextApiRequest, NextApiResponse } from 'next';
-import { getUserFromRequest } from '../../../utils/auth';
+import { getUserFromRequest } from '../../../utils/getUser';
 
 // Generate unique order number
 function generateOrderNumber(): string {
@@ -30,17 +30,17 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
     // Try to get user, but don't fail if not authenticated (for testing)
     let user;
     try {
-      user = getUserFromRequest(req);
+      user = await getUserFromRequest(req);
       if (!user) {
         // For testing purposes, use a default user ID
-        user = { id: 1, email: 'test@example.com' };
+        user = { id: 1, email: 'test@example.com' } as any;
         console.log('Checkout session - Using default user:', user.id);
       } else {
         console.log('Checkout session - User authenticated:', user.id);
       }
     } catch (error) {
       // For testing purposes, use a default user ID
-      user = { id: 1, email: 'test@example.com' };
+      user = { id: 1, email: 'test@example.com' } as any;
       console.log('Checkout session - Using default user:', user.id);
     }
 

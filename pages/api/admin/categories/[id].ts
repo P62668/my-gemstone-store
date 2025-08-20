@@ -1,14 +1,12 @@
 import { NextApiRequest, NextApiResponse } from 'next';
 import { prisma } from '../../../../lib/prisma';
-import { requireAdminAuth } from '../../../../utils/adminSecurity';
+import { withAdminAuth } from '../../../../utils/authMiddleware';
+import { logger } from '../../../../utils/logger';
 
-export default async function handler(req: NextApiRequest, res: NextApiResponse) {
+async function handler(req: NextApiRequest, res: NextApiResponse) {
   try {
-    // Authenticate admin user
-    const adminUser = await requireAdminAuth(req, res);
-    if (!adminUser) {
-      return; // Response already sent by requireAdminAuth
-    }
+    const adminUser = (req as any).user;
+    if (!adminUser) return res.status(401).json({ success: false, error: 'Authentication required' });
 
     const { id } = req.query;
     const categoryId = parseInt(id as string);
@@ -16,48 +14,45 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
     if (req.method === 'PATCH') {
       try {
         const { name, description, image, active } = req.body;
-        const category = await prisma.category.update({
+
+        // Validate required fields
+        if (!name || !description) {
+          return res.status(400).json({ error: 'Name and description are required' });
+        }
+
+        const updatedCategory = await prisma.category.update({
           where: { id: categoryId },
           data: {
             name,
             description,
             image,
-            active,
+            active: active !== undefined ? active : true,
           },
         });
-        res.status(200).json(category);
+
+        res.status(200).json(updatedCategory);
       } catch (error) {
         console.error('Error updating category:', error);
         res.status(500).json({ error: 'Failed to update category' });
       }
     } else if (req.method === 'DELETE') {
       try {
-        // Check if category has gemstones
-        const gemstonesCount = await prisma.gemstone.count({
-          where: { categoryId: categoryId },
-        });
-
-        if (gemstonesCount > 0) {
-          return res.status(400).json({
-            error:
-              'Cannot delete category that has gemstones. Please remove or reassign gemstones first.',
-          });
-        }
-
-        await prisma.category.delete({
-          where: { id: categoryId },
-        });
-        res.status(204).end();
+        await prisma.category.delete({ where: { id: categoryId } });
+        res.status(200).json({ success: true });
       } catch (error) {
         console.error('Error deleting category:', error);
         res.status(500).json({ error: 'Failed to delete category' });
       }
-    } else {
-      res.setHeader('Allow', ['PATCH', 'DELETE']);
-      res.status(405).end(`Method ${req.method} Not Allowed`);
     }
   } catch (error) {
-    console.error('Admin category CRUD API error:', error);
-    res.status(500).json({ error: 'Internal server error' });
+    logger.error('API Handler Error', req, error as Error);
+    const statusCode = (error as any)?.statusCode || 500;
+    const message = (error as any)?.message || 'Internal server error';
+    res.status(statusCode).json({
+      success: false,
+      error: message,
+    });
   }
 }
+
+export default withAdminAuth(handler);

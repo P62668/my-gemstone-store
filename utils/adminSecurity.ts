@@ -2,6 +2,8 @@ import { NextApiRequest, NextApiResponse } from 'next';
 import jwt from 'jsonwebtoken';
 import { PrismaClient } from '@prisma/client';
 import { logger } from './logger';
+import { getUserFromRequest } from './getUser';
+import { setSecureCookie as setCookie } from './cookieParser';
 
 const prisma = new PrismaClient();
 
@@ -70,10 +72,11 @@ export const verifyToken = (token: string): any => {
 // Require admin authentication
 export const requireAdminAuth = async (req: NextApiRequest, res: NextApiResponse) => {
   try {
-    const token = getTokenFromRequest(req);
-    
-    if (!token) {
-      logger.warn('No authentication token provided', {
+    // Prefer centralized user resolution which checks NextAuth session, NextAuth JWT, then legacy token
+    const resolved = await getUserFromRequest(req, res);
+
+    if (!resolved) {
+      logger.warn('No authenticated user found', {
         message: 'Authentication required',
         ip: req.headers['x-forwarded-for'] || req.socket.remoteAddress,
         userAgent: req.headers['user-agent']
@@ -88,26 +91,9 @@ export const requireAdminAuth = async (req: NextApiRequest, res: NextApiResponse
       return null;
     }
 
-    const decoded = verifyToken(token);
-    if (!decoded || !decoded.userId) {
-      logger.warn('Invalid authentication token', {
-        message: 'Invalid token provided',
-        ip: req.headers['x-forwarded-for'] || req.socket.remoteAddress,
-        userAgent: req.headers['user-agent']
-      });
-      res.status(401).json({
-        success: false,
-        error: {
-          message: 'Invalid authentication token',
-          code: 'INVALID_TOKEN'
-        }
-      });
-      return null;
-    }
-
-    // Get user from database
+    // Fetch fresh user from DB to verify role and active state
     const user = await prisma.user.findUnique({
-      where: { id: decoded.userId },
+      where: { id: Number(resolved.id) },
       select: {
         id: true,
         email: true,
@@ -121,7 +107,7 @@ export const requireAdminAuth = async (req: NextApiRequest, res: NextApiResponse
     if (!user || user.role !== 'admin' || !user.active) {
       logger.warn('Unauthorized access attempt', {
         message: 'User not authorized for admin access',
-        userId: decoded.userId,
+        userId: resolved.id,
         ip: req.headers['x-forwarded-for'] || req.socket.remoteAddress,
         userAgent: req.headers['user-agent']
       });
@@ -170,17 +156,15 @@ export const generateAdminToken = (user: any): string => {
     role: user.role,
     type: 'admin'
   };
-  
+
   return jwt.sign(payload, process.env.JWT_SECRET!, {
     expiresIn: '24h'
   });
 };
 
-// Set secure cookie
-export const setSecureCookie = (res: NextApiResponse, name: string, value: string) => {
-  const isProduction = process.env.NODE_ENV === 'production';
-  const secureFlag = isProduction ? '; Secure' : '';
-  res.setHeader('Set-Cookie', `${name}=${value}; HttpOnly${secureFlag}; SameSite=Strict; Path=/; Max-Age=86400`);
+// Set secure cookie - delegate to central cookie helper
+export const setSecureCookie = (res: NextApiResponse, name: string, value: string, options: any = {}) => {
+  return setCookie(res, name, value, options);
 };
 
 // Validate admin input

@@ -1,14 +1,13 @@
 import { NextApiRequest, NextApiResponse } from 'next';
 import { prisma } from '../../../lib/prisma';
-import { requireAdminAuth } from '../../../utils/adminSecurity';
+import { withAdminAuth } from '../../../utils/authMiddleware';
 import { logger } from '../../../utils/logger';
 
-export default async function handler(req: NextApiRequest, res: NextApiResponse) {
+async function handler(req: NextApiRequest, res: NextApiResponse) {
   try {
-    // Authenticate admin user
-    const adminUser = await requireAdminAuth(req, res);
+    const adminUser = (req as any).user;
     if (!adminUser) {
-      return; // Response already sent by requireAdminAuth
+      return res.status(401).json({ success: false, error: 'Authentication required' });
     }
 
     if (req.method === 'GET') {
@@ -174,11 +173,14 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
       res.status(405).end(`Method ${req.method} Not Allowed`);
     }
   } catch (error) {
-    logger.error('Admin gemstones API error', error, {
-      message: 'Internal server error in gemstones API',
-      ip: req.headers['x-forwarded-for'] || req.socket.remoteAddress,
-      userAgent: req.headers['user-agent']
+    logger.error('API Handler Error', req, error as Error);
+    const statusCode = (error as any)?.statusCode || 500;
+    const message = (error as any)?.message || 'Internal server error';
+    res.status(statusCode).json({
+      success: false,
+      error: message,
     });
-    res.status(500).json({ error: 'Internal server error' });
   }
 }
+
+export default withAdminAuth(handler);
