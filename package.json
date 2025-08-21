@@ -8,7 +8,7 @@
     "build": "next build",
     "start": "node scripts/check-env.js && next start",
     "lint": "next lint",
-    "postinstall": "prisma generate",
+  "postinstall": "node -e \"if (process.env.NODE_ENV === 'production') { require('child_process').execSync('npx prisma generate --no-engine', { stdio: 'inherit' }); } else { require('child_process').execSync('npx prisma generate', { stdio: 'inherit' }); }\"",
     "prisma:seed": "node prisma/seed.js"
   },
   "dependencies": {

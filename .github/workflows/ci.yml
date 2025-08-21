@@ -11,7 +11,15 @@ jobs:
     runs-on: ubuntu-latest
 
     services:
-      # nothing extra required (using sqlite file in repo)
+      postgres:
+        image: postgres:15
+        env:
+          POSTGRES_USER: postgres
+          POSTGRES_PASSWORD: postgres
+          POSTGRES_DB: testdb
+        ports: ['5432:5432']
+        options: >-
+          --health-cmd pg_isready --health-interval 10s --health-timeout 5s --health-retries 5
 
     steps:
       - name: Checkout repository
@@ -29,25 +37,44 @@ jobs:
       - name: Generate Prisma client
         run: npx prisma generate
 
+      - name: Validate required secrets
+        env:
+          NEXTAUTH_SECRET: ${{ secrets.NEXTAUTH_SECRET }}
+          JWT_SECRET: ${{ secrets.JWT_SECRET }}
+        run: |
+          missing=""
+          for v in NEXTAUTH_SECRET JWT_SECRET; do
+            if [ -z "${!v}" ]; then missing="$missing $v"; fi
+          done
+          if [ -n "$missing" ]; then
+            echo "Missing required secrets:$missing"
+            echo "Set the required GitHub repository secrets before running CI (NEXTAUTH_SECRET, JWT_SECRET)."
+            exit 1
+          fi
+
       - name: Build production bundle
         env:
-          DATABASE_URL: file:./prisma/dev.db
+          DATABASE_URL: postgresql://postgres:postgres@localhost:5432/testdb
           NEXTAUTH_URL: http://localhost:3000
-          NEXTAUTH_SECRET: test-secret
-          JWT_SECRET: test-secret
+          NEXTAUTH_SECRET: ${{ secrets.NEXTAUTH_SECRET }}
+          JWT_SECRET: ${{ secrets.JWT_SECRET }}
         run: npm run build --if-present
 
       - name: Start production server
         env:
-          DATABASE_URL: file:./prisma/dev.db
+          DATABASE_URL: postgresql://postgres:postgres@localhost:5432/testdb
           NEXTAUTH_URL: http://localhost:3000
-          NEXTAUTH_SECRET: test-secret
-          JWT_SECRET: test-secret
+          NEXTAUTH_SECRET: ${{ secrets.NEXTAUTH_SECRET }}
+          JWT_SECRET: ${{ secrets.JWT_SECRET }}
+          STRIPE_SECRET_KEY: ${{ secrets.STRIPE_SECRET_KEY }}
         run: |
           npm run start &
           npx wait-on http://localhost:3000
 
       - name: Run smoke tests
+        env:
+          TEST_BASE_URL: http://localhost:3000
+          ADMIN_PASSWORD: ${{ secrets.ADMIN_PASSWORD }}
         run: node scripts/test-all-apis.js
 
       - name: Upload test report

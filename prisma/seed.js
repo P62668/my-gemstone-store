@@ -1,3 +1,7 @@
+// Force Prisma to prefer native library engine in local dev to avoid fetch/WASM issues
+if (!process.env.PRISMA_CLIENT_ENGINE_TYPE) process.env.PRISMA_CLIENT_ENGINE_TYPE = 'library';
+if (!process.env.PRISMA_FORCE_NAPI) process.env.PRISMA_FORCE_NAPI = '1';
+
 const { PrismaClient } = require('@prisma/client');
 const bcrypt = require('bcryptjs');
 const { requireEnv } = require('../utils/env');

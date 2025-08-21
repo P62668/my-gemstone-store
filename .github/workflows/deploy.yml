@@ -1,0 +1,35 @@
+name: Deploy
+
+on:
+  workflow_dispatch:
+  push:
+    branches: [ main, master ]
+
+jobs:
+  build-and-deploy:
+    runs-on: macos-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Use Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+      - name: Install dependencies
+        run: npm ci
+      - name: Generate Prisma Client (no engine) for production
+        run: npx prisma generate --no-engine
+      - name: Run migrations
+        env:
+          DATABASE_URL: ${{ secrets.DATABASE_URL }}
+        run: npx prisma migrate deploy
+      - name: Seed production (manual only)
+        if: ${{ github.event_name == 'workflow_dispatch' }}
+        env:
+          DATABASE_URL: ${{ secrets.DATABASE_URL }}
+          ADMIN_PASSWORD: ${{ secrets.ADMIN_PASSWORD }}
+          ALLOW_PROD_SEED: '1'
+        run: ADMIN_PASSWORD="$ADMIN_PASSWORD" ALLOW_PROD_SEED=1 NODE_ENV=production node prisma/seed.js
+      - name: Build
+        run: npm run build
+      - name: Deploy (Vercel example)
+        run: echo 'Deploy step here - use vercel/cli or your own provider'

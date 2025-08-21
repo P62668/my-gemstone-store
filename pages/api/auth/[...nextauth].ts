@@ -2,7 +2,6 @@ import NextAuth, { NextAuthOptions } from 'next-auth';
 import CredentialsProvider from 'next-auth/providers/credentials';
 import { PrismaAdapter } from '@next-auth/prisma-adapter';
 import bcrypt from 'bcryptjs';
-import jwt from 'jsonwebtoken';
 
 import { prisma } from '../../../lib/prisma';
 import { getEnv } from '../../../utils/env';
@@ -86,22 +85,6 @@ export const authOptions: NextAuthOptions = {
   session: {
     strategy: 'jwt',
     maxAge: 7 * 24 * 60 * 60, // 7 days
-  },
-  jwt: {
-    secret: getEnv('NEXTAUTH_SECRET') || getEnv('JWT_SECRET') || 'dev-secret',
-    encode: async ({ secret, token }) => {
-      if (!token) return '';
-      return jwt.sign(token, secret, { algorithm: 'HS256' });
-    },
-    decode: async ({ secret, token }) => {
-      if (!token) return null;
-      try {
-        return jwt.verify(token, secret, { algorithms: ['HS256'] }) as any;
-      } catch (error) {
-        console.error('JWT decode error:', error);
-        return null;
-      }
-    },
   },
   callbacks: {
     async jwt({ token, user }) {
