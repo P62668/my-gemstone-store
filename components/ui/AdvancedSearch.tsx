@@ -1,6 +1,11 @@
 import React, { useState, useEffect, useRef } from 'react';
-import { motion, AnimatePresence } from 'framer-motion';
+import dynamic from 'next/dynamic';
 import { Search, Filter, X, Sparkles, TrendingUp, Star } from 'lucide-react';
+import Image from 'next/image';
+
+// Dynamically import framer-motion components
+const MotionDiv = dynamic(() => import('framer-motion').then(mod => mod.motion.div), { ssr: false });
+const AnimatePresence = dynamic(() => import('framer-motion').then(mod => mod.AnimatePresence), { ssr: false });
 
 interface SearchSuggestion {
   id: number;
@@ -156,14 +161,110 @@ const AdvancedSearch: React.FC<AdvancedSearchProps> = ({
       </div>
 
       {/* Advanced Filters */}
-      <AnimatePresence>
-        {isExpanded && (
-          <motion.div
-            initial={{ opacity: 0, height: 0 }}
-            animate={{ opacity: 1, height: 'auto' }}
-            exit={{ opacity: 0, height: 0 }}
-            className="mt-4 bg-white rounded-xl shadow-lg border border-gray-200 p-6"
-          >
+      {typeof window !== 'undefined' ? (
+        <AnimatePresence>
+          {isExpanded && (
+            <MotionDiv
+              initial={{ opacity: 0, height: 0 }}
+              animate={{ opacity: 1, height: 'auto' }}
+              exit={{ opacity: 0, height: 0 }}
+              className="mt-4 bg-white rounded-xl shadow-lg border border-gray-200 p-6"
+            >
+              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
+                {/* Category Filter */}
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-2">Category</label>
+                  <select
+                    value={selectedFilters.category}
+                    onChange={(e) =>
+                      setSelectedFilters({ ...selectedFilters, category: e.target.value })
+                    }
+                    className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-amber-500 focus:border-transparent"
+                  >
+                    <option value="">All Categories</option>
+                    {categories.map((cat) => (
+                      <option key={cat.id} value={cat.id}>
+                        {cat.name}
+                      </option>
+                    ))}
+                  </select>
+                </div>
+
+                {/* Price Range */}
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-2">Price Range</label>
+                  <div className="flex space-x-2">
+                    <input
+                      type="number"
+                      placeholder="Min"
+                      value={selectedFilters.priceRange[0]}
+                      onChange={(e) =>
+                        setSelectedFilters({
+                          ...selectedFilters,
+                          priceRange: [parseInt(e.target.value) || 0, selectedFilters.priceRange[1] || 100000],
+                        })
+                      }
+                      className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-amber-500 focus:border-transparent"
+                    />
+                    <input
+                      type="number"
+                      placeholder="Max"
+                      value={selectedFilters.priceRange[1]}
+                      onChange={(e) =>
+                        setSelectedFilters({
+                          ...selectedFilters,
+                          priceRange: [
+                            selectedFilters.priceRange[0] || 0,
+                            parseInt(e.target.value) || 100000,
+                          ],
+                        })
+                      }
+                      className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-amber-500 focus:border-transparent"
+                    />
+                  </div>
+                </div>
+
+                {/* Rating Filter */}
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-2">Rating</label>
+                  <select
+                    value={selectedFilters.rating}
+                    onChange={(e) =>
+                      setSelectedFilters({ ...selectedFilters, rating: e.target.value })
+                    }
+                    className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-amber-500 focus:border-transparent"
+                  >
+                    <option value="">Any Rating</option>
+                    <option value="4">4+ Stars</option>
+                    <option value="3">3+ Stars</option>
+                    <option value="2">2+ Stars</option>
+                  </select>
+                </div>
+
+                {/* Sort By */}
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-2">Sort By</label>
+                  <select
+                    value={selectedFilters.sortBy}
+                    onChange={(e) =>
+                      setSelectedFilters({ ...selectedFilters, sortBy: e.target.value })
+                    }
+                    className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-amber-500 focus:border-transparent"
+                  >
+                    <option value="relevance">Relevance</option>
+                    <option value="price-low">Price: Low to High</option>
+                    <option value="price-high">Price: High to Low</option>
+                    <option value="rating">Highest Rated</option>
+                    <option value="newest">Newest First</option>
+                  </select>
+                </div>
+              </div>
+            </MotionDiv>
+          )}
+        </AnimatePresence>
+      ) : (
+        isExpanded && (
+          <div className="mt-4 bg-white rounded-xl shadow-lg border border-gray-200 p-6">
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
               {/* Category Filter */}
               <div>
@@ -253,19 +354,112 @@ const AdvancedSearch: React.FC<AdvancedSearchProps> = ({
                 </select>
               </div>
             </div>
-          </motion.div>
-        )}
-      </AnimatePresence>
+          </div>
+        )
+      )}
 
       {/* Search Suggestions */}
-      <AnimatePresence>
-        {showSuggestions && (
-          <motion.div
-            initial={{ opacity: 0, y: -10 }}
-            animate={{ opacity: 1, y: 0 }}
-            exit={{ opacity: 0, y: -10 }}
-            className="absolute top-full left-0 right-0 mt-2 bg-white rounded-xl shadow-xl border border-gray-200 z-50 max-h-96 overflow-y-auto"
-          >
+      {typeof window !== 'undefined' ? (
+        <AnimatePresence>
+          {showSuggestions && (
+            <MotionDiv
+              initial={{ opacity: 0, y: -10 }}
+              animate={{ opacity: 1, y: 0 }}
+              exit={{ opacity: 0, y: -10 }}
+              className="absolute top-full left-0 right-0 mt-2 bg-white rounded-xl shadow-xl border border-gray-200 z-50 max-h-96 overflow-y-auto"
+            >
+              {/* Recent Searches */}
+              {recentSearches.length > 0 && (
+                <div className="p-4 border-b border-gray-100">
+                  <h4 className="text-sm font-medium text-gray-700 mb-2">Recent Searches</h4>
+                  <div className="flex flex-wrap gap-2">
+                    {recentSearches.slice(0, 5).map((search, index) => (
+                      <button
+                        key={index}
+                        onClick={() => setQuery(search)}
+                        className="px-3 py-1 bg-gray-100 text-gray-700 rounded-full text-sm hover:bg-gray-200 transition-colors"
+                      >
+                        {search}
+                      </button>
+                    ))}
+                  </div>
+                </div>
+              )}
+
+              {/* Trending Searches */}
+              {trendingSearches.length > 0 && (
+                <div className="p-4 border-b border-gray-100">
+                  <h4 className="text-sm font-medium text-gray-700 mb-2 flex items-center">
+                    <TrendingUp className="w-4 h-4 mr-1" />
+                    Trending
+                  </h4>
+                  <div className="flex flex-wrap gap-2">
+                    {trendingSearches.slice(0, 5).map((search, index) => (
+                      <button
+                        key={index}
+                        onClick={() => setQuery(search)}
+                        className="px-3 py-1 bg-amber-100 text-amber-700 rounded-full text-sm hover:bg-amber-200 transition-colors"
+                      >
+                        {search}
+                      </button>
+                    ))}
+                  </div>
+                </div>
+              )}
+
+              {/* Product Suggestions */}
+              {suggestions.length > 0 && (
+                <div className="p-4">
+                  <h4 className="text-sm font-medium text-gray-700 mb-2 flex items-center">
+                    <Sparkles className="w-4 h-4 mr-1" />
+                    Suggestions
+                  </h4>
+                  <div className="space-y-2">
+                    {suggestions.map((suggestion) => (
+                      <button
+                        key={suggestion.id}
+                        onClick={() => onSuggestionClick(suggestion)}
+                        className="w-full flex items-center space-x-3 p-2 hover:bg-gray-50 rounded-lg transition-colors"
+                      >
+                        <Image
+                          src={suggestion.image}
+                          alt={suggestion.name}
+                          width={40}
+                          height={40}
+                          className="w-10 h-10 rounded-lg object-cover"
+                        />
+                        <div className="flex-1 text-left">
+                          <div className="font-medium text-gray-900">{suggestion.name}</div>
+                          <div className="text-sm text-gray-500">{suggestion.category}</div>
+                        </div>
+                        <div className="text-right">
+                          <div className="font-medium text-gray-900">
+                            ₹{suggestion.price.toLocaleString()}
+                          </div>
+                          <div className="flex items-center text-sm text-gray-500">
+                            <Star className="w-4 h-4 fill-current text-yellow-400" />
+                            {suggestion.rating}
+                          </div>
+                        </div>
+                      </button>
+                    ))}
+                  </div>
+                </div>
+              )}
+
+              {/* No Results */}
+              {query.length > 2 && suggestions.length === 0 && (
+                <div className="p-4 text-center text-gray-500">
+                  <p>No results found for &quot;{query}&quot;</p>
+                  <p className="text-sm mt-1">Try different keywords or browse categories</p>
+                </div>
+              )}
+            </MotionDiv>
+          )}
+        </AnimatePresence>
+      ) : (
+        showSuggestions && (
+          <div className="absolute top-full left-0 right-0 mt-2 bg-white rounded-xl shadow-xl border border-gray-200 z-50 max-h-96 overflow-y-auto">
             {/* Recent Searches */}
             {recentSearches.length > 0 && (
               <div className="p-4 border-b border-gray-100">
@@ -319,9 +513,11 @@ const AdvancedSearch: React.FC<AdvancedSearchProps> = ({
                       onClick={() => onSuggestionClick(suggestion)}
                       className="w-full flex items-center space-x-3 p-2 hover:bg-gray-50 rounded-lg transition-colors"
                     >
-                      <img
+                      <Image
                         src={suggestion.image}
                         alt={suggestion.name}
+                        width={40}
+                        height={40}
                         className="w-10 h-10 rounded-lg object-cover"
                       />
                       <div className="flex-1 text-left">
@@ -350,9 +546,9 @@ const AdvancedSearch: React.FC<AdvancedSearchProps> = ({
                 <p className="text-sm mt-1">Try different keywords or browse categories</p>
               </div>
             )}
-          </motion.div>
-        )}
-      </AnimatePresence>
+          </div>
+        )
+      )}
     </div>
   );
 };

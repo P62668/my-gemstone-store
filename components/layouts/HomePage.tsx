@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { toast } from 'react-hot-toast';
+import LuxuryButton from '../ui/LuxuryButton';
 
 interface HeroData {
   title?: string;
@@ -116,9 +117,9 @@ const HomePage: React.FC<HomePageProps> = ({ initialData }) => {
           <p className="text-xl text-gray-600 max-w-3xl mx-auto mb-8">
             {hero?.subtitle || "Discover the finest gemstones from Shankarmala's heritage jewelry collection"}
           </p>
-          <button className="px-8 py-4 bg-amber-500 text-white font-semibold rounded-2xl">
+          <LuxuryButton variant="primary" size="lg">
             {hero?.ctaText || "Explore Collection"}
-          </button>
+          </LuxuryButton>
         </div>
       </section>
 

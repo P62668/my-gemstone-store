@@ -1,5 +1,6 @@
 import type { NextApiRequest, NextApiResponse } from 'next';
-import { prisma } from '../../../lib/prisma';
+import prisma from '../../../lib/prisma';
+import { logger } from '../../../utils/logger';
 
 export default async function handler(req: NextApiRequest, res: NextApiResponse) {
   const { id, related, recommended } = req.query;
@@ -19,15 +20,15 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
       });
       return res.status(200).json(
         relatedGems.map((g) => {
-          let parsedImages = [];
+          let parsedImages: string[] = [];
           try {
             if (typeof g.images === 'string' && g.images.trim()) {
               parsedImages = JSON.parse(g.images);
             } else if (Array.isArray(g.images)) {
-              parsedImages = g.images;
+              parsedImages = g.images as string[];
             }
           } catch (error) {
-            console.error('Error parsing images for gemstone:', g.id, error);
+            logger.error('Error parsing images for gemstone', error, { gemstoneId: g.id });
             parsedImages = [];
           }
           
@@ -55,15 +56,15 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
       });
       return res.status(200).json(
         recommendedGems.map((g) => {
-          let parsedImages = [];
+          let parsedImages: string[] = [];
           try {
             if (typeof g.images === 'string' && g.images.trim()) {
               parsedImages = JSON.parse(g.images);
             } else if (Array.isArray(g.images)) {
-              parsedImages = g.images;
+              parsedImages = g.images as string[];
             }
           } catch (error) {
-            console.error('Error parsing images for gemstone:', g.id, error);
+            logger.error('Error parsing images for gemstone', error, { gemstoneId: g.id });
             parsedImages = [];
           }
           
@@ -96,15 +97,15 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
     if (!gemstone) {
       return res.status(404).json({ error: 'Gemstone not found' });
     }
-    let parsedImages = [];
+    let parsedImages: string[] = [];
     try {
       if (typeof gemstone.images === 'string' && gemstone.images.trim()) {
         parsedImages = JSON.parse(gemstone.images);
       } else if (Array.isArray(gemstone.images)) {
-        parsedImages = gemstone.images;
+        parsedImages = gemstone.images as string[];
       }
     } catch (error) {
-      console.error('Error parsing images for gemstone:', gemstone.id, error);
+      logger.error('Error parsing images for gemstone', error, { gemstoneId: gemstone.id });
       parsedImages = [];
     }
     
@@ -113,7 +114,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
       images: parsedImages,
     });
   } catch (error) {
-    console.error('Error fetching gemstone:', error);
+    logger.error('Error fetching gemstone', error, { id });
     res.status(500).json({ error: 'Failed to fetch gemstone' });
   }
 }

@@ -1,9 +1,11 @@
+'use client';
+
 import React, { useState, useEffect } from 'react';
 import { useRouter } from 'next/router';
 import AdminLayout from '../../components/AdminLayout';
 import { motion, AnimatePresence } from 'framer-motion';
 import toast from 'react-hot-toast';
-import { saveAs } from 'file-saver';
+import { Truck, Package, CreditCard, Shield, Download } from 'lucide-react';
 
 interface OrderItem {
   id: number;
@@ -15,24 +17,31 @@ interface OrderItem {
 
 interface Order {
   id: number;
+  orderNumber: string;
   userId: number;
   userName: string;
   userEmail: string;
   items: OrderItem[];
   total: number;
   status: 'pending' | 'processing' | 'shipped' | 'delivered' | 'cancelled';
+  paymentStatus: 'pending' | 'paid' | 'failed' | 'refunded';
+  paymentMethod: string;
+  trackingNumber?: string;
   createdAt: string;
   updatedAt: string;
 }
 
 // CSV export helper
-function exportOrdersToCSV(orders: Order[]) {
-  const header = ['Order ID', 'Customer', 'Email', 'Status', 'Total', 'Date', 'Items'];
+async function exportOrdersToCSV(orders: Order[]) {
+  const header = ['Order ID', 'Order Number', 'Customer', 'Email', 'Status', 'Payment Status', 'Payment Method', 'Total', 'Date', 'Items'];
   const rows = orders.map((order) => [
     order.id,
+    order.orderNumber,
     order.userName,
     order.userEmail,
     order.status,
+    order.paymentStatus,
+    order.paymentMethod,
     order.total,
     new Date(order.createdAt).toLocaleString(),
     order.items.map((i) => `${i.gemstoneName} x${i.quantity}`).join('; '),
@@ -46,7 +55,12 @@ function exportOrdersToCSV(orders: Order[]) {
     )
     .join('\n');
   const blob = new Blob([csv], { type: 'text/csv;charset=utf-8;' });
-  saveAs(blob, `orders-export-${new Date().toISOString().slice(0, 10)}.csv`);
+  
+  // Dynamically import file-saver only on the client side
+  if (typeof window !== 'undefined') {
+    const { saveAs } = await import('file-saver');
+    saveAs(blob, `orders-export-${new Date().toISOString().slice(0, 10)}.csv`);
+  }
 }
 
 const OrdersAdmin: React.FC = () => {
@@ -54,65 +68,74 @@ const OrdersAdmin: React.FC = () => {
   const [orders, setOrders] = useState<Order[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const [success, setSuccess] = useState<string | null>(null);
   const [selectedOrder, setSelectedOrder] = useState<Order | null>(null);
   const [filterStatus, setFilterStatus] = useState<string>('all');
+  const [filterPaymentStatus, setFilterPaymentStatus] = useState<string>('all');
   const [searchQuery, setSearchQuery] = useState('');
   const [currentPage, setCurrentPage] = useState(1);
   const [ordersPerPage] = useState(10);
   const [showOrderDetails, setShowOrderDetails] = useState(false);
+  const [stats, setStats] = useState({
+    total: 0,
+    totalValue: 0,
+    pending: 0,
+    shipped: 0,
+    delivered: 0,
+    cancelled: 0,
+  });
+  const [pagination, setPagination] = useState({
+    page: 1,
+    limit: 10,
+    total: 0,
+    pages: 1,
+  });
 
   useEffect(() => {
-    checkAuthAndFetch();
-  }, []);
-
-  const checkAuthAndFetch = async () => {
-    try {
-      // Check if user is authenticated by calling the admin auth endpoint
-      const res = await fetch('/api/admin/auth', { credentials: 'include' });
-      if (!res.ok) {
-        router.push('/admin/login');
-        return;
-      }
-      const authData = await res.json();
-      if (authData.user.role !== 'admin') {
-        router.push('/admin/login');
-        return;
-      }
-      fetchOrders();
-    } catch (error) {
-      console.error('Admin auth check failed:', error);
-      router.push('/admin/login');
-    }
-  };
+  // server-side guard enforces admin access
+  fetchOrders();
+  }, [currentPage, filterStatus, filterPaymentStatus]);
 
   const fetchOrders = async () => {
     setLoading(true);
     setError(null);
     try {
-      const res = await fetch('/api/admin/orders', { credentials: 'include' });
+      const params = new URLSearchParams();
+      params.append('page', currentPage.toString());
+      params.append('limit', ordersPerPage.toString());
+      if (filterStatus !== 'all') params.append('status', filterStatus);
+      if (filterPaymentStatus !== 'all') params.append('paymentStatus', filterPaymentStatus);
+
+      const res = await fetch(`/api/admin/orders?${params}`, { credentials: 'include' });
       if (!res.ok) throw new Error('Failed to fetch orders');
       const data = await res.json();
 
       // Transform the data to match our interface
-      const transformedOrders: Order[] = data.map((order: any) => ({
+      const transformedOrders: Order[] = data.orders.map((order: any) => ({
         id: order.id,
-        userId: order.user.id,
-        userName: order.user.name,
-        userEmail: order.user.email,
+        orderNumber: order.orderNumber,
+        userId: order.user?.id || 0,
+        userName: order.customerName,
+        userEmail: order.user?.email || 'N/A',
         items: order.items.map((item: any) => ({
           id: item.id,
-          gemstoneId: item.gemstone.id,
-          gemstoneName: item.gemstone.name,
+          gemstoneId: item.gemstone?.id || 0,
+          gemstoneName: item.gemstone?.name || 'Unknown',
           quantity: item.quantity,
           price: item.price,
         })),
         total: order.total,
         status: order.status,
+        paymentStatus: order.paymentStatus,
+        paymentMethod: order.paymentMethod,
+        trackingNumber: order.trackingNumber,
         createdAt: order.createdAt,
         updatedAt: order.updatedAt,
       }));
 
       setOrders(transformedOrders);
+      setStats(data.stats);
+      setPagination(data.pagination);
     } catch (error: any) {
       setError(error.message || 'Failed to fetch orders');
       setOrders([]);
@@ -141,26 +164,34 @@ const OrdersAdmin: React.FC = () => {
           order.id === orderId ? { ...order, status: updatedOrder.status } : order,
         ),
       );
-      toast.success('Order status updated successfully!');
+      setSuccess('Order status updated successfully!');
+      fetchOrders(); // Refresh stats
     } catch (error) {
       console.error('Failed to update order status:', error);
-      toast.error(error instanceof Error ? error.message : 'Failed to update order status');
+      setError(error instanceof Error ? error.message : 'Failed to update order status');
     }
+  };
+
+  const handlePageChange = (newPage: number) => {
+    setCurrentPage(newPage);
   };
 
   const filteredOrders = orders.filter((order) => {
     const matchesStatus = filterStatus === 'all' || order.status === filterStatus;
+    const matchesPaymentStatus = filterPaymentStatus === 'all' || order.paymentStatus === filterPaymentStatus;
     const matchesSearch =
       order.userName.toLowerCase().includes(searchQuery.toLowerCase()) ||
       order.userEmail.toLowerCase().includes(searchQuery.toLowerCase()) ||
+      order.orderNumber.toLowerCase().includes(searchQuery.toLowerCase()) ||
       order.id.toString().includes(searchQuery);
-    return matchesStatus && matchesSearch;
+    return matchesStatus && matchesPaymentStatus && matchesSearch;
   });
 
+  // Pagination
+  const totalPages = Math.ceil(filteredOrders.length / ordersPerPage);
   const indexOfLastOrder = currentPage * ordersPerPage;
   const indexOfFirstOrder = indexOfLastOrder - ordersPerPage;
   const currentOrders = filteredOrders.slice(indexOfFirstOrder, indexOfLastOrder);
-  const totalPages = Math.ceil(filteredOrders.length / ordersPerPage);
 
   const statusColors = {
     pending: 'bg-yellow-100 text-yellow-800',
@@ -168,6 +199,13 @@ const OrdersAdmin: React.FC = () => {
     shipped: 'bg-purple-100 text-purple-800',
     delivered: 'bg-green-100 text-green-800',
     cancelled: 'bg-red-100 text-red-800',
+  };
+
+  const paymentStatusColors = {
+    pending: 'bg-yellow-100 text-yellow-800',
+    paid: 'bg-green-100 text-green-800',
+    failed: 'bg-red-100 text-red-800',
+    refunded: 'bg-gray-100 text-gray-800',
   };
 
   const statusIcons = {
@@ -178,9 +216,16 @@ const OrdersAdmin: React.FC = () => {
     cancelled: '❌',
   };
 
+  const paymentMethodIcons = {
+    card: <CreditCard className="w-4 h-4" />,
+    paypal: <span className="font-bold">P</span>,
+    razorpay: <span className="font-bold">R</span>,
+    cod: <span className="font-bold">COD</span>,
+  };
+
   if (loading) {
     return (
-      <AdminLayout title="Orders Management - Shankarmala" pageIcon="📦">
+      <AdminLayout title="Orders Management - Shankarmala">
         <div className="max-w-7xl mx-auto py-12 px-4">
           <motion.div
             className="text-center py-12"
@@ -199,26 +244,19 @@ const OrdersAdmin: React.FC = () => {
 
   if (error) {
     return (
-      <AdminLayout title="Orders Management - Shankarmala" pageIcon="📦">
-        <div className="max-w-7xl mx-auto py-12 px-4">
-          <motion.div
-            className="text-center py-12"
-            initial={{ opacity: 0 }}
-            animate={{ opacity: 1 }}
-            transition={{ duration: 0.5 }}
-          >
-            <div className="text-6xl mb-4">❌</div>
-            <div className="text-2xl font-bold text-red-900 mb-2">Error Loading Orders</div>
-            <div className="text-red-600 mb-4">{error}</div>
-            <motion.button
+      <AdminLayout title="Orders Management - Shankarmala">
+        <div className="max-w-2xl w-full mx-auto py-12 px-4">
+          <div className="bg-red-100 border border-red-300 text-red-800 px-6 py-6 rounded-xl text-center font-semibold shadow mb-6">
+            <div className="text-5xl mb-2">❌</div>
+            <div className="text-2xl font-bold text-red-700 mb-2">Error Loading Orders</div>
+            <div className="text-red-800 mb-4">{error}</div>
+            <button
               onClick={fetchOrders}
               className="bg-amber-600 text-white px-6 py-3 rounded-xl font-semibold hover:bg-amber-700 transition-colors"
-              whileHover={{ scale: 1.05 }}
-              whileTap={{ scale: 0.95 }}
             >
               Try Again
-            </motion.button>
-          </motion.div>
+            </button>
+          </div>
         </div>
       </AdminLayout>
     );
@@ -226,7 +264,7 @@ const OrdersAdmin: React.FC = () => {
 
   if (!orders || orders.length === 0) {
     return (
-      <AdminLayout title="Orders Management - Shankarmala" pageIcon="📦">
+      <AdminLayout title="Orders Management - Shankarmala">
         <div className="max-w-7xl mx-auto py-12 px-4">
           <motion.div
             className="text-center py-12"
@@ -246,8 +284,13 @@ const OrdersAdmin: React.FC = () => {
   }
 
   return (
-    <AdminLayout title="Orders Management - Shankarmala" pageIcon="📦">
+    <AdminLayout title="Orders Management - Shankarmala">
       <div className="max-w-7xl mx-auto py-12 px-4">
+        {(error || success) && (
+          <div className={`rounded-xl p-4 mb-6 font-semibold text-center shadow border ${error ? 'bg-red-100 border-red-300 text-red-800' : 'bg-green-100 border-green-300 text-green-800'}`}>
+            {error || success}
+          </div>
+        )}
         {/* Header */}
         <motion.div
           className="flex justify-between items-center mb-8"
@@ -650,3 +693,13 @@ const OrdersAdmin: React.FC = () => {
 };
 
 export default OrdersAdmin;
+
+// Server-side guard
+import getSessionOrRedirect from '../../utils/withServerAuth';
+import type { GetServerSideProps } from 'next';
+
+export const getServerSideProps: GetServerSideProps = async (ctx) => {
+  const res = await getSessionOrRedirect(ctx, { requireAdmin: true });
+  if ('redirect' in res) return res;
+  return { props: {} };
+};

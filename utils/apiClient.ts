@@ -1,10 +1,28 @@
-// Centralized API client with throttling and retry logic
+// Centralized API client with throttling, retry logic, token refresh, and loading indicators
 interface ApiClientOptions {
   baseURL?: string;
   timeout?: number;
   retries?: number;
   throttleMs?: number;
+  enableTokenRefresh?: boolean;
 }
+
+// Loading state handlers for UI indicators
+type LoadingStartHandler = (key: string) => void;
+type LoadingStopHandler = (key: string) => void;
+
+// Global loading handlers that will be set by the app
+let globalLoadingStartHandler: LoadingStartHandler | null = null;
+let globalLoadingStopHandler: LoadingStopHandler | null = null;
+
+// Set loading handlers from the LoadingContext
+export const setLoadingHandlers = (
+  startHandler: LoadingStartHandler,
+  stopHandler: LoadingStopHandler
+) => {
+  globalLoadingStartHandler = startHandler;
+  globalLoadingStopHandler = stopHandler;
+};
 
 interface ApiResponse<T = any> {
   data: T;
@@ -17,15 +35,19 @@ class ApiClient {
   private timeout: number;
   private retries: number;
   private throttleMs: number;
+  private enableTokenRefresh: boolean;
   private lastRequestTime: number = 0;
   private requestQueue: Array<() => Promise<any>> = [];
   private isProcessingQueue = false;
+  private isRefreshing = false;
+  private refreshPromise: Promise<boolean> | null = null;
 
   constructor(options: ApiClientOptions = {}) {
     this.baseURL = options.baseURL || '';
     this.timeout = options.timeout || 10000;
     this.retries = options.retries || 3;
     this.throttleMs = options.throttleMs || 100; // 100ms between requests
+    this.enableTokenRefresh = options.enableTokenRefresh !== false; // Enable by default
   }
 
   private async throttle(): Promise<void> {
@@ -81,6 +103,40 @@ class ApiClient {
     this.isProcessingQueue = false;
   }
 
+  // Attempt to refresh the access token using the refresh token
+  private async refreshToken(): Promise<boolean> {
+    // If already refreshing, return the existing promise
+    if (this.isRefreshing && this.refreshPromise) {
+      return this.refreshPromise;
+    }
+
+    this.isRefreshing = true;
+    this.refreshPromise = new Promise<boolean>(async (resolve) => {
+      try {
+        const response = await fetch('/api/auth/refresh', {
+          method: 'POST',
+          credentials: 'include',
+          headers: {
+            'Content-Type': 'application/json'
+          }
+        });
+
+        const success = response.ok;
+        resolve(success);
+        return success;
+      } catch (error) {
+        console.error('Token refresh failed:', error);
+        resolve(false);
+        return false;
+      } finally {
+        this.isRefreshing = false;
+        this.refreshPromise = null;
+      }
+    });
+
+    return this.refreshPromise;
+  }
+
   private async request<T>(
     url: string,
     options: RequestInit = {}
@@ -105,6 +161,17 @@ class ApiClient {
 
       if (response.status === 429) {
         throw { status: 429, message: 'Rate limited' };
+      }
+
+      // Handle unauthorized error (expired token)
+      if (response.status === 401 && this.enableTokenRefresh && url !== '/api/auth/refresh') {
+        // Try to refresh the token
+        const refreshSuccess = await this.refreshToken();
+        
+        if (refreshSuccess) {
+          // Retry the original request with the new token
+          return this.request<T>(url, options);
+        }
       }
 
       // Try to parse response body for both success and error responses
@@ -143,6 +210,14 @@ class ApiClient {
   }
 
   async get<T>(url: string, options: RequestInit = {}): Promise<ApiResponse<T>> {
+    // Create a loading key based on the URL
+    const loadingKey = `get:${url.split('?')[0]}`;
+    
+    // Start loading indicator
+    if (globalLoadingStartHandler) {
+      globalLoadingStartHandler(loadingKey);
+    }
+    
     return new Promise((resolve, reject) => {
       this.requestQueue.push(async () => {
         try {
@@ -152,6 +227,11 @@ class ApiClient {
           resolve(result);
         } catch (error) {
           reject(error);
+        } finally {
+          // Stop loading indicator
+          if (globalLoadingStopHandler) {
+            globalLoadingStopHandler(loadingKey);
+          }
         }
       });
 
@@ -160,6 +240,14 @@ class ApiClient {
   }
 
   async post<T>(url: string, data?: any, options: RequestInit = {}): Promise<ApiResponse<T>> {
+    // Create a loading key based on the URL
+    const loadingKey = `post:${url}`;
+    
+    // Start loading indicator
+    if (globalLoadingStartHandler) {
+      globalLoadingStartHandler(loadingKey);
+    }
+    
     return new Promise((resolve, reject) => {
       this.requestQueue.push(async () => {
         try {
@@ -173,6 +261,11 @@ class ApiClient {
           resolve(result);
         } catch (error) {
           reject(error);
+        } finally {
+          // Stop loading indicator
+          if (globalLoadingStopHandler) {
+            globalLoadingStopHandler(loadingKey);
+          }
         }
       });
 
@@ -181,6 +274,14 @@ class ApiClient {
   }
 
   async put<T>(url: string, data?: any, options: RequestInit = {}): Promise<ApiResponse<T>> {
+    // Create a loading key based on the URL
+    const loadingKey = `put:${url}`;
+    
+    // Start loading indicator
+    if (globalLoadingStartHandler) {
+      globalLoadingStartHandler(loadingKey);
+    }
+    
     return new Promise((resolve, reject) => {
       this.requestQueue.push(async () => {
         try {
@@ -194,6 +295,11 @@ class ApiClient {
           resolve(result);
         } catch (error) {
           reject(error);
+        } finally {
+          // Stop loading indicator
+          if (globalLoadingStopHandler) {
+            globalLoadingStopHandler(loadingKey);
+          }
         }
       });
 
@@ -202,6 +308,14 @@ class ApiClient {
   }
 
   async patch<T>(url: string, data?: any, options: RequestInit = {}): Promise<ApiResponse<T>> {
+    // Create a loading key based on the URL
+    const loadingKey = `patch:${url}`;
+    
+    // Start loading indicator
+    if (globalLoadingStartHandler) {
+      globalLoadingStartHandler(loadingKey);
+    }
+    
     return new Promise((resolve, reject) => {
       this.requestQueue.push(async () => {
         try {
@@ -215,6 +329,11 @@ class ApiClient {
           resolve(result);
         } catch (error) {
           reject(error);
+        } finally {
+          // Stop loading indicator
+          if (globalLoadingStopHandler) {
+            globalLoadingStopHandler(loadingKey);
+          }
         }
       });
 
@@ -223,6 +342,14 @@ class ApiClient {
   }
 
   async delete<T>(url: string, options: RequestInit = {}): Promise<ApiResponse<T>> {
+    // Create a loading key based on the URL
+    const loadingKey = `delete:${url}`;
+    
+    // Start loading indicator
+    if (globalLoadingStartHandler) {
+      globalLoadingStartHandler(loadingKey);
+    }
+    
     return new Promise((resolve, reject) => {
       this.requestQueue.push(async () => {
         try {
@@ -232,6 +359,11 @@ class ApiClient {
           resolve(result);
         } catch (error) {
           reject(error);
+        } finally {
+          // Stop loading indicator
+          if (globalLoadingStopHandler) {
+            globalLoadingStopHandler(loadingKey);
+          }
         }
       });
 
@@ -246,6 +378,7 @@ export const apiClient = new ApiClient({
   timeout: 10000,
   retries: 3,
   throttleMs: 200, // 200ms between requests
+  enableTokenRefresh: true, // Enable token refresh by default
 });
 
 // Export the class for custom instances

@@ -1,5 +1,6 @@
 import React from 'react';
 import { motion } from 'framer-motion';
+import Image from 'next/image';
 
 interface BeautifulLoadingProps {
   message?: string;
@@ -42,9 +43,11 @@ const BeautifulLoading: React.FC<BeautifulLoadingProps> = ({
             }}
             className="w-full h-full"
           >
-            <img
-              src="/images/shankarmala-logo.svg"
+            <Image
+              src="/images/shankarmala-logo.png"
               alt="Shankarmala"
+              width={96}
+              height={96}
               className="w-full h-full object-contain drop-shadow-lg"
             />
           </motion.div>

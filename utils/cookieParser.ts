@@ -34,7 +34,7 @@ export function setSecureCookie(res: NextApiResponse, name: string, value: strin
 } = {}) {
   const {
     // Max-Age must be seconds per cookie spec
-    maxAge = 7 * 24 * 60 * 60, // 7 days in seconds
+  maxAge = 7 * 24 * 60 * 60, // 7 days in seconds
     httpOnly = true,
     secure = process.env.NODE_ENV === 'production',
     sameSite = 'strict',
@@ -43,12 +43,15 @@ export function setSecureCookie(res: NextApiResponse, name: string, value: strin
 
   const attrs: string[] = [];
   attrs.push(`Path=${path}`);
-  attrs.push(`Max-Age=${maxAge}`);
-  attrs.push(`SameSite=${sameSite}`);
+  // Ensure Max-Age is an integer in seconds
+  const maxAgeSeconds = Math.max(0, Math.floor(Number(maxAge) || 0));
+  attrs.push(`Max-Age=${maxAgeSeconds}`);
+  // SameSite attribute must be capitalized
+  attrs.push(`SameSite=${String(sameSite)}`);
   if (httpOnly) attrs.push('HttpOnly');
   if (secure) attrs.push('Secure');
 
-  const cookieValue = `${name}=${encodeURIComponent(value)}; ${attrs.join('; ')}`;
+  const cookieValue = `${name}=${encodeURIComponent(String(value))}; ${attrs.join('; ')}`;
 
   // Normalize existing Set-Cookie header to an array
   const existing = res.getHeader('Set-Cookie');

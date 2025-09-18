@@ -2,6 +2,68 @@ name: CI
 
 on:
   push:
+    branches: [ main, chore/upgrade-next-14 ]
+  pull_request:
+    branches: [ main ]
+
+jobs:
+  build-and-test:
+    runs-on: ubuntu-latest
+    services:
+      postgres:
+        image: postgres:15
+        env:
+          POSTGRES_USER: postgres
+          POSTGRES_PASSWORD: postgres
+          POSTGRES_DB: testdb
+        ports: ['5432:5432']
+        options: >-
+          --health-cmd pg_isready --health-interval 10s --health-timeout 5s --health-retries 5
+      redis:
+        image: redis:7
+        ports: ['6379:6379']
+        options: >-
+          --health-cmd "redis-cli ping" --health-interval 10s --health-timeout 5s --health-retries 5
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Use Node.js 20
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+          cache: 'npm'
+
+      - name: Install dependencies
+        run: npm ci --prefer-offline --no-audit --progress=false
+
+      - name: Typecheck
+        run: npx tsc --noEmit
+
+      - name: Lint
+        run: npm run lint
+
+      - name: Run unit tests
+        run: npx vitest --run
+
+      - name: Run Prisma migrate/generate (optional)
+        env:
+          DATABASE_URL: ${{ secrets.DATABASE_URL }}
+        run: |
+          if [ -n "$DATABASE_URL" ]; then
+            sh scripts/prisma-deploy.sh
+          else
+            echo "DATABASE_URL not provided; skipping migrations"
+          fi
+
+      - name: Build production bundle
+        run: npm run build --if-present
+
+name: CI
+
+on:
+  push:
     branches: [ main ]
   pull_request:
     branches: [ main ]
@@ -20,6 +82,11 @@ jobs:
         ports: ['5432:5432']
         options: >-
           --health-cmd pg_isready --health-interval 10s --health-timeout 5s --health-retries 5
+      redis:
+        image: redis:7
+        ports: ['6379:6379']
+        options: >-
+          --health-cmd "redis-cli ping" --health-interval 10s --health-timeout 5s --health-retries 5
 
     steps:
       - name: Checkout repository
@@ -32,10 +99,17 @@ jobs:
           cache: 'npm'
 
       - name: Install dependencies
-        run: npm ci
+        run: npm ci --ignore-scripts
 
-      - name: Generate Prisma client
-        run: npx prisma generate
+      - name: Run Prisma migrations and generate client (if DATABASE_URL provided)
+        env:
+          DATABASE_URL: ${{ secrets.DATABASE_URL }}
+        run: |
+          if [ -n "$DATABASE_URL" ]; then
+            sh scripts/prisma-deploy.sh
+          else
+            echo "DATABASE_URL not provided; skipping migrate/deploy"
+          fi
 
       - name: Validate required secrets
         env:
@@ -71,6 +145,19 @@ jobs:
           npm run start &
           npx wait-on http://localhost:3000
 
+      - name: Ensure admin password is set (for smoke tests)
+        if: ${{ secrets.ADMIN_PASSWORD != '' && env.DATABASE_URL != '' }}
+        env:
+          DATABASE_URL: postgresql://postgres:postgres@localhost:5432/testdb
+          ADMIN_PASSWORD: ${{ secrets.ADMIN_PASSWORD }}
+        run: |
+          node scripts/set-admin-pass.js $ADMIN_PASSWORD
+
+      - name: Sanity check — admin login page not redirected
+        env:
+          TEST_BASE_URL: http://localhost:3000
+        run: node scripts/check-admin-login-redirect.js
+
       - name: Run smoke tests
         env:
           TEST_BASE_URL: http://localhost:3000
@@ -83,3 +170,10 @@ jobs:
         with:
           name: comprehensive-test-report
           path: comprehensive-test-report.json
+
+      - name: Redis smoke test (optional)
+        if: ${{ secrets.REDIS_URL != '' }}
+        env:
+          REDIS_URL: ${{ secrets.REDIS_URL }}
+        run: |
+          node scripts/test-redis-rate-limit.js

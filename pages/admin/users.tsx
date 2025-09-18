@@ -17,6 +17,7 @@ import {
 } from 'lucide-react';
 import { toast } from 'react-hot-toast';
 import AdminLayout from '../../components/AdminLayout';
+import getSessionOrRedirect from '../../utils/withServerAuth';
 
 interface AdminUser {
   id: number;
@@ -47,6 +48,7 @@ const AdminUsersPage: React.FC = () => {
   const [filteredUsers, setFilteredUsers] = useState<AdminUser[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
+  const [success, setSuccess] = useState('');
   const [searchQuery, setSearchQuery] = useState('');
   const [roleFilter, setRoleFilter] = useState('all');
   const [statusFilter, setStatusFilter] = useState('all');
@@ -63,7 +65,10 @@ const AdminUsersPage: React.FC = () => {
   // const [editingUser, setEditingUser] = useState<AdminUser | null>(null);
 
   useEffect(() => {
-    checkAuthAndFetch();
+  // Authentication is enforced server-side via getServerSideProps.
+  // We can safely fetch data on mount.
+  fetchUsers();
+  fetchStats();
   }, []);
 
   useEffect(() => {
@@ -71,24 +76,7 @@ const AdminUsersPage: React.FC = () => {
   }, [users, searchQuery, roleFilter, statusFilter]);
 
   const checkAuthAndFetch = async () => {
-    try {
-      // Check if user is authenticated by calling the admin auth endpoint
-      const res = await fetch('/api/admin/auth', { credentials: 'include' });
-      if (!res.ok) {
-        router.push('/admin/login');
-        return;
-      }
-      const authData = await res.json();
-      if (authData.user.role !== 'admin') {
-        router.push('/admin/login');
-        return;
-      }
-      fetchUsers();
-      fetchStats();
-    } catch (error) {
-      console.error('Admin auth check failed:', error);
-      router.push('/admin/login');
-    }
+  // Deprecated: client-side auth check removed. Server-side guard ensures admin access.
   };
 
   const fetchUsers = async () => {
@@ -151,6 +139,8 @@ const AdminUsersPage: React.FC = () => {
       return;
 
     setDeletingId(id);
+    setError('');
+    setSuccess('');
     try {
       const res = await fetch(`/api/admin/users/${id}`, {
         method: 'DELETE',
@@ -159,13 +149,13 @@ const AdminUsersPage: React.FC = () => {
 
       if (res.ok) {
         setUsers(users.filter((u) => u.id !== id));
-        toast.success('User deleted successfully');
+        setSuccess('User deleted successfully!');
       } else {
         const data = await res.json();
-        toast.error(data.error || 'Failed to delete user');
+        setError(data.error || 'Failed to delete user');
       }
     } catch (err: any) {
-      toast.error('Failed to delete user');
+      setError('Failed to delete user');
     } finally {
       setDeletingId(null);
     }
@@ -173,7 +163,7 @@ const AdminUsersPage: React.FC = () => {
 
   const handleBulkDelete = async () => {
     if (selectedUsers.size === 0) {
-      toast.error('Please select users to delete');
+      setError('Please select users to delete');
       return;
     }
 
@@ -184,6 +174,8 @@ const AdminUsersPage: React.FC = () => {
     )
       return;
 
+    setError('');
+    setSuccess('');
     try {
       const res = await fetch('/api/admin/users/bulk-delete', {
         method: 'DELETE',
@@ -195,13 +187,13 @@ const AdminUsersPage: React.FC = () => {
       if (res.ok) {
         setUsers(users.filter((u) => !selectedUsers.has(u.id)));
         setSelectedUsers(new Set());
-        toast.success(`${selectedUsers.size} users deleted successfully`);
+        setSuccess(`${selectedUsers.size} users deleted successfully!`);
       } else {
         const data = await res.json();
-        toast.error(data.error || 'Failed to delete users');
+        setError(data.error || 'Failed to delete users');
       }
     } catch (error) {
-      toast.error('Failed to delete users');
+      setError('Failed to delete users');
     }
   };
 
@@ -246,7 +238,7 @@ const AdminUsersPage: React.FC = () => {
     a.download = `users-${new Date().toISOString().split('T')[0]}.csv`;
     a.click();
     window.URL.revokeObjectURL(url);
-    toast.success('Users exported successfully');
+    setSuccess('Users exported successfully!');
   };
 
   if (loading) {
@@ -265,6 +257,11 @@ const AdminUsersPage: React.FC = () => {
   return (
     <AdminLayout title="Admin Users - Shankarmala">
       <div className="max-w-7xl mx-auto py-12 px-4">
+        {(error || success) && (
+          <div className={`rounded-xl p-4 mb-6 font-semibold text-center shadow border ${error ? 'bg-red-100 border-red-300 text-red-800' : 'bg-green-100 border-green-300 text-green-800'}`}>
+            {error || success}
+          </div>
+        )}
         {/* Header */}
         <div className="flex flex-col lg:flex-row justify-between items-start lg:items-center mb-8 gap-4">
           <div>
@@ -471,8 +468,11 @@ const AdminUsersPage: React.FC = () => {
 
         {/* Users Table */}
         {error ? (
-          <div className="bg-red-50 border border-red-200 rounded-2xl p-6">
-            <div className="text-red-800">{error}</div>
+          <div className="max-w-2xl w-full mx-auto mb-6">
+            <div className="bg-red-100 border border-red-300 text-red-800 px-6 py-6 rounded-xl text-center font-semibold shadow">
+              <div className="text-2xl font-bold text-red-700 mb-2">Error Loading Users</div>
+              <div className="text-red-800 mb-4">{error}</div>
+            </div>
           </div>
         ) : filteredUsers.length === 0 ? (
           <div className="text-center py-12">
@@ -636,3 +636,9 @@ const AdminUsersPage: React.FC = () => {
 };
 
 export default AdminUsersPage;
+
+export async function getServerSideProps(ctx: any) {
+  const res = await getSessionOrRedirect(ctx, { requireAdmin: true });
+  if ('redirect' in res) return res;
+  return { props: {} };
+}

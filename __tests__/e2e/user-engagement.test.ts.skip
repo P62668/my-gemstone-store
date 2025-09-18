@@ -1,0 +1,67 @@
+import { test, expect } from '@playwright/test';
+
+test.describe('User Engagement Features', () => {
+  test.beforeEach(async ({ page }) => {
+    // Navigate to the home page before each test
+    await page.goto('/');
+  });
+
+  test('should display personalized offers section', async ({ page }) => {
+    // Check if the personalized offers section is visible
+    const offersSection = page.locator('section:has-text("Personalized Offers")');
+    await expect(offersSection).toBeVisible();
+    
+    // Check if at least one offer is displayed
+    const offerCards = page.locator('.bg-white.rounded-2xl.p-6');
+    await expect(offerCards.first()).toBeVisible();
+  });
+
+  test('should display AI-powered recommendations', async ({ page }) => {
+    // Check if the recommendations section is visible
+    const recommendationsSection = page.locator('section:has-text("Personalized Recommendations")');
+    await expect(recommendationsSection).toBeVisible();
+    
+    // Check if at least one recommended product is displayed
+    const productCards = page.locator('.bg-white.rounded-2xl.p-4.shadow-sm');
+    await expect(productCards.first()).toBeVisible();
+  });
+
+  test('should display trending products', async ({ page }) => {
+    // Check if the trending products section is visible
+    const trendingSection = page.locator('section:has-text("Trending Products")');
+    await expect(trendingSection).toBeVisible();
+    
+    // Check if at least one trending product is displayed
+    const productCards = page.locator('.bg-white.rounded-2xl.p-4');
+    await expect(productCards.first()).toBeVisible();
+  });
+
+  test('should have working search functionality', async ({ page }) => {
+    // Find the search input
+    const searchInput = page.locator('input[placeholder*="Search"], input[type="search"]');
+    await expect(searchInput).toBeVisible();
+    
+    // Type a search term
+    await searchInput.fill('ruby');
+    
+    // Submit the search (assuming pressing Enter works)
+    await searchInput.press('Enter');
+    
+    // Check if we're on the search results page
+    await expect(page).toHaveURL(/.*shop.*/);
+    
+    // Check if search results are displayed
+    const productGrid = page.locator('.grid.grid-cols-1');
+    await expect(productGrid).toBeVisible();
+  });
+
+  test('should display loyalty program information', async ({ page }) => {
+    // Check if the loyalty program section is visible
+    const loyaltySection = page.locator('section:has-text("Loyalty Program")');
+    await expect(loyaltySection).toBeVisible();
+    
+    // Check if loyalty tiers are displayed
+    const tierCards = page.locator('.bg-gradient-to-r');
+    await expect(tierCards.first()).toBeVisible();
+  });
+});

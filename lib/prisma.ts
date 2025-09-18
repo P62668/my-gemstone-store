@@ -1,44 +1,67 @@
-// Force Prisma to use the library/native engine in local/dev environments
-// Avoid forcing in production where deployment platform may choose a different engine.
-if (typeof process !== 'undefined' && process.env.NODE_ENV !== 'production') {
-  process.env.PRISMA_CLIENT_ENGINE_TYPE = 'library';
-  process.env.PRISMA_FORCE_NAPI = '1';
+import { PrismaClient } from '@prisma/client';
+import { Prisma } from '@prisma/client';
+
+// Global declaration to prevent multiple instances in development
+declare global {
+  var prisma: PrismaClient | undefined;
 }
 
-import { PrismaClient } from '@prisma/client';
-
-const globalForPrisma = globalThis as unknown as {
-  prisma: PrismaClient | undefined;
+// Create Prisma client with logging configuration
+const prismaOptions = {
+  log: process.env.NODE_ENV === 'development' ? ['query', 'error', 'warn'] as any : ['error'] as any,
 };
 
-export const prisma =
-  globalForPrisma.prisma ??
-  new PrismaClient({
-    log: ['query', 'info', 'warn', 'error'],
+// Create or reuse Prisma client instance
+let prisma: PrismaClient;
+
+if (process.env.NODE_ENV === 'production') {
+  // In standalone build, we need to ensure the Prisma client is properly initialized
+  prisma = new PrismaClient(prismaOptions);
+} else {
+  if (!global.prisma) {
+    global.prisma = new PrismaClient(prismaOptions);
+  }
+  prisma = global.prisma;
+}
+
+// Export as both default and named
+export default prisma;
+export { prisma };
+
+// Add connection management for production
+if (process.env.NODE_ENV === 'production' && typeof window === 'undefined' && prisma) {
+  // Handle graceful shutdown to close DB connections properly
+  const handleShutdown = async () => {
+    console.log('[prisma] Shutting down Prisma client');
+    await prisma.$disconnect();
+    process.exit(0);
+  };
+  
+  // Listen for termination signals
+  process.on('SIGINT', handleShutdown);
+  process.on('SIGTERM', handleShutdown);
+}
+
+// Ensure the Prisma client connects properly on initialization
+if (typeof window === 'undefined' && prisma) {
+  prisma.$connect().catch((error) => {
+    console.error('[prisma] Failed to connect to database on initialization', error);
   });
+}
 
-// Log engine selection info for easier diagnostics
-const engineInfo = {
-  PRISMA_CLIENT_ENGINE_TYPE: process.env.PRISMA_CLIENT_ENGINE_TYPE || '(not set)',
-  PRISMA_FORCE_NAPI: process.env.PRISMA_FORCE_NAPI || '(not set)',
-  PRISMA_QUERY_ENGINE_LIBRARY: process.env.PRISMA_QUERY_ENGINE_LIBRARY || '(not set)',
-  NODE_ENV: process.env.NODE_ENV || '(not set)',
+export const CACHE_STRATEGIES = {
+  // For data that rarely changes (e.g., categories, settings)
+  LONG_TERM: {
+    ttl: 3600 // 1 hour in seconds
+  },
+  
+  // For data that changes occasionally (e.g., products, collections)
+  STANDARD: {
+    swr: 300 // 5 minutes in seconds
+  },
+  
+  // For frequently changing data with background refresh
+  DYNAMIC: {
+    swr: 30 // 30 seconds
+  }
 };
-console.info('[prisma] engine info:', engineInfo);
-
-// Attach runtime listeners to surface engine errors in server logs
-prisma.$on('warn', (e) => {
-  // Lightweight warning - keep concise
-  // eslint-disable-next-line no-console
-  console.warn('[prisma][warn]', e);
-});
-prisma.$on('info', (e) => {
-  // eslint-disable-next-line no-console
-  console.info('[prisma][info]', e);
-});
-prisma.$on('error', (e) => {
-  // eslint-disable-next-line no-console
-  console.error('[prisma][error]', e);
-});
-
-if (process.env.NODE_ENV !== 'production') globalForPrisma.prisma = prisma;

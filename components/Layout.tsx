@@ -1,7 +1,11 @@
 import React from 'react';
 import Head from 'next/head';
-import Navbar from './ui/Navbar';
-import Footer from './ui/Footer';
+import dynamic from 'next/dynamic';
+import PersonalizedOffers from './ui/PersonalizedOffers';
+
+// Dynamically import components that use client-side libraries
+const Navbar = dynamic(() => import('./ui/Navbar'), { ssr: false });
+const Footer = dynamic(() => import('./ui/Footer'), { ssr: false });
 
 interface LayoutProps {
   children: React.ReactNode;
@@ -12,6 +16,7 @@ interface LayoutProps {
   ogUrl?: string;
   canonical?: string;
   structuredData?: object;
+  showPersonalizedOffers?: boolean;
 }
 
 const Layout: React.FC<LayoutProps> = ({
@@ -23,6 +28,7 @@ const Layout: React.FC<LayoutProps> = ({
   ogUrl,
   canonical,
   structuredData,
+  showPersonalizedOffers = true,
 }) => {
   // Default SEO settings - no API calls to prevent hydration issues
   const defaultTitle = 'Shankarmala - Luxury Gemstone Collection';
@@ -30,6 +36,7 @@ const Layout: React.FC<LayoutProps> = ({
   const defaultKeywords = 'gemstones, jewelry, luxury, GIA certified, diamonds, rubies, emeralds, sapphires';
   const defaultOgImage = '/images/placeholder-gemstone.jpg';
   const defaultOgUrl = 'https://shankarmala.com';
+  const defaultCanonical = 'https://shankarmala.com';
 
   // Ensure title is always a string, never an array
   const finalTitle = typeof title === 'string' ? title : defaultTitle;
@@ -37,7 +44,7 @@ const Layout: React.FC<LayoutProps> = ({
   const finalKeywords = typeof keywords === 'string' ? keywords : defaultKeywords;
   const finalOgImage = typeof ogImage === 'string' ? ogImage : defaultOgImage;
   const finalOgUrl = typeof ogUrl === 'string' ? ogUrl : defaultOgUrl;
-  const finalCanonical = typeof canonical === 'string' ? canonical : defaultOgUrl;
+  const finalCanonical = typeof canonical === 'string' ? canonical : defaultCanonical;
 
   return (
     <>
@@ -45,11 +52,12 @@ const Layout: React.FC<LayoutProps> = ({
         <title>{finalTitle}</title>
         <meta name="description" content={finalDescription} />
         <meta name="keywords" content={finalKeywords} />
-        <meta name="viewport" content="width=device-width, initial-scale=1" />
+        <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=5" />
         
         {/* Favicon */}
         <link rel="icon" href="/images/logo-shankar.png" type="image/png" />
         <link rel="shortcut icon" href="/images/logo-shankar.png" type="image/png" />
+        <link rel="apple-touch-icon" href="/images/logo-shankar.png" />
         
         {/* Open Graph */}
         <meta property="og:type" content="website" />
@@ -67,8 +75,8 @@ const Layout: React.FC<LayoutProps> = ({
         <meta name="twitter:image" content={finalOgImage} />
         
         {/* Theme */}
-        <meta name="theme-color" content="#f59e0b" />
-        <meta name="msapplication-TileColor" content="#f59e0b" />
+        <meta name="theme-color" content="#d4af37" />
+        <meta name="msapplication-TileColor" content="#d4af37" />
         
         {/* Canonical */}
         {finalCanonical && <link rel="canonical" href={finalCanonical} />}
@@ -82,11 +90,15 @@ const Layout: React.FC<LayoutProps> = ({
             }}
           />
         )}
+        
+        {/* Google Fonts for luxury typography */}
+        <link href="https://fonts.googleapis.com/css2?family=Montserrat:wght@300;400;500;600;700&family=Playfair+Display:wght@400;500;600;700&display=swap" rel="stylesheet" />
       </Head>
       
-      <div className="min-h-screen bg-gradient-to-br from-amber-50 via-white to-yellow-50">
+      <div className="min-h-screen bg-gradient-to-br from-luxury-bg-cream via-luxury-bg-ivory to-luxury-bg-cream flex flex-col luxury-bg-gradient">
         <Navbar />
-        <main className="pt-16 lg:pt-20">
+        <main className="pt-16 lg:pt-20 flex-1" id="main-content">
+          {showPersonalizedOffers && <PersonalizedOffers />}
           {children}
         </main>
         <Footer />

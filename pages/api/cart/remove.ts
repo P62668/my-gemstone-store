@@ -1,6 +1,8 @@
+
 import { NextApiRequest, NextApiResponse } from 'next';
 import { prisma } from '../../../lib/prisma';
 import { withAuth, AuthenticatedRequest } from '../../../utils/authMiddleware';
+import { z } from 'zod';
 
 async function handler(req: AuthenticatedRequest, res: NextApiResponse) {
   if (req.method !== 'DELETE') {
@@ -13,15 +15,17 @@ async function handler(req: AuthenticatedRequest, res: NextApiResponse) {
       return res.status(401).json({ error: 'Authentication required' });
     }
 
-    const { id } = req.query;
-    if (!id || typeof id !== 'string') {
-      return res.status(400).json({ error: 'Item ID is required' });
-    }
-
-    const itemId = parseInt(id);
-    if (isNaN(itemId)) {
+    // Strict input validation
+    const schema = z.object({
+      id: z.string().regex(/^\d+$/),
+    });
+    let parsed;
+    try {
+      parsed = schema.parse({ id: req.query.id });
+    } catch (err) {
       return res.status(400).json({ error: 'Invalid item ID' });
     }
+    const itemId = parseInt(parsed.id, 10);
 
     // Verify the cart item belongs to the user
     const cartItem = await prisma.cartItem.findFirst({

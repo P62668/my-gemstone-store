@@ -53,7 +53,7 @@ async function handler(req: NextApiRequest, res: NextApiResponse) {
           req.body;
 
         // Update each setting individually
-        const updates = [];
+        const updates: Promise<any>[] = [];
         if (siteName) {
           updates.push(prisma.siteSettings.upsert({
             where: { key: 'siteName' },

@@ -1,5 +1,6 @@
 import React, { useEffect } from 'react';
 import Button from './Button';
+import Image from 'next/image';
 
 interface ModalProps {
   isOpen: boolean;
@@ -130,18 +131,22 @@ export const ProductQuickView: React.FC<ProductQuickViewProps> = ({
     <Modal isOpen={isOpen} onClose={onClose} title="Quick View" size="lg">
       <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
         <div className="space-y-4">
-          <img
+          <Image
             src={images[0] || '/placeholder-gemstone.jpg'}
             alt={gemstone.name}
+            width={400}
+            height={256}
             className="w-full h-64 object-cover rounded-lg"
           />
           {images.length > 1 && (
             <div className="grid grid-cols-4 gap-2">
               {images.slice(1).map((img: string, idx: number) => (
-                <img
+                <Image
                   key={idx}
                   src={img}
                   alt={`${gemstone.name} ${idx + 2}`}
+                  width={64}
+                  height={64}
                   className="w-full h-16 object-cover rounded cursor-pointer hover:opacity-80 transition-opacity"
                 />
               ))}

@@ -1,0 +1,61 @@
+# Version control
+.git
+.gitignore
+.github
+
+# Build artifacts
+.next
+out
+
+# Node.js
+node_modules
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+
+# Environment variables
+.env
+.env.*
+!.env.example
+
+# Development files
+.vscode
+.idea
+*.log
+*.swp
+*.swo
+
+# Testing
+coverage
+.nyc_output
+
+# Temporary files
+.DS_Store
+Thumbs.db
+
+# Docker
+Dockerfile
+docker-compose.yml
+.dockerignore
+
+# Documentation
+README.md
+LICENSE
+CHANGELOG.md
+
+# Local development database
+prisma/dev.db
+prisma/dev.db-journal
+
+# Backup files
+*.bak
+*.backup
+
+# Large media files
+*.mp4
+*.mov
+*.avi
+*.wmv
+*.flv
+*.webm
+*.mkv

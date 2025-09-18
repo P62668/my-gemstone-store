@@ -1,6 +1,9 @@
 import React, { useEffect, useState } from 'react';
 import AdminLayout from '../../components/AdminLayout';
 import { ImageUploadWithEdit } from '../../components/ui';
+import getSessionOrRedirect from '../../utils/withServerAuth';
+import type { GetServerSideProps } from 'next';
+import Image from 'next/image';
 
 interface Press {
   id: number;
@@ -26,6 +29,8 @@ const AdminPressPage: React.FC = () => {
   const [form, setForm] = useState(emptyPress);
   const [editingId, setEditingId] = useState<number | null>(null);
   const [formLoading, setFormLoading] = useState(false);
+  const [formError, setFormError] = useState('');
+  const [formSuccess, setFormSuccess] = useState('');
 
   const fetchPress = async () => {
     setLoading(true);
@@ -54,6 +59,8 @@ const AdminPressPage: React.FC = () => {
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setFormLoading(true);
+    setFormError('');
+    setFormSuccess('');
     try {
       const endpoint = editingId ? `/api/admin/press/${editingId}` : '/api/admin/press';
       const method = editingId ? 'PATCH' : 'POST';
@@ -66,8 +73,9 @@ const AdminPressPage: React.FC = () => {
       setForm(emptyPress);
       setEditingId(null);
       await fetchPress();
+      setFormSuccess(editingId ? 'Press/award updated successfully!' : 'Press/award added successfully!');
     } catch (err: any) {
-      alert(err.message);
+      setFormError(err.message || 'An error occurred.');
     } finally {
       setFormLoading(false);
     }
@@ -81,12 +89,15 @@ const AdminPressPage: React.FC = () => {
   const handleDelete = async (id: number) => {
     if (!window.confirm('Delete this press/award?')) return;
     setFormLoading(true);
+    setFormError('');
+    setFormSuccess('');
     try {
       const res = await fetch(`/api/admin/press/${id}`, { method: 'DELETE' });
       if (!res.ok) throw new Error('Failed to delete press');
       await fetchPress();
+      setFormSuccess('Press/award deleted successfully!');
     } catch (err: any) {
-      alert(err.message);
+      setFormError(err.message || 'An error occurred.');
     } finally {
       setFormLoading(false);
     }
@@ -96,6 +107,11 @@ const AdminPressPage: React.FC = () => {
     <AdminLayout title="Admin Press - Kolkata Gems">
       <div className="max-w-5xl mx-auto py-12 px-4">
         <h1 className="text-4xl font-bold text-amber-900 mb-8">Admin: Press & Awards</h1>
+        {(formError || formSuccess) && (
+          <div className={`rounded-xl p-4 mb-6 font-semibold text-center shadow border ${formError ? 'bg-red-100 border-red-300 text-red-800' : 'bg-green-100 border-green-300 text-green-800'}`}>
+            {formError || formSuccess}
+          </div>
+        )}
         <form
           className="bg-white/80 rounded-3xl shadow-xl border border-amber-100 p-8 mb-12 flex flex-col gap-4 max-w-xl"
           onSubmit={handleSubmit}
@@ -183,9 +199,11 @@ const AdminPressPage: React.FC = () => {
               >
                 <div className="font-bold text-lg text-amber-900 mb-1">{item.title}</div>
                 {item.logo && (
-                  <img
+                  <Image
                     src={item.logo}
                     alt={item.title}
+                    width={128}
+                    height={64}
                     className="w-32 h-16 object-contain rounded-xl border border-amber-200 mb-2 bg-white"
                   />
                 )}
@@ -227,3 +245,9 @@ const AdminPressPage: React.FC = () => {
 };
 
 export default AdminPressPage;
+
+export const getServerSideProps: GetServerSideProps = async (ctx) => {
+  const res = await getSessionOrRedirect(ctx, { requireAdmin: true });
+  if ('redirect' in res) return res;
+  return { props: {} };
+};

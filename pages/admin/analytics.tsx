@@ -1,5 +1,8 @@
 import React, { useEffect, useState } from 'react';
 import AdminLayout from '../../components/AdminLayout';
+import getSessionOrRedirect from '../../utils/withServerAuth';
+import type { GetServerSideProps } from 'next';
+import LuxuryCard from '../../components/ui/LuxuryCard';
 
 interface Analytics {
   totalSales: number;
@@ -18,6 +21,8 @@ const AdminAnalyticsPage: React.FC = () => {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
   const [exportLoading, setExportLoading] = useState(false);
+  const [exportError, setExportError] = useState('');
+  const [exportSuccess, setExportSuccess] = useState('');
 
   useEffect(() => {
     fetchAnalytics();
@@ -63,6 +68,8 @@ const AdminAnalyticsPage: React.FC = () => {
 
   const exportToCSV = async (type: 'orders' | 'users' | 'gemstones') => {
     setExportLoading(true);
+    setExportError('');
+    setExportSuccess('');
     try {
       const res = await fetch(`/api/admin/export/${type}`);
       if (!res.ok) throw new Error('Export failed');
@@ -75,8 +82,9 @@ const AdminAnalyticsPage: React.FC = () => {
       a.click();
       window.URL.revokeObjectURL(url);
       document.body.removeChild(a);
+      setExportSuccess(`${type.charAt(0).toUpperCase() + type.slice(1)} exported successfully!`);
     } catch (err: any) {
-      alert('Export failed: ' + err.message);
+      setExportError('Export failed: ' + (err.message || 'Unknown error'));
     } finally {
       setExportLoading(false);
     }
@@ -103,6 +111,11 @@ const AdminAnalyticsPage: React.FC = () => {
   return (
     <AdminLayout title="Admin Analytics - Kolkata Gems">
       <div className="max-w-7xl mx-auto py-12 px-4">
+        {(exportError || exportSuccess) && (
+          <div className={`rounded-xl p-4 mb-6 font-semibold text-center shadow border ${exportError ? 'bg-red-100 border-red-300 text-red-800' : 'bg-green-100 border-green-300 text-green-800'}`}>
+            {exportError || exportSuccess}
+          </div>
+        )}
         <div className="flex justify-between items-center mb-8">
           <h1 className="text-4xl font-bold text-amber-900">Admin Analytics</h1>
           <div className="flex gap-2">
@@ -132,36 +145,36 @@ const AdminAnalyticsPage: React.FC = () => {
 
         {/* Overview Cards */}
         <div className="grid grid-cols-1 md:grid-cols-4 gap-8 mb-12">
-          <div className="bg-white/80 rounded-3xl shadow-xl border border-amber-100 p-8 flex flex-col items-center luxury-card">
+          <LuxuryCard padding="2xl" className="bg-white/80 border border-amber-100 flex flex-col items-center">
             <span className="text-2xl font-bold text-amber-900 mb-2">
               ${analytics?.totalSales?.toLocaleString() ?? '--'}
             </span>
             <span className="text-lg text-gray-500">Total Sales</span>
-          </div>
-          <div className="bg-white/80 rounded-3xl shadow-xl border border-amber-100 p-8 flex flex-col items-center luxury-card">
+          </LuxuryCard>
+          <LuxuryCard padding="2xl" className="bg-white/80 border border-amber-100 flex flex-col items-center">
             <span className="text-2xl font-bold text-amber-900 mb-2">
               {analytics?.totalOrders ?? '--'}
             </span>
             <span className="text-lg text-gray-500">Orders</span>
-          </div>
-          <div className="bg-white/80 rounded-3xl shadow-xl border border-amber-100 p-8 flex flex-col items-center luxury-card">
+          </LuxuryCard>
+          <LuxuryCard padding="2xl" className="bg-white/80 border border-amber-100 flex flex-col items-center">
             <span className="text-2xl font-bold text-amber-900 mb-2">
               {analytics?.totalUsers ?? '--'}
             </span>
             <span className="text-lg text-gray-500">Users</span>
-          </div>
-          <div className="bg-white/80 rounded-3xl shadow-xl border border-amber-100 p-8 flex flex-col items-center luxury-card">
+          </LuxuryCard>
+          <LuxuryCard padding="2xl" className="bg-white/80 border border-amber-100 flex flex-col items-center">
             <span className="text-2xl font-bold text-amber-900 mb-2">
               {analytics?.totalGemstones ?? '--'}
             </span>
             <span className="text-lg text-gray-500">Gemstones</span>
-          </div>
+          </LuxuryCard>
         </div>
 
         {/* Charts and Analytics */}
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-8 mb-12">
           {/* Top Gemstones */}
-          <div className="bg-white/80 rounded-3xl shadow-xl border border-amber-100 p-8">
+          <LuxuryCard padding="2xl" className="bg-white/80 border border-amber-100">
             <h2 className="text-2xl font-semibold text-amber-900 mb-6">Top Gemstones</h2>
             <div className="space-y-4">
               {(analytics?.topGemstones || []).map((gem, idx) => (
@@ -177,10 +190,10 @@ const AdminAnalyticsPage: React.FC = () => {
                 </div>
               ))}
             </div>
-          </div>
+          </LuxuryCard>
 
           {/* Sales by Category */}
-          <div className="bg-white/80 rounded-3xl shadow-xl border border-amber-100 p-8">
+          <LuxuryCard padding="2xl" className="bg-white/80 border border-amber-100">
             <h2 className="text-2xl font-semibold text-amber-900 mb-6">Sales by Category</h2>
             <div className="space-y-4">
               {(analytics?.salesByCategory || []).map((cat, idx) => (
@@ -195,11 +208,11 @@ const AdminAnalyticsPage: React.FC = () => {
                 </div>
               ))}
             </div>
-          </div>
+          </LuxuryCard>
         </div>
 
         {/* Top Users */}
-        <div className="bg-white/80 rounded-3xl shadow-xl border border-amber-100 p-8 mb-12">
+        <LuxuryCard padding="2xl" className="bg-white/80 border border-amber-100 mb-12">
           <h2 className="text-2xl font-semibold text-amber-900 mb-6">Top Users</h2>
           <div className="overflow-x-auto">
             <table className="min-w-full">
@@ -223,10 +236,10 @@ const AdminAnalyticsPage: React.FC = () => {
               </tbody>
             </table>
           </div>
-        </div>
+        </LuxuryCard>
 
         {/* Recent Orders */}
-        <div className="bg-white/80 rounded-3xl shadow-xl border border-amber-100 p-8">
+        <LuxuryCard padding="2xl" className="bg-white/80 border border-amber-100">
           <h2 className="text-2xl font-semibold text-amber-900 mb-6">Recent Orders</h2>
           <div className="space-y-4">
             {(analytics?.recentOrders || []).map((order) => (
@@ -250,10 +263,16 @@ const AdminAnalyticsPage: React.FC = () => {
               </div>
             ))}
           </div>
-        </div>
+        </LuxuryCard>
       </div>
     </AdminLayout>
   );
 };
 
 export default AdminAnalyticsPage;
+
+export const getServerSideProps: GetServerSideProps = async (ctx) => {
+  const res = await getSessionOrRedirect(ctx, { requireAdmin: true });
+  if ('redirect' in res) return res;
+  return { props: {} };
+};

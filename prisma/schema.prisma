@@ -1,45 +1,47 @@
-// This is your Prisma schema file,
-// learn more about it in the docs: https://pris.ly/d/prisma-schema
-
 generator client {
-  provider = "prisma-client-js"
-  // Ensure native binaries for local macOS arm64 (and a generic native target) are generated so Prisma can load an in-process engine instead of using the HTTP/daemon.
-  binaryTargets = ["native", "darwin-arm64"]
+  provider      = "prisma-client-js"
+  binaryTargets = ["native", "darwin-arm64", "linux-musl"]
+  previewFeatures = ["relationJoins", "omitApi"]
+  engineType = "binary"
 }
 
-
-// Database configuration - using SQLite for development
 datasource db {
   provider = "sqlite"
   url      = env("DATABASE_URL")
+  shadowDatabaseUrl = env("SHADOW_DATABASE_URL")
 }
 
 model User {
-  id        Int      @id @default(autoincrement())
-  email     String   @unique
-  password  String
-  firstName String?
-  lastName  String?
-  name      String?  // For compatibility with existing code
-  role      String   @default("user")
-  active    Boolean  @default(true)
-  createdAt DateTime @default(now())
-  updatedAt DateTime @updatedAt
-
-  // Relations
-  orders         Order[]
+  id             Int              @id @default(autoincrement())
+  email          String           @unique
+  password       String
+  firstName      String?
+  lastName       String?
+  role           String           @default("user")
+  active         Boolean          @default(true)
+  createdAt      DateTime         @default(now())
+  updatedAt      DateTime         @updatedAt
+  name           String?
+  image          String?
+  loyalty        Loyalty?
   addresses      Address[]
+  adminAuditLogs AdminAuditLog[]
   cart           CartItem[]
-  wishlist       WishlistItem[]
+  orders         Order[]
   recentlyViewed RecentlyViewed[]
   reviews        Review[]
-  adminAuditLogs AdminAuditLog[]
+  wishlist       WishlistItem[]
+  blogs          Blog[]
+  notifications  Notification[]
+  userCoupons    UserCoupon[]
+  pages          Page[]           // Add this relation
+  pageVersions   PageVersion[]    // Add this relation
 
-  @@map("users")
   @@index([email])
   @@index([role])
   @@index([active])
   @@index([createdAt])
+  @@map("users")
 }
 
 model Category {
@@ -50,51 +52,53 @@ model Category {
   active      Boolean    @default(true)
   createdAt   DateTime   @default(now())
   updatedAt   DateTime   @updatedAt
+  gemstones   Gemstone[]
 
-  // Relations
-  gemstones Gemstone[]
-
-  @@map("categories")
   @@index([name])
   @@index([active])
   @@index([createdAt])
+  @@map("categories")
 }
 
 model Gemstone {
-  id          Int      @id @default(autoincrement())
-  name        String
-  description String
-  price       Float
-  salePrice   Float?
-  categoryId  Int
-  images      String   // JSON array of image URLs
-  weight      Float?
-  dimensions  String?  // JSON object
-  clarity     String?
-  color       String?
-  cut         String?
-  origin      String?
-  certificate String?
-  stockCount  Int      @default(0)
-  stockQuantity Int    @default(0) // Alias for stockCount for compatibility
-  lowStockThreshold Int @default(5)
-  featured    Boolean  @default(false)
-  active      Boolean  @default(true)
-  createdAt   DateTime @default(now())
-  updatedAt   DateTime @updatedAt
-
-  // Relations
-  category      Category        @relation(fields: [categoryId], references: [id], onDelete: Restrict)
-  orderItems    OrderItem[]
-  cartItems     CartItem[]
-  sessionCartItems SessionCartItem[]
-  wishlistItems WishlistItem[]
-  recentlyViewed RecentlyViewed[]
-  inventory     Inventory[]
-  reviews       Review[]
+  id                   Int                   @id @default(autoincrement())
+  name                 String
+  description          String
+  price                Float
+  salePrice            Float?
+  dynamicPrice         Float?
+  categoryId           Int
+  images               String
+  weight               Float?
+  dimensions           String?
+  clarity              String?
+  color                String?
+  cut                  String?
+  origin               String?
+  certificate          String?
+  tags                 String?
+  averageRating        Float?
+  reviewCount          Int     @default(0)
+  viewCount            Int     @default(0)
+  stockCount           Int                   @default(0)
+  stockQuantity        Int                   @default(0)
+  lowStockThreshold    Int                   @default(5)
+  featured             Boolean               @default(false)
+  active               Boolean               @default(true)
+  cashOnDelivery       Boolean               @default(false)
+  createdAt            DateTime              @default(now())
+  updatedAt            DateTime              @updatedAt
+  cartItems            CartItem[]
+  category             Category              @relation(fields: [categoryId], references: [id])
+  inventory            Inventory[]
+  orderItems           OrderItem[]
+  recentlyViewed       RecentlyViewed[]
+  reviews              Review[]
+  sessionCartItems     SessionCartItem[]
   sessionWishlistItems SessionWishlistItem[]
+  wishlistItems        WishlistItem[]
+  featuredProducts     FeaturedProduct[]     // Add this relation
 
-  @@map("gemstones")
   @@index([categoryId])
   @@index([price])
   @@index([featured])
@@ -102,30 +106,31 @@ model Gemstone {
   @@index([stockCount])
   @@index([createdAt])
   @@index([name])
+  @@map("gemstones")
 }
 
 model Order {
-  id            Int      @id @default(autoincrement())
-  userId        Int
-  orderNumber   String   @unique // Add order number field
-  total         Float
-  status        String   @default("pending") // pending, processing, shipped, delivered, cancelled
-  paymentStatus String   @default("pending") // pending, paid, failed, refunded
-  paymentIntentId String? // Add Stripe payment intent ID
-  shippingAddress String // JSON object
-  trackingNumber String?
-  notes         String?
-  cancelledAt   DateTime? // Add cancellation timestamp
-  createdAt     DateTime @default(now())
-  updatedAt     DateTime @updatedAt
+  id              Int                  @id @default(autoincrement())
+  userId          Int
+  orderNumber     String               @unique
+  total           Float
+  status          String               @default("pending")
+  paymentStatus   String               @default("pending")
+  paymentMethod   String               @default("card")
+  paymentIntentId String?
+  shippingAddress String
+  trackingNumber  String?
+  notes           String?
+  cancelledAt     DateTime?
+  createdAt       DateTime             @default(now())
+  updatedAt       DateTime             @updatedAt
+  items           OrderItem[]
+  statusHistory   OrderStatusHistory[]
+  user            User                 @relation(fields: [userId], references: [id])
+  returns         Return[]
+  notifications   Notification[]
+  userCoupons     UserCoupon[]
 
-  // Relations
-  user      User        @relation(fields: [userId], references: [id], onDelete: Restrict)
-  items     OrderItem[]
-  statusHistory OrderStatusHistory[]
-  returns   Return[]
-
-  @@map("orders")
   @@index([userId])
   @@index([status])
   @@index([paymentStatus])
@@ -133,6 +138,7 @@ model Order {
   @@index([trackingNumber])
   @@index([orderNumber])
   @@index([paymentIntentId])
+  @@map("orders")
 }
 
 model OrderItem {
@@ -142,15 +148,13 @@ model OrderItem {
   quantity   Int
   price      Float
   createdAt  DateTime @default(now())
+  gemstone   Gemstone @relation(fields: [gemstoneId], references: [id])
+  order      Order    @relation(fields: [orderId], references: [id], onDelete: Cascade)
 
-  // Relations
-  order    Order    @relation(fields: [orderId], references: [id], onDelete: Cascade)
-  gemstone Gemstone @relation(fields: [gemstoneId], references: [id], onDelete: Restrict)
-
-  @@map("order_items")
   @@index([orderId])
   @@index([gemstoneId])
   @@index([createdAt])
+  @@map("order_items")
 }
 
 model OrderStatusHistory {
@@ -158,41 +162,35 @@ model OrderStatusHistory {
   orderId   Int
   status    String
   comment   String?
-  notes     String? // Add notes field for compatibility
+  notes     String?
   createdAt DateTime @default(now())
+  order     Order    @relation(fields: [orderId], references: [id], onDelete: Cascade)
 
-  // Relations
-  order Order @relation(fields: [orderId], references: [id], onDelete: Cascade)
-
-  @@map("order_status_history")
   @@index([orderId])
   @@index([status])
   @@index([createdAt])
+  @@map("order_status_history")
 }
 
-// Add AdminAuditLog model for admin security
 model AdminAuditLog {
-  id          Int      @id @default(autoincrement())
-  userId      Int
-  action      String
-  resource    String?
-  resourceId  String?
-  details     String? // JSON string for additional details
-  ipAddress   String?
-  userAgent   String?
-  createdAt   DateTime @default(now())
+  id         Int      @id @default(autoincrement())
+  userId     Int
+  action     String
+  resource   String?
+  resourceId String?
+  details    String?
+  ipAddress  String?
+  userAgent  String?
+  createdAt  DateTime @default(now())
+  user       User     @relation(fields: [userId], references: [id], onDelete: Cascade)
 
-  // Relations
-  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
-
-  @@map("admin_audit_logs")
   @@index([userId])
   @@index([action])
   @@index([resource])
   @@index([createdAt])
+  @@map("admin_audit_logs")
 }
 
-// Add PasswordReset model for password reset functionality
 model PasswordReset {
   id        Int      @id @default(autoincrement())
   email     String
@@ -201,39 +199,37 @@ model PasswordReset {
   used      Boolean  @default(false)
   createdAt DateTime @default(now())
 
-  @@map("password_resets")
   @@index([email])
   @@index([token])
   @@index([expiresAt])
   @@index([used])
+  @@map("password_resets")
 }
 
 model Address {
-  id          Int      @id @default(autoincrement())
-  userId      Int
-  type        String   // billing, shipping
-  firstName   String
-  lastName    String
-  company     String?
-  address1    String
-  address2    String?
-  city        String
-  state       String
-  postalCode  String
-  country     String
-  phone       String?
-  isDefault   Boolean  @default(false)
-  createdAt   DateTime @default(now())
-  updatedAt   DateTime @updatedAt
+  id         Int      @id @default(autoincrement())
+  userId     Int
+  type       String
+  firstName  String
+  lastName   String
+  company    String?
+  address1   String
+  address2   String?
+  city       String
+  state      String
+  postalCode String
+  country    String
+  phone      String?
+  isDefault  Boolean  @default(false)
+  createdAt  DateTime @default(now())
+  updatedAt  DateTime @updatedAt
+  user       User     @relation(fields: [userId], references: [id], onDelete: Cascade)
 
-  // Relations
-  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
-
-  @@map("addresses")
   @@index([userId])
   @@index([type])
   @@index([isDefault])
   @@index([createdAt])
+  @@map("addresses")
 }
 
 model CartItem {
@@ -244,50 +240,44 @@ model CartItem {
   price      Float
   createdAt  DateTime @default(now())
   updatedAt  DateTime @updatedAt
-
-  // Relations
-  user     User     @relation(fields: [userId], references: [id], onDelete: Cascade)
-  gemstone Gemstone @relation(fields: [gemstoneId], references: [id], onDelete: Cascade)
+  gemstone   Gemstone @relation(fields: [gemstoneId], references: [id], onDelete: Cascade)
+  user       User     @relation(fields: [userId], references: [id], onDelete: Cascade)
 
   @@unique([userId, gemstoneId])
-  @@map("cart_items")
   @@index([userId])
   @@index([gemstoneId])
   @@index([createdAt])
+  @@map("cart_items")
 }
 
 model SessionCart {
-  id        String   @id @default(cuid())
-  sessionId String   @unique
-  createdAt DateTime @default(now())
-  updatedAt DateTime @updatedAt
+  id        String            @id @default(cuid())
+  sessionId String            @unique
+  createdAt DateTime          @default(now())
+  updatedAt DateTime          @updatedAt
+  items     SessionCartItem[]
 
-  // Relations
-  items SessionCartItem[]
-
-  @@map("session_carts")
   @@index([sessionId])
   @@index([createdAt])
+  @@map("session_carts")
 }
 
 model SessionCartItem {
-  id           Int         @id @default(autoincrement())
-  sessionId    String
-  gemstoneId   Int
-  quantity     Int         @default(1)
-  price        Float
-  createdAt    DateTime    @default(now())
-  updatedAt    DateTime    @updatedAt
-
-  // Relations
-  sessionCart SessionCart @relation(fields: [sessionId], references: [sessionId], onDelete: Cascade)
+  id          Int         @id @default(autoincrement())
+  sessionId   String
+  gemstoneId  Int
+  quantity    Int         @default(1)
+  price       Float
+  createdAt   DateTime    @default(now())
+  updatedAt   DateTime    @updatedAt
   gemstone    Gemstone    @relation(fields: [gemstoneId], references: [id], onDelete: Cascade)
+  sessionCart SessionCart @relation(fields: [sessionId], references: [sessionId], onDelete: Cascade)
 
   @@unique([sessionId, gemstoneId])
-  @@map("session_cart_items")
   @@index([sessionId])
   @@index([gemstoneId])
   @@index([createdAt])
+  @@map("session_cart_items")
 }
 
 model WishlistItem {
@@ -295,49 +285,42 @@ model WishlistItem {
   userId     Int
   gemstoneId Int
   createdAt  DateTime @default(now())
-
-  // Relations
-  user     User     @relation(fields: [userId], references: [id], onDelete: Cascade)
-  gemstone Gemstone @relation(fields: [gemstoneId], references: [id], onDelete: Cascade)
+  gemstone   Gemstone @relation(fields: [gemstoneId], references: [id], onDelete: Cascade)
+  user       User     @relation(fields: [userId], references: [id], onDelete: Cascade)
 
   @@unique([userId, gemstoneId])
-  @@map("wishlist_items")
   @@index([userId])
   @@index([gemstoneId])
   @@index([createdAt])
+  @@map("wishlist_items")
 }
 
-// Session-based wishlist for guests
 model SessionWishlist {
-  id        String   @id @default(cuid())
-  sessionId String   @unique
-  createdAt DateTime @default(now())
-  updatedAt DateTime @updatedAt
+  id        String                @id @default(cuid())
+  sessionId String                @unique
+  createdAt DateTime              @default(now())
+  updatedAt DateTime              @updatedAt
+  items     SessionWishlistItem[]
 
-  // Relations
-  items SessionWishlistItem[]
-
-  @@map("session_wishlists")
   @@index([sessionId])
   @@index([createdAt])
+  @@map("session_wishlists")
 }
 
 model SessionWishlistItem {
-  id           Int      @id @default(autoincrement())
-  sessionId    String
-  gemstoneId   Int
-  createdAt    DateTime @default(now())
-  updatedAt    DateTime @updatedAt
-
-  // Relations
-  sessionWishlist SessionWishlist @relation(fields: [sessionId], references: [sessionId], onDelete: Cascade)
+  id              Int             @id @default(autoincrement())
+  sessionId       String
+  gemstoneId      Int
+  createdAt       DateTime        @default(now())
+  updatedAt       DateTime        @updatedAt
   gemstone        Gemstone        @relation(fields: [gemstoneId], references: [id], onDelete: Cascade)
+  sessionWishlist SessionWishlist @relation(fields: [sessionId], references: [sessionId], onDelete: Cascade)
 
   @@unique([sessionId, gemstoneId])
-  @@map("session_wishlist_items")
   @@index([sessionId])
   @@index([gemstoneId])
   @@index([createdAt])
+  @@map("session_wishlist_items")
 }
 
 model RecentlyViewed {
@@ -345,41 +328,36 @@ model RecentlyViewed {
   userId     Int
   gemstoneId Int
   viewedAt   DateTime @default(now())
+  gemstone   Gemstone @relation(fields: [gemstoneId], references: [id], onDelete: Cascade)
+  user       User     @relation(fields: [userId], references: [id], onDelete: Cascade)
 
-  // Relations
-  user     User     @relation(fields: [userId], references: [id], onDelete: Cascade)
-  gemstone Gemstone @relation(fields: [gemstoneId], references: [id], onDelete: Cascade)
-
+  @@unique([userId, gemstoneId])
+  @@index([userId, viewedAt])
   @@map("recently_viewed")
-  @@index([userId])
-  @@index([gemstoneId])
-  @@index([viewedAt])
 }
 
 model Review {
   id         Int      @id @default(autoincrement())
   userId     Int
   gemstoneId Int
-  rating     Int      // 1-5 stars
+  rating     Int
   title      String?
   comment    String?
   verified   Boolean  @default(false)
+  helpfulCount Int     @default(0)
   createdAt  DateTime @default(now())
   updatedAt  DateTime @updatedAt
+  gemstone   Gemstone @relation(fields: [gemstoneId], references: [id], onDelete: Cascade)
+  user       User     @relation(fields: [userId], references: [id], onDelete: Cascade)
 
-  // Relations
-  user     User     @relation(fields: [userId], references: [id], onDelete: Cascade)
-  gemstone Gemstone @relation(fields: [gemstoneId], references: [id], onDelete: Cascade)
-
-  @@map("reviews")
   @@index([userId])
   @@index([gemstoneId])
   @@index([rating])
   @@index([verified])
   @@index([createdAt])
+  @@map("reviews")
 }
 
-// CMS Models
 model HomepageSection {
   id        Int      @id @default(autoincrement())
   key       String   @unique
@@ -389,11 +367,11 @@ model HomepageSection {
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 
-  @@map("homepage_sections")
   @@index([key])
   @@index([active])
   @@index([order])
   @@index([createdAt])
+  @@map("homepage_sections")
 }
 
 model FAQ {
@@ -406,11 +384,11 @@ model FAQ {
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 
-  @@map("faqs")
   @@index([category])
   @@index([active])
   @@index([order])
   @@index([createdAt])
+  @@map("faqs")
 }
 
 model Testimonial {
@@ -425,10 +403,10 @@ model Testimonial {
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 
-  @@map("testimonials")
   @@index([active])
   @@index([rating])
   @@index([createdAt])
+  @@map("testimonials")
 }
 
 model Press {
@@ -443,68 +421,51 @@ model Press {
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 
-  @@map("press")
   @@index([active])
   @@index([date])
   @@index([createdAt])
+  @@map("press")
 }
 
-model Banner {
-  id        Int      @id @default(autoincrement())
-  title     String
-  subtitle  String?
-  image     String
-  link      String?
-  order     Int      @default(0)
-  active    Boolean  @default(true)
-  createdAt DateTime @default(now())
-  updatedAt DateTime @updatedAt
-
-  @@map("banners")
-  @@index([active])
-  @@index([order])
-  @@index([createdAt])
-}
-
-// Settings Models
 model SiteSettings {
   id    Int    @id @default(autoincrement())
   key   String @unique
   value String
-  type  String @default("string") // string, number, boolean, json
+  type  String @default("string")
 
-  @@map("site_settings")
   @@index([key])
+  @@map("site_settings")
 }
 
 model NavigationSettings {
   id          Int      @id @default(autoincrement())
-  menuItems   Json     // Array of menu items
-  footerLinks Json     // Array of footer links
-  socialLinks Json     // Array of social links
+  menuItems   Json
+  footerLinks Json
+  socialLinks Json
   createdAt   DateTime @default(now())
   updatedAt   DateTime @updatedAt
 
-  @@map("navigation_settings")
   @@index([createdAt])
+  @@map("navigation_settings")
 }
 
 model SEO {
-  id          Int      @id @default(autoincrement())
-  page        String   @unique
-  title       String
-  description String
-  keywords    String?
-  ogImage     String?
-  createdAt   DateTime @default(now())
-  updatedAt   DateTime @updatedAt
+  id              Int      @id @default(autoincrement())
+  page            String   @unique
+  title           String
+  description     String
+  keywords        String?
+  ogImage         String?  @default("/images/og-image.jpg")
+  robots          String?  @default("index, follow")
+  canonical       String?
+  metaTags        String?
+  structuredData  String?
+  updatedAt       DateTime @updatedAt
 
-  @@map("seo")
   @@index([page])
-  @@index([createdAt])
+  @@map("seo")
 }
 
-// Inventory Management
 model Inventory {
   id         Int      @id @default(autoincrement())
   gemstoneId Int
@@ -513,33 +474,84 @@ model Inventory {
   notes      String?
   createdAt  DateTime @default(now())
   updatedAt  DateTime @updatedAt
+  gemstone   Gemstone @relation(fields: [gemstoneId], references: [id], onDelete: Cascade)
 
-  // Relations
-  gemstone Gemstone @relation(fields: [gemstoneId], references: [id], onDelete: Cascade)
-
-  @@map("inventory")
   @@index([gemstoneId])
   @@index([quantity])
   @@index([createdAt])
+  @@map("inventory")
+}
+
+model Loyalty {
+  id        Int      @id @default(autoincrement())
+  userId    Int      @unique
+  points    Int      @default(0)
+  tier      String   @default("Bronze")
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId])
+  @@index([points])
+  @@index([tier])
+  @@index([createdAt])
+  @@map("loyalty")
+}
+
+model LoyaltyTier {
+  name           String    @id
+  minPoints      Int
+  discountPercent Int
+  benefits       String   // JSON array of benefits as string
+  active         Boolean  @default(true)
+  createdAt      DateTime @default(now())
+  updatedAt      DateTime @updatedAt
+
+  @@index([minPoints])
+  @@index([active])
+  @@index([createdAt])
+  @@map("loyalty_tiers")
+}
+
+model Notification {
+  id        Int      @id @default(autoincrement())
+  userId    Int
+  title     String
+  message   String
+  type      String   @default("info") // info, success, warning, error
+  read      Boolean  @default(false)
+  orderId   Int?
+  link      String?
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  // Relations
+  user  User  @relation(fields: [userId], references: [id], onDelete: Cascade)
+  order Order? @relation(fields: [orderId], references: [id])
+
+  @@index([userId])
+  @@index([read])
+  @@index([type])
+  @@index([orderId])
+  @@index([createdAt])
+  @@map("notifications")
 }
 
 model Return {
-  id          Int      @id @default(autoincrement())
-  orderId     Int
-  reason      String
-  description String?
-  status      String   @default("pending") // pending, approved, rejected, processed
+  id           Int      @id @default(autoincrement())
+  orderId      Int
+  reason       String
+  description  String?
+  status       String   @default("pending")
   refundAmount Float?
-  createdAt   DateTime @default(now())
-  updatedAt   DateTime @updatedAt
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
+  order        Order    @relation(fields: [orderId], references: [id], onDelete: Cascade)
 
-  // Relations
-  order Order @relation(fields: [orderId], references: [id], onDelete: Cascade)
-
-  @@map("returns")
   @@index([orderId])
   @@index([status])
   @@index([createdAt])
+  @@map("returns")
 }
 
 model Shipping {
@@ -552,8 +564,275 @@ model Shipping {
   createdAt   DateTime @default(now())
   updatedAt   DateTime @updatedAt
 
-  @@map("shipping")
   @@index([active])
   @@index([price])
   @@index([createdAt])
+  @@map("shipping")
+}
+
+model SecurityLog {
+  id        Int      @id @default(autoincrement())
+  timestamp DateTime @default(now())
+  event     String
+  userId    Int?
+  ip        String?
+  userAgent String?
+  details   String?
+
+  @@index([timestamp])
+  @@index([event])
+  @@index([userId])
+  @@index([ip])
+  @@map("security_logs")
+}
+
+model Coupon {
+  id          Int      @id @default(autoincrement())
+  code        String   @unique
+  name        String
+  description String?
+  discountType String  // 'percentage' or 'fixed'
+  discountValue Float // percentage (e.g., 10 for 10%) or fixed amount
+  minimumAmount Float? // minimum cart total for coupon to be valid
+  maximumDiscount Float? // maximum discount amount for percentage coupons
+  usageLimit  Int?     // total number of times this coupon can be used
+  usedCount   Int      @default(0) // number of times this coupon has been used
+  validFrom   DateTime // coupon start date
+  validTo     DateTime // coupon expiration date
+  active      Boolean  @default(true)
+  onePerUser  Boolean  @default(false) // whether a user can use this coupon only once
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  // Relations
+  userCoupons UserCoupon[]
+
+  @@index([code])
+  @@index([active])
+  @@index([validFrom])
+  @@index([validTo])
+  @@index([createdAt])
+  @@map("coupons")
+}
+
+model UserCoupon {
+  id        Int      @id @default(autoincrement())
+  userId    Int
+  couponId  Int
+  orderId   Int?
+  usedAt    DateTime @default(now())
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  // Relations
+  user   User   @relation(fields: [userId], references: [id], onDelete: Cascade)
+  coupon Coupon @relation(fields: [couponId], references: [id], onDelete: Cascade)
+  order  Order? @relation(fields: [orderId], references: [id])
+
+  @@unique([userId, couponId, orderId])
+  @@index([userId])
+  @@index([couponId])
+  @@index([orderId])
+  @@index([usedAt])
+  @@index([createdAt])
+  @@map("user_coupons")
+}
+
+model Blog {
+  id              Int      @id @default(autoincrement())
+  title           String
+  slug            String   @unique
+  excerpt         String?
+  content         String
+  status          String   @default("draft") // draft, published, archived
+  featuredImage   String?
+  tags            String?
+  metaTitle       String?
+  metaDescription String?
+  author          User     @relation(fields: [authorId], references: [id])
+  authorId        Int
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
+
+  @@index([slug])
+  @@index([status])
+  @@index([authorId])
+  @@index([createdAt])
+  @@map("blogs")
+}
+
+model Policy {
+  id        Int      @id @default(autoincrement())
+  title     String
+  slug      String   @unique
+  content   String
+  type      String   // privacy, terms, refund, shipping, cookies, custom
+  status    String   @default("active") // active, inactive
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([slug])
+  @@index([type])
+  @@index([status])
+  @@index([createdAt])
+  @@map("policies")
+}
+
+model Page {
+  id          Int           @id @default(autoincrement())
+  title       String
+  slug        String        @unique
+  content     Json          // Flexible content structure for dynamic pages
+  seo         Json?         // SEO metadata for the page
+  template    String?       // Page template to use (optional)
+  status      String        @default("draft") // draft, published, archived
+  version     Int           @default(1)
+  parentId    Int?          // For hierarchical pages
+  order       Int           @default(0)
+  authorId    Int
+  author      User          @relation(fields: [authorId], references: [id])
+  createdAt   DateTime      @default(now())
+  updatedAt   DateTime      @updatedAt
+  publishedAt DateTime?
+  viewCount   Int           @default(0)        // Add view count
+  versions    PageVersion[] // Add this relation
+  banners     Banner[]      // Add this relation
+  featuredProducts FeaturedProduct[] // Add this relation
+  promotionalSections PromotionalSection[] // Add this relation
+  contentBlocks ContentBlock[] // Add this relation
+
+  @@index([slug])
+  @@index([status])
+  @@index([authorId])
+  @@index([parentId])
+  @@index([order])
+  @@index([createdAt])
+  @@index([publishedAt])
+  @@map("pages")
+}
+
+model PageVersion {
+  id        Int      @id @default(autoincrement())
+  pageId    Int
+  content   Json
+  seo       Json?
+  version   Int
+  authorId  Int
+  author    User     @relation(fields: [authorId], references: [id])
+  createdAt DateTime @default(now())
+  page      Page     @relation(fields: [pageId], references: [id], onDelete: Cascade)
+
+  @@index([pageId])
+  @@index([version])
+  @@index([authorId])
+  @@index([createdAt])
+  @@map("page_versions")
+}
+
+model PageTemplate {
+  id          Int      @id @default(autoincrement())
+  name        String   @unique
+  description String?
+  content     Json     // Template structure
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  @@index([name])
+  @@index([createdAt])
+  @@map("page_templates")
+}
+
+model Banner {
+  id        Int      @id @default(autoincrement())
+  title     String
+  subtitle  String?
+  image     String
+  link      String?
+  order     Int      @default(0)
+  active    Boolean  @default(true)
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+  pageId    Int
+  page      Page     @relation(fields: [pageId], references: [id], onDelete: Cascade)
+
+  @@index([pageId])
+  @@index([active])
+  @@index([order])
+  @@index([createdAt])
+  @@map("banners")
+}
+
+model FeaturedProduct {
+  id         Int      @id @default(autoincrement())
+  gemstoneId Int
+  pageId     Int
+  order      Int      @default(0)
+  createdAt  DateTime @default(now())
+  updatedAt  DateTime @updatedAt
+  gemstone   Gemstone @relation(fields: [gemstoneId], references: [id], onDelete: Cascade)
+  page       Page     @relation(fields: [pageId], references: [id], onDelete: Cascade)
+
+  @@unique([pageId, gemstoneId])
+  @@index([pageId])
+  @@index([gemstoneId])
+  @@index([order])
+  @@index([createdAt])
+  @@map("featured_products")
+}
+
+model PromotionalSection {
+  id        Int      @id @default(autoincrement())
+  title     String
+  subtitle  String?
+  content   String
+  image     String
+  link      String?
+  ctaText   String?
+  ctaLink   String?
+  layout    String?  @default("left") // left, right, center
+  order     Int      @default(0)
+  active    Boolean  @default(true)
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+  pageId    Int
+  page      Page     @relation(fields: [pageId], references: [id], onDelete: Cascade)
+
+  @@index([pageId])
+  @@index([active])
+  @@index([order])
+  @@index([createdAt])
+  @@map("promotional_sections")
+}
+
+model ContentBlock {
+  id        Int      @id @default(autoincrement())
+  type      String   // text, image, video, button, divider
+  content   Json
+  settings  Json?
+  order     Int      @default(0)
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+  pageId    Int
+  page      Page     @relation(fields: [pageId], references: [id], onDelete: Cascade)
+
+  @@index([pageId])
+  @@index([type])
+  @@index([order])
+  @@index([createdAt])
+  @@map("content_blocks")
+}
+
+model NotificationTemplate {
+  id        Int      @id @default(autoincrement())
+  name      String   @unique
+  subject   String
+  body      String
+  type      String   @default("email") // email, sms, push
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([name])
+  @@index([type])
+  @@index([createdAt])
+  @@map("notification_templates")
 }

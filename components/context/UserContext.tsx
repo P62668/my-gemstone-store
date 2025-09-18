@@ -1,5 +1,6 @@
 import React, { createContext, useContext, useState, useEffect } from 'react';
 import { useRouter } from 'next/router';
+import { useSession, signOut } from 'next-auth/react';
 import { apiClient } from '../../utils/apiClient';
 
 interface User {
@@ -12,104 +13,121 @@ interface User {
   createdAt: string;
 }
 
+interface PersonalizedOffer {
+  id: number;
+  title: string;
+  description: string;
+  discountPercentage: number;
+  type: string;
+  applicableTo: string;
+  endTime?: string;
+  tier?: string;
+  pointsRequired?: number;
+  categories?: number[];
+}
+
 interface UserContextType {
   user: User | null;
   loading: boolean;
+  offers: PersonalizedOffer[];
+  offersLoading: boolean;
   login: (email: string, password: string) => Promise<boolean>;
   logout: () => void;
   updateUser: (data: Partial<User>) => Promise<boolean>;
   fetchUser: () => Promise<void>;
+  fetchPersonalizedOffers: () => Promise<void>;
+  refreshToken: () => Promise<boolean>;
 }
 
 const UserContext = createContext<UserContextType | undefined>(undefined);
 
-// Cache for user data to prevent excessive API calls
-let userCache: { user: User | null; timestamp: number } | null = null;
-const CACHE_DURATION = 5 * 60 * 1000; // 5 minutes
-
-// Debounce function to prevent multiple simultaneous calls
-let fetchUserPromise: Promise<void> | null = null;
-
 export function UserProvider({ children }: { children: React.ReactNode }) {
   const [user, setUser] = useState<User | null>(null);
   const [loading, setLoading] = useState(false);
+  const [offers, setOffers] = useState<PersonalizedOffer[]>([]);
+  const [offersLoading, setOffersLoading] = useState(false);
+  const [mounted, setMounted] = useState(false);
+  const { data: session, status } = useSession();
   const router = useRouter();
+  
+  useEffect(() => {
+    setMounted(true);
+  }, []);
+
+  // Sync user data from session
+  useEffect(() => {
+    if (status === 'authenticated' && session?.user) {
+      const sessionUser = session.user as any;
+      setUser({
+        id: parseInt(sessionUser.id, 10),
+        email: sessionUser.email,
+        name: sessionUser.name,
+        role: sessionUser.role,
+        createdAt: new Date().toISOString(),
+      });
+      
+      // Fetch personalized offers when user logs in
+      fetchPersonalizedOffers();
+    } else if (status === 'unauthenticated') {
+      setUser(null);
+      setOffers([]); // Clear offers on logout
+    }
+  }, [status, session]);
 
   const fetchUser = async () => {
-    // Check cache first
-    if (userCache && Date.now() - userCache.timestamp < CACHE_DURATION) {
-      setUser(userCache.user);
-      return;
-    }
-
-    // If there's already a fetch in progress, wait for it
-    if (fetchUserPromise) {
-      await fetchUserPromise;
-      return;
-    }
-
-    setLoading(true);
-    
-    fetchUserPromise = (async () => {
+    // This is now handled by NextAuth session management
+    // We can still fetch additional user data if needed
+    if (status === 'authenticated' && session?.user) {
+      setLoading(true);
       try {
         const response = await apiClient.get('/api/users/me');
         if (response.ok) {
           const userData = response.data as User;
           setUser(userData);
-          // Update cache
-          userCache = { user: userData, timestamp: Date.now() };
-        } else {
-          setUser(null);
-          userCache = { user: null, timestamp: Date.now() };
         }
-      } catch (error: unknown) {
-        console.error('Error fetching user:', error);
-        setUser(null);
-        userCache = { user: null, timestamp: Date.now() };
+      } catch (error) {
+        console.error('Error fetching additional user data:', error);
       } finally {
         setLoading(false);
-        fetchUserPromise = null;
       }
-    })();
-
-    await fetchUserPromise;
+    }
   };
 
-  // Initialize user from cache if available
-  useEffect(() => {
-    if (userCache && Date.now() - userCache.timestamp < CACHE_DURATION) {
-      setUser(userCache.user);
+  const fetchPersonalizedOffers = async () => {
+    setOffersLoading(true);
+    try {
+      const response = await apiClient.get<PersonalizedOffer[]>('/api/personalized-offers');
+      if (response.ok) {
+        setOffers(response.data);
+      }
+    } catch (error) {
+      console.error('Error fetching personalized offers:', error);
+      setOffers([]); // Set empty array on error
+    } finally {
+      setOffersLoading(false);
     }
-    setLoading(false);
-  }, []);
+  };
 
   const login = async (email: string, password: string): Promise<boolean> => {
-    try {
-      const response = await apiClient.post('/api/users/login', { email, password });
-      if (response.ok) {
-        const userData = (response.data as { user: User }).user;
-        setUser(userData);
-        // Update cache
-        userCache = { user: userData, timestamp: Date.now() };
-        return true;
-      }
-      return false;
-    } catch (error) {
-      console.error('Login error:', error);
-      return false;
-    }
+    // Login is now handled by NextAuth in the login page
+    // This function is kept for backward compatibility but should not be used
+    return true;
   };
 
   const logout = async () => {
     try {
       await apiClient.post('/api/users/logout');
     } catch (error) {
-      console.error('Logout error:', error);
+      console.error('Logout API error:', error);
     } finally {
+      // Use NextAuth signOut
+      await signOut({ redirect: false });
       setUser(null);
-      // Clear cache
-      userCache = null;
-      router.push('/');
+      setOffers([]); // Clear offers on logout
+      // Only push to router if component is mounted (not during SSG)
+      if (mounted && router) {
+        router.push('/');
+      }
     }
   };
 
@@ -119,8 +137,6 @@ export function UserProvider({ children }: { children: React.ReactNode }) {
       if (response.ok) {
         const userData = response.data as any;
         setUser(userData);
-        // Update cache
-        userCache = { user: userData, timestamp: Date.now() };
         return true;
       }
       return false;
@@ -130,8 +146,26 @@ export function UserProvider({ children }: { children: React.ReactNode }) {
     }
   };
 
+  // Add a method to manually refresh the token
+  const refreshToken = async (): Promise<boolean> => {
+    // Token refresh is handled by NextAuth automatically
+    // This function is kept for backward compatibility
+    return true;
+  };
+
   return (
-    <UserContext.Provider value={{ user, loading, login, logout, updateUser, fetchUser }}>
+    <UserContext.Provider value={{ 
+      user, 
+      loading, 
+      offers, 
+      offersLoading, 
+      login, 
+      logout, 
+      updateUser, 
+      fetchUser, 
+      fetchPersonalizedOffers,
+      refreshToken 
+    }}>
       {children}
     </UserContext.Provider>
   );
@@ -144,14 +178,15 @@ export function useUser() {
     return {
       user: null,
       loading: false,
+      offers: [],
+      offersLoading: false,
       login: async () => false,
       logout: async () => {},
       updateUser: async () => false,
       fetchUser: async () => {},
+      fetchPersonalizedOffers: async () => {},
+      refreshToken: async () => false,
     };
   }
   return context;
 }
-
-
-

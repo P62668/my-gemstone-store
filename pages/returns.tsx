@@ -2,7 +2,9 @@ import React from 'react';
 import Link from 'next/link';
 import Layout from '../components/Layout';
 import { motion } from 'framer-motion';
-import { RotateCcw, Clock, Shield, Package, CheckCircle, AlertTriangle } from 'lucide-react';
+import { RotateCcw, Clock, Shield, Package, CheckCircle, AlertTriangle, ArrowLeft } from 'lucide-react';
+import LuxuryButton from '../components/ui/LuxuryButton';
+import LuxuryCard from '../components/ui/LuxuryCard';
 
 const ReturnsPage: React.FC = () => {
   const returnSteps = [
@@ -76,12 +78,12 @@ const ReturnsPage: React.FC = () => {
             animate={{ opacity: 1, y: 0 }}
             transition={{ duration: 0.8 }}
           >
-            <h1 className="text-4xl lg:text-5xl font-bold text-gray-900 mb-6">Returns & Refunds</h1>
-            <p className="text-xl text-gray-600 mb-8">
+            <h1 className="text-4xl lg:text-5xl font-bold text-gray-900 mb-6 luxury-font-serif">Returns & Refunds</h1>
+            <p className="text-xl text-gray-600 mb-8 luxury-font-sans">
               We want you to be completely satisfied with your purchase. Our 30-day return policy
               ensures peace of mind.
             </p>
-            <div className="flex items-center justify-center space-x-4 text-sm text-gray-500">
+            <div className="flex items-center justify-center space-x-4 text-sm text-gray-500 luxury-font-sans">
               <span>30-Day Return Policy</span>
               <span>•</span>
               <span>Free Return Shipping</span>
@@ -101,8 +103,8 @@ const ReturnsPage: React.FC = () => {
             transition={{ duration: 0.8 }}
             className="text-center mb-16"
           >
-            <h2 className="text-3xl lg:text-4xl font-bold text-gray-900 mb-6">How Returns Work</h2>
-            <p className="text-xl text-gray-600 max-w-3xl mx-auto">
+            <h2 className="text-3xl lg:text-4xl font-bold text-gray-900 mb-6 luxury-font-serif">How Returns Work</h2>
+            <p className="text-xl text-gray-600 max-w-3xl mx-auto luxury-font-sans">
               Our simple 4-step return process makes it easy to return items you&apos;re not satisfied
               with.
             </p>
@@ -115,18 +117,17 @@ const ReturnsPage: React.FC = () => {
                 initial={{ opacity: 0, y: 30 }}
                 animate={{ opacity: 1, y: 0 }}
                 transition={{ duration: 0.6, delay: index * 0.1 }}
-                className="relative"
               >
-                <div className="bg-gray-50 rounded-2xl p-8 text-center h-full">
+                <LuxuryCard className="p-8 text-center h-full">
                   <div className="w-16 h-16 bg-amber-100 rounded-full flex items-center justify-center text-amber-600 mx-auto mb-6">
                     {step.icon}
                   </div>
                   <div className="absolute -top-4 -right-4 w-8 h-8 bg-amber-500 text-white rounded-full flex items-center justify-center text-sm font-bold">
                     {step.step}
                   </div>
-                  <h3 className="text-xl font-bold text-gray-900 mb-4">{step.title}</h3>
-                  <p className="text-gray-600">{step.description}</p>
-                </div>
+                  <h3 className="text-xl font-bold text-gray-900 mb-4 luxury-font-serif">{step.title}</h3>
+                  <p className="text-gray-600 luxury-font-sans">{step.description}</p>
+                </LuxuryCard>
               </motion.div>
             ))}
           </div>
@@ -142,8 +143,8 @@ const ReturnsPage: React.FC = () => {
             transition={{ duration: 0.8 }}
             className="text-center mb-16"
           >
-            <h2 className="text-3xl lg:text-4xl font-bold text-gray-900 mb-6">Return Policy</h2>
-            <p className="text-xl text-gray-600 max-w-3xl mx-auto">
+            <h2 className="text-3xl lg:text-4xl font-bold text-gray-900 mb-6 luxury-font-serif">Return Policy</h2>
+            <p className="text-xl text-gray-600 max-w-3xl mx-auto luxury-font-sans">
               Understanding our return policy helps ensure a smooth return experience.
             </p>
           </motion.div>
@@ -155,13 +156,14 @@ const ReturnsPage: React.FC = () => {
                 initial={{ opacity: 0, y: 30 }}
                 animate={{ opacity: 1, y: 0 }}
                 transition={{ duration: 0.6, delay: index * 0.1 }}
-                className="bg-white rounded-2xl p-6 text-center hover:shadow-lg transition-shadow"
               >
-                <div className="w-12 h-12 bg-amber-100 rounded-full flex items-center justify-center text-amber-600 mx-auto mb-4">
-                  {policy.icon}
-                </div>
-                <h3 className="text-lg font-bold text-gray-900 mb-2">{policy.title}</h3>
-                <p className="text-gray-600 text-sm">{policy.description}</p>
+                <LuxuryCard className="p-6 text-center hover:shadow-lg transition-shadow">
+                  <div className="w-12 h-12 bg-amber-100 rounded-full flex items-center justify-center text-amber-600 mx-auto mb-4">
+                    {policy.icon}
+                  </div>
+                  <h3 className="text-lg font-bold text-gray-900 mb-2 luxury-font-serif">{policy.title}</h3>
+                  <p className="text-gray-600 text-sm luxury-font-sans">{policy.description}</p>
+                </LuxuryCard>
               </motion.div>
             ))}
           </div>
@@ -177,10 +179,10 @@ const ReturnsPage: React.FC = () => {
             transition={{ duration: 0.8 }}
             className="text-center mb-16"
           >
-            <h2 className="text-3xl lg:text-4xl font-bold text-gray-900 mb-6">
+            <h2 className="text-3xl lg:text-4xl font-bold text-gray-900 mb-6 luxury-font-serif">
               Non-Returnable Items
             </h2>
-            <p className="text-xl text-gray-600">
+            <p className="text-xl text-gray-600 luxury-font-sans">
               Some items cannot be returned due to their nature or condition.
             </p>
           </motion.div>
@@ -189,20 +191,21 @@ const ReturnsPage: React.FC = () => {
             initial={{ opacity: 0, y: 30 }}
             animate={{ opacity: 1, y: 0 }}
             transition={{ duration: 0.8, delay: 0.2 }}
-            className="bg-red-50 rounded-2xl p-8 border border-red-200"
           >
-            <div className="flex items-center mb-6">
-              <AlertTriangle className="w-8 h-8 text-red-600 mr-4" />
-              <h3 className="text-xl font-bold text-red-900">Items That Cannot Be Returned</h3>
-            </div>
-            <ul className="space-y-3">
-              {nonReturnable.map((item, index) => (
-                <li key={index} className="flex items-start">
-                  <span className="text-red-600 mr-3 mt-1">•</span>
-                  <span className="text-red-800">{item}</span>
-                </li>
-              ))}
-            </ul>
+            <LuxuryCard className="p-8 border border-red-200 bg-red-50">
+              <div className="flex items-center mb-6">
+                <AlertTriangle className="w-8 h-8 text-red-600 mr-4" />
+                <h3 className="text-xl font-bold text-red-900 luxury-font-serif">Items That Cannot Be Returned</h3>
+              </div>
+              <ul className="space-y-3">
+                {nonReturnable.map((item, index) => (
+                  <li key={index} className="flex items-start">
+                    <span className="text-red-600 mr-3 mt-1">•</span>
+                    <span className="text-red-800 luxury-font-sans">{item}</span>
+                  </li>
+                ))}
+              </ul>
+            </LuxuryCard>
           </motion.div>
         </div>
       </section>
@@ -216,8 +219,8 @@ const ReturnsPage: React.FC = () => {
             transition={{ duration: 0.8 }}
             className="text-center mb-16"
           >
-            <h2 className="text-3xl lg:text-4xl font-bold text-gray-900 mb-6">Refund Timeline</h2>
-            <p className="text-xl text-gray-600">
+            <h2 className="text-3xl lg:text-4xl font-bold text-gray-900 mb-6 luxury-font-serif">Refund Timeline</h2>
+            <p className="text-xl text-gray-600 luxury-font-sans">
               Here&apos;s what to expect when processing your refund.
             </p>
           </motion.div>
@@ -227,48 +230,51 @@ const ReturnsPage: React.FC = () => {
               initial={{ opacity: 0, y: 30 }}
               animate={{ opacity: 1, y: 0 }}
               transition={{ duration: 0.6, delay: 0.1 }}
-              className="bg-white rounded-2xl p-8 text-center"
             >
-              <div className="w-16 h-16 bg-blue-100 rounded-full flex items-center justify-center text-blue-600 mx-auto mb-6">
-                <Clock className="w-8 h-8" />
-              </div>
-              <h3 className="text-xl font-bold text-gray-900 mb-2">Return Processing</h3>
-              <p className="text-3xl font-bold text-blue-600 mb-2">1-2 Days</p>
-              <p className="text-gray-600">
-                Once we receive your return, we&apos;ll inspect and process it within 1-2 business days.
-              </p>
+              <LuxuryCard className="p-8 text-center">
+                <div className="w-16 h-16 bg-blue-100 rounded-full flex items-center justify-center text-blue-600 mx-auto mb-6">
+                  <Clock className="w-8 h-8" />
+                </div>
+                <h3 className="text-xl font-bold text-gray-900 mb-2 luxury-font-serif">Return Processing</h3>
+                <p className="text-3xl font-bold text-blue-600 mb-2">1-2 Days</p>
+                <p className="text-gray-600 luxury-font-sans">
+                  Once we receive your return, we&apos;ll inspect and process it within 1-2 business days.
+                </p>
+              </LuxuryCard>
             </motion.div>
 
             <motion.div
               initial={{ opacity: 0, y: 30 }}
               animate={{ opacity: 1, y: 0 }}
               transition={{ duration: 0.6, delay: 0.2 }}
-              className="bg-white rounded-2xl p-8 text-center"
             >
-              <div className="w-16 h-16 bg-green-100 rounded-full flex items-center justify-center text-green-600 mx-auto mb-6">
-                <CheckCircle className="w-8 h-8" />
-              </div>
-              <h3 className="text-xl font-bold text-gray-900 mb-2">Refund Initiated</h3>
-              <p className="text-3xl font-bold text-green-600 mb-2">3-5 Days</p>
-              <p className="text-gray-600">
-                Refunds are typically processed within 3-5 business days after approval.
-              </p>
+              <LuxuryCard className="p-8 text-center">
+                <div className="w-16 h-16 bg-green-100 rounded-full flex items-center justify-center text-green-600 mx-auto mb-6">
+                  <CheckCircle className="w-8 h-8" />
+                </div>
+                <h3 className="text-xl font-bold text-gray-900 mb-2 luxury-font-serif">Refund Initiated</h3>
+                <p className="text-3xl font-bold text-green-600 mb-2">3-5 Days</p>
+                <p className="text-gray-600 luxury-font-sans">
+                  Refunds are typically processed within 3-5 business days after approval.
+                </p>
+              </LuxuryCard>
             </motion.div>
 
             <motion.div
               initial={{ opacity: 0, y: 30 }}
               animate={{ opacity: 1, y: 0 }}
               transition={{ duration: 0.6, delay: 0.3 }}
-              className="bg-white rounded-2xl p-8 text-center"
             >
-              <div className="w-16 h-16 bg-amber-100 rounded-full flex items-center justify-center text-amber-600 mx-auto mb-6">
-                <Shield className="w-8 h-8" />
-              </div>
-              <h3 className="text-xl font-bold text-gray-900 mb-2">Funds Available</h3>
-              <p className="text-3xl font-bold text-amber-600 mb-2">5-7 Days</p>
-              <p className="text-gray-600">
-                Depending on your bank, funds may take 5-7 business days to appear in your account.
-              </p>
+              <LuxuryCard className="p-8 text-center">
+                <div className="w-16 h-16 bg-amber-100 rounded-full flex items-center justify-center text-amber-600 mx-auto mb-6">
+                  <Shield className="w-8 h-8" />
+                </div>
+                <h3 className="text-xl font-bold text-gray-900 mb-2 luxury-font-serif">Funds Available</h3>
+                <p className="text-3xl font-bold text-amber-600 mb-2">5-7 Days</p>
+                <p className="text-gray-600 luxury-font-sans">
+                  Depending on your bank, funds may take 5-7 business days to appear in your account.
+                </p>
+              </LuxuryCard>
             </motion.div>
           </div>
         </div>
@@ -282,22 +288,21 @@ const ReturnsPage: React.FC = () => {
             animate={{ opacity: 1, y: 0 }}
             transition={{ duration: 0.8 }}
           >
-            <h2 className="text-3xl lg:text-4xl font-bold text-white mb-6">
+            <h2 className="text-3xl lg:text-4xl font-bold text-white mb-6 luxury-font-serif">
               Need to Return an Item?
             </h2>
-            <p className="text-xl text-amber-100 mb-8 max-w-2xl mx-auto">
+            <p className="text-xl text-amber-100 mb-8 max-w-2xl mx-auto luxury-font-sans">
               Contact our customer service team to start your return process. We&apos;re here to help!
             </p>
             <div className="flex flex-col sm:flex-row gap-4 justify-center">
-              <Link
-                href="/contact"
-                className="bg-white text-amber-600 px-8 py-3 rounded-full font-semibold hover:bg-gray-100 transition-colors"
-              >
-                Start Return
+              <Link href="/contact">
+                <LuxuryButton variant="primary" size="lg" className="text-white bg-white text-amber-600 hover:bg-gray-100">
+                  Start Return
+                </LuxuryButton>
               </Link>
               <a
                 href="mailto:returns@shankarmala.com"
-                className="border-2 border-white text-white px-8 py-3 rounded-full font-semibold hover:bg-white hover:text-amber-600 transition-colors"
+                className="border-2 border-white text-white px-8 py-3 rounded-full font-semibold hover:bg-white hover:text-amber-600 transition-colors luxury-font-sans"
               >
                 Email Us
               </a>

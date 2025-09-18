@@ -14,14 +14,12 @@ jobs:
         uses: actions/setup-node@v4
         with:
           node-version: '20'
-      - name: Install dependencies
-        run: npm ci
-      - name: Generate Prisma Client (no engine) for production
-        run: npx prisma generate --no-engine
-      - name: Run migrations
+      - name: Install dependencies (ignore postinstall scripts)
+        run: npm ci --ignore-scripts
+      - name: Run Prisma migrations and generate client
         env:
           DATABASE_URL: ${{ secrets.DATABASE_URL }}
-        run: npx prisma migrate deploy
+        run: sh scripts/prisma-deploy.sh
       - name: Seed production (manual only)
         if: ${{ github.event_name == 'workflow_dispatch' }}
         env:

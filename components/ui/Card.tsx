@@ -1,5 +1,7 @@
 import React from 'react';
 import Button from './Button';
+import Image from 'next/image';
+import LuxuryCard from './LuxuryCard';
 
 interface Gemstone {
   id: number;
@@ -25,12 +27,14 @@ export const ProductCard: React.FC<ProductCardProps> = ({
   const images = gemstone.images || [];
 
   return (
-    <div className="bg-white rounded-2xl shadow-lg hover:shadow-xl transition-all duration-300 overflow-hidden group">
+    <LuxuryCard className="bg-white rounded-2xl shadow-lg hover:shadow-xl transition-all duration-300 overflow-hidden group" padding="none" rounded="2xl" shadow="lg" hoverEffect={true}>
       {/* Image Container */}
       <div className="relative aspect-square overflow-hidden">
-        <img
+        <Image
           src={images[0] || '/placeholder-gemstone.jpg'}
           alt={gemstone.name}
+          fill
+          sizes="(max-width: 768px) 100vw, 33vw"
           className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300"
         />
         <div className="absolute top-4 right-4">
@@ -59,7 +63,7 @@ export const ProductCard: React.FC<ProductCardProps> = ({
           </div>
         </div>
       </div>
-    </div>
+    </LuxuryCard>
   );
 };
 
@@ -77,10 +81,10 @@ export const InfoCard: React.FC<InfoCardProps> = ({ title, children, variant = '
   };
 
   return (
-    <div className={`rounded-xl p-6 shadow-sm ${variants[variant]}`}>
+    <LuxuryCard className={variants[variant]} padding="lg" rounded="xl" shadow="sm">
       <h3 className="text-lg font-semibold text-gray-900 mb-4">{title}</h3>
       <div className="text-gray-700 leading-relaxed">{children}</div>
-    </div>
+    </LuxuryCard>
   );
 };
 
@@ -90,7 +94,7 @@ interface BaseCardProps {
 }
 
 export const Card: React.FC<BaseCardProps> = ({ children, className = '' }) => (
-  <div className={`bg-white rounded-xl shadow-md ${className}`}>{children}</div>
+  <LuxuryCard className={className} padding="md" rounded="xl" shadow="md">{children}</LuxuryCard>
 );
 
 export const CardHeader: React.FC<BaseCardProps> = ({ children, className = '' }) => (

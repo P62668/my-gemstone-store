@@ -255,8 +255,15 @@ const ShopGrid: React.FC = () => {
                   {filteredGemstones.map((gemstone) => (
                     <ProductCard
                       key={gemstone.id}
-                      product={gemstone}
-                      onViewDetails={handleViewDetails}
+                      id={gemstone.id}
+                      name={gemstone.name}
+                      price={gemstone.price}
+                      images={gemstone.images ? JSON.parse(gemstone.images) : []}
+                      category={gemstone.category}
+                      discountPercentage={gemstone.salePrice ? Math.round(((gemstone.price - gemstone.salePrice) / gemstone.price) * 100) : undefined}
+                      isNew={false}
+                      isFeatured={gemstone.featured}
+                      onQuickView={undefined}
                     />
                   ))}
                 </div>

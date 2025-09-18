@@ -1,70 +1,79 @@
 import { NextApiRequest, NextApiResponse } from 'next';
-import { processGemstonesData, processHomepageSectionData } from '../../../utils/dataProcessor';
-
 import { prisma } from '../../../lib/prisma';
 
 export default async function handler(req: NextApiRequest, res: NextApiResponse) {
   if (req.method !== 'GET') {
     res.setHeader('Allow', ['GET']);
-    return res.status(405).end(`Method ${req.method} Not Allowed`);
+    res.status(405).end(`Method ${req.method} Not Allowed`);
+    return;
   }
-  
-  try {
-    // Fetch homepage sections and featured products in parallel
-    const [allSections, featuredProducts] = await Promise.all([
-      prisma.homepageSection.findMany({ 
-        orderBy: { order: 'asc' },
-        where: { active: true }
-      }),
-      prisma.gemstone.findMany({
-        where: { 
-          featured: true,
-          active: true 
-        },
-        include: {
-          category: {
-            select: {
-              id: true,
-              name: true
-            }
-          }
-        },
-        take: 6,
-        orderBy: {
-          createdAt: 'desc'
-        }
-      })
-    ]);
 
+  try {
+    // Fetch all homepage sections
+    const allSections = await prisma.homepageSection.findMany({
+      where: { active: true },
+      orderBy: { order: 'asc' },
+    });
+
+    // Fetch featured products
+    const featuredProducts = await prisma.gemstone.findMany({
+      where: {
+        active: true,
+        featured: true,
+      },
+      take: 8,
+      orderBy: {
+        createdAt: 'desc',
+      },
+    });
+
+    // Check for dynamic homepage content
+    const dynamicPage = await prisma.page.findFirst({
+      where: {
+        slug: 'homepage',
+        status: 'published',
+      },
+    });
+
+    // Get hero section
     const hero = allSections.find((s) => s.key === 'hero');
     const sections = allSections.filter((s) => s.key !== 'hero');
 
-    // Process featured products
-    const processedProducts = processGemstonesData(featuredProducts);
-
-    // Process sections
-    const processedSections = sections.map((s) => {
-      const processed = processHomepageSectionData(s);
-      if (s.key === 'featured_products' && processed) {
-        return {
-          ...processed,
-          products: processedProducts
-        };
+    // Process featured products with proper image parsing
+    const processedProducts = featuredProducts.map((gemstone) => {
+      // Parse images if they're stored as JSON string
+      let images: string[] = [];
+      if (typeof gemstone.images === 'string') {
+        try {
+          images = JSON.parse(gemstone.images);
+        } catch (e) {
+          images = [gemstone.images];
+        }
+      } else if (Array.isArray(gemstone.images)) {
+        images = gemstone.images as string[];
+      } else {
+        images = ['/images/placeholder-gemstone.jpg'];
       }
-      return processed;
-    }).filter(Boolean);
+
+      return {
+        ...gemstone,
+        images: images
+      };
+    });
 
     const response = {
-      hero: hero ? processHomepageSectionData(hero)?.content : null,
-      sections: processedSections,
+      hero: hero ? hero.content : null,
+      sections: sections,
+      featuredProducts: processedProducts,
+      dynamicContent: dynamicPage ? (typeof dynamicPage.content === 'string' ? JSON.parse(dynamicPage.content) : dynamicPage.content) : null,
       updatedAt: allSections.length > 0 ? allSections[0].updatedAt : null,
     };
 
-    return res.status(200).json(response);
+    // Removed caching to ensure fresh data is always returned
+    
+    res.status(200).json(response);
   } catch (error) {
     console.error('Error fetching homepage data:', error);
-    return res.status(500).json({ error: 'Failed to fetch homepage settings' });
-  } finally {
-    await prisma.$disconnect();
+    res.status(500).json({ error: 'Failed to fetch homepage settings' });
   }
 }

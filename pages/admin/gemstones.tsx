@@ -2,8 +2,11 @@ import React, { useEffect, useState } from 'react';
 import { useRouter } from 'next/router';
 import Head from 'next/head';
 import AdminLayout from '../../components/AdminLayout';
+import getSessionOrRedirect from '../../utils/withServerAuth';
 import ExpertImageManager from '../../components/ui/ExpertImageManager';
 import { motion, AnimatePresence } from 'framer-motion';
+import Image from 'next/image';
+import { Truck, DollarSign } from 'lucide-react';
 
 interface Category {
   id: number;
@@ -20,6 +23,7 @@ interface Gemstone {
   certification: string;
   categoryId?: number;
   active?: boolean;
+  cashOnDelivery?: boolean;
   order?: number;
 }
 
@@ -32,6 +36,7 @@ const emptyGem: Omit<Gemstone, 'id'> = {
   certification: '',
   categoryId: undefined,
   active: true,
+  cashOnDelivery: false,
   order: 0,
 };
 
@@ -41,6 +46,7 @@ const AdminGemstonesPage: React.FC = () => {
   const [categories, setCategories] = useState<Category[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
+  const [success, setSuccess] = useState('');
   const [form, setForm] = useState(emptyGem);
   const [editingId, setEditingId] = useState<number | null>(null);
   const [formLoading, setFormLoading] = useState(false);
@@ -52,28 +58,13 @@ const AdminGemstonesPage: React.FC = () => {
   const [showForm, setShowForm] = useState(false);
 
   useEffect(() => {
-    checkAuthAndFetch();
+  // server-side guard via getServerSideProps ensures admin access
+  fetchGems();
+  fetchCategories();
   }, []);
 
   const checkAuthAndFetch = async () => {
-    try {
-      // Check if user is authenticated by calling the admin auth endpoint
-      const res = await fetch('/api/admin/auth', { credentials: 'include' });
-      if (!res.ok) {
-        router.push('/admin/login');
-        return;
-      }
-      const authData = await res.json();
-      if (authData.user.role !== 'admin') {
-        router.push('/admin/login');
-        return;
-      }
-      fetchGems();
-      fetchCategories();
-    } catch (error) {
-      console.error('Admin auth check failed:', error);
-      router.push('/admin/login');
-    }
+  // client-side auth check removed. Server-side guard enforces admin access.
   };
 
   const fetchGems = async () => {
@@ -123,6 +114,8 @@ const AdminGemstonesPage: React.FC = () => {
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setFormLoading(true);
+    setError('');
+    setSuccess('');
     try {
       const payload = { ...form, images: Array.isArray(form.images) ? form.images : [] };
       if (editingId) {
@@ -139,6 +132,7 @@ const AdminGemstonesPage: React.FC = () => {
           ...updatedGemstone,
           images: typeof updatedGemstone.images === 'string' ? JSON.parse(updatedGemstone.images) : (Array.isArray(updatedGemstone.images) ? updatedGemstone.images : [])
         } : gem)));
+        setSuccess('Gemstone updated successfully!');
       } else {
         // Add new gemstone
         const res = await fetch('/api/admin/gemstones', {
@@ -153,14 +147,14 @@ const AdminGemstonesPage: React.FC = () => {
           ...newGemstone,
           images: typeof newGemstone.images === 'string' ? JSON.parse(newGemstone.images) : (Array.isArray(newGemstone.images) ? newGemstone.images : [])
         }]);
+        setSuccess('Gemstone added successfully!');
       }
 
       setForm(emptyGem);
       setEditingId(null);
       setShowForm(false);
-      alert(editingId ? 'Gemstone updated successfully!' : 'Gemstone added successfully!');
     } catch (err: any) {
-      alert(err.message);
+      setError(err.message);
     } finally {
       setFormLoading(false);
     }
@@ -178,6 +172,8 @@ const AdminGemstonesPage: React.FC = () => {
   const handleDelete = async (id: number) => {
     if (!window.confirm('Delete this gemstone?')) return;
     setFormLoading(true);
+    setError('');
+    setSuccess('');
     try {
       const res = await fetch(`/api/admin/gemstones/${id}`, {
         method: 'DELETE',
@@ -188,9 +184,9 @@ const AdminGemstonesPage: React.FC = () => {
         throw new Error(errorData.error || 'Failed to delete gemstone');
       }
       setGems((prev) => prev.filter((gem) => gem.id !== id));
-      alert('Gemstone deleted successfully!');
+      setSuccess('Gemstone deleted successfully!');
     } catch (err: any) {
-      alert(err.message);
+      setError(err.message);
     } finally {
       setFormLoading(false);
     }
@@ -212,6 +208,8 @@ const AdminGemstonesPage: React.FC = () => {
   const handleBulkAction = async () => {
     if (!bulkAction || selectedGems.length === 0) return;
     setBulkLoading(true);
+    setError('');
+    setSuccess('');
     try {
       // For demo purposes, simulate success
       await new Promise((resolve) => setTimeout(resolve, 1000));
@@ -219,19 +217,27 @@ const AdminGemstonesPage: React.FC = () => {
       if (bulkAction === 'delete') {
         if (!window.confirm(`Delete ${selectedGems.length} gemstone(s)?`)) return;
         setGems((prev) => prev.filter((gem) => !selectedGems.includes(gem.id)));
+        setSuccess('Selected gemstones deleted successfully!');
       } else if (bulkAction === 'activate' || bulkAction === 'deactivate') {
         setGems((prev) =>
           prev.map((gem) =>
             selectedGems.includes(gem.id) ? { ...gem, active: bulkAction === 'activate' } : gem,
           ),
         );
+        setSuccess(`Selected gemstones ${bulkAction === 'activate' ? 'activated' : 'deactivated'} successfully!`);
+      } else if (bulkAction === 'enableCod' || bulkAction === 'disableCod') {
+        setGems((prev) =>
+          prev.map((gem) =>
+            selectedGems.includes(gem.id) ? { ...gem, cashOnDelivery: bulkAction === 'enableCod' } : gem,
+          ),
+        );
+        setSuccess(`Cash on Delivery ${bulkAction === 'enableCod' ? 'enabled' : 'disabled'} for selected gemstones!`);
       }
 
       setSelectedGems([]);
       setBulkAction('');
-      alert('Bulk action completed successfully!');
     } catch (err: any) {
-      alert('Bulk action failed: ' + err.message);
+      setError('Bulk action failed: ' + err.message);
     } finally {
       setBulkLoading(false);
     }
@@ -248,7 +254,7 @@ const AdminGemstonesPage: React.FC = () => {
 
   if (loading) {
     return (
-      <AdminLayout title="Gemstones Management - Shankarmala" pageIcon="💎">
+      <AdminLayout title="Gemstones Management - Shankarmala">
         <div className="max-w-7xl mx-auto py-12 px-4">
           <motion.div
             className="text-center py-12"
@@ -267,510 +273,530 @@ const AdminGemstonesPage: React.FC = () => {
 
   if (error) {
     return (
-      <AdminLayout title="Gemstones Management - Shankarmala" pageIcon="💎">
-        <div className="max-w-7xl mx-auto py-12 px-4">
-          <motion.div
-            className="text-center py-12"
-            initial={{ opacity: 0 }}
-            animate={{ opacity: 1 }}
-            transition={{ duration: 0.5 }}
-          >
-            <div className="text-6xl mb-4">❌</div>
-            <div className="text-2xl font-bold text-red-900 mb-2">Error Loading Gemstones</div>
-            <div className="text-red-600 mb-4">{error}</div>
-            <motion.button
+      <AdminLayout title="Gemstones Management - Shankarmala">
+        <div className="max-w-2xl w-full mx-auto py-12 px-4">
+          <div className="bg-red-100 border border-red-300 text-red-800 px-6 py-6 rounded-xl text-center font-semibold shadow mb-6">
+            <div className="text-5xl mb-2">❌</div>
+            <div className="text-2xl font-bold text-red-700 mb-2">Error Loading Gemstones</div>
+            <div className="text-red-800 mb-4">{error}</div>
+            <button
               onClick={fetchGems}
               className="bg-amber-600 text-white px-6 py-3 rounded-xl font-semibold hover:bg-amber-700 transition-colors"
-              whileHover={{ scale: 1.05 }}
-              whileTap={{ scale: 0.95 }}
             >
               Try Again
-            </motion.button>
-          </motion.div>
+            </button>
+          </div>
         </div>
       </AdminLayout>
     );
   }
 
   return (
-    <AdminLayout title="Gemstones Management - Shankarmala" pageIcon="💎">
-      <div className="max-w-7xl mx-auto py-12 px-4">
-        {/* Header */}
-        <motion.div
-          className="flex justify-between items-center mb-8"
-          initial={{ opacity: 0, y: -20 }}
-          animate={{ opacity: 1, y: 0 }}
-          transition={{ duration: 0.5 }}
-        >
-          <div>
-            <h1 className="text-4xl font-bold text-amber-900 mb-4 font-serif">
-              💎 Gemstones Management
-            </h1>
-            <p className="text-lg text-amber-600">
-              Manage your precious gemstone inventory with precision
-            </p>
-          </div>
-          <motion.button
-            onClick={() => setShowForm(true)}
-            className="bg-gradient-to-r from-amber-500 to-orange-500 text-white px-6 py-3 rounded-xl font-bold hover:from-amber-600 hover:to-orange-600 transition-all duration-200 shadow-lg hover:shadow-xl flex items-center gap-2"
-            whileHover={{ scale: 1.05 }}
-            whileTap={{ scale: 0.95 }}
-          >
-            <span>✨</span>
-            <span>Add New Gemstone</span>
-          </motion.button>
-        </motion.div>
-
-        {/* Stats Cards */}
-        <motion.div
-          className="grid grid-cols-1 md:grid-cols-4 gap-6 mb-8"
-          initial={{ opacity: 0, y: 20 }}
-          animate={{ opacity: 1, y: 0 }}
-          transition={{ duration: 0.5, delay: 0.1 }}
-        >
-          <div className="bg-gradient-to-br from-amber-100 to-orange-100 rounded-2xl p-6 border border-amber-200">
-            <div className="flex items-center justify-between">
-              <div>
-                <p className="text-amber-600 text-sm font-medium">Total Gemstones</p>
-                <p className="text-3xl font-bold text-amber-900">{gems.length}</p>
-              </div>
-              <div className="text-4xl">💎</div>
-            </div>
-          </div>
-          <div className="bg-gradient-to-br from-green-100 to-emerald-100 rounded-2xl p-6 border border-green-200">
-            <div className="flex items-center justify-between">
-              <div>
-                <p className="text-green-600 text-sm font-medium">Active</p>
-                <p className="text-3xl font-bold text-green-900">
-                  {gems.filter((g) => g.active).length}
-                </p>
-              </div>
-              <div className="text-4xl">✅</div>
-            </div>
-          </div>
-          <div className="bg-gradient-to-br from-blue-100 to-cyan-100 rounded-2xl p-6 border border-blue-200">
-            <div className="flex items-center justify-between">
-              <div>
-                <p className="text-blue-600 text-sm font-medium">Categories</p>
-                <p className="text-3xl font-bold text-blue-900">{categories.length}</p>
-              </div>
-              <div className="text-4xl">📂</div>
-            </div>
-          </div>
-          <div className="bg-gradient-to-br from-purple-100 to-pink-100 rounded-2xl p-6 border border-purple-200">
-            <div className="flex items-center justify-between">
-              <div>
-                <p className="text-purple-600 text-sm font-medium">Total Value</p>
-                <p className="text-3xl font-bold text-purple-900">
-                  ₹{gems.reduce((sum, g) => sum + g.price, 0).toLocaleString()}
-                </p>
-              </div>
-              <div className="text-4xl">💰</div>
-            </div>
-          </div>
-        </motion.div>
-
-        {/* Filters and Search */}
-        <motion.div
-          className="bg-white rounded-3xl shadow-xl border border-amber-100 p-6 mb-8"
-          initial={{ opacity: 0, y: 20 }}
-          animate={{ opacity: 1, y: 0 }}
-          transition={{ duration: 0.5, delay: 0.2 }}
-        >
-          <div className="grid grid-cols-1 md:grid-cols-4 gap-6">
+    <AdminLayout title="Manage Gemstones">
+      <Head>
+        <title>Admin - Gemstones</title>
+      </Head>
+      <div className="py-6">
+        <div className="max-w-7xl mx-auto px-4 sm:px-6 md:px-8">
+          {/* Header with enhanced styling */}
+          <div className="flex flex-col md:flex-row md:items-center md:justify-between mb-6">
             <div>
-              <label className="block text-sm font-semibold text-amber-700 mb-2">
-                🔍 Search Gemstones
-              </label>
-              <input
-                type="text"
-                value={searchQuery}
-                onChange={(e) => setSearchQuery(e.target.value)}
-                placeholder="Search by name, type, or description..."
-                className="w-full rounded-xl border border-amber-200 px-4 py-3 focus:ring-amber-500 focus:border-amber-500 transition-all duration-200"
-              />
+              <h1 className="text-3xl font-bold text-gray-900">Gemstone Inventory</h1>
+              <p className="mt-2 text-lg text-gray-600">
+                Manage your premium gemstone collection
+              </p>
+            </div>
+            <div className="mt-4 md:mt-0">
+              <button
+                onClick={() => {
+                  setForm(emptyGem);
+                  setEditingId(null);
+                  setShowForm(!showForm);
+                }}
+                className="inline-flex items-center px-6 py-3 border border-transparent text-base font-medium rounded-xl shadow-sm text-white bg-gradient-to-r from-amber-600 to-orange-600 hover:from-amber-700 hover:to-orange-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-amber-500 transition-all duration-200 transform hover:scale-105"
+              >
+                {showForm ? 'Cancel' : 'Add New Gemstone'}
+              </button>
+            </div>
+          </div>
+
+          {/* Enhanced Form */}
+          <AnimatePresence>
+            {showForm && (
+              <motion.div
+                initial={{ opacity: 0, y: -20 }}
+                animate={{ opacity: 1, y: 0 }}
+                exit={{ opacity: 0, y: -20 }}
+                className="mb-8 bg-white rounded-2xl shadow-xl p-6 border border-amber-100"
+              >
+                <h2 className="text-2xl font-bold text-gray-900 mb-6">
+                  {editingId ? 'Edit Gemstone' : 'Add New Gemstone'}
+                </h2>
+                <form onSubmit={handleSubmit} className="grid grid-cols-1 gap-y-6 gap-x-6 sm:grid-cols-6">
+                  <div className="sm:col-span-3">
+                    <label htmlFor="name" className="block text-sm font-medium text-gray-700 mb-1">
+                      Name
+                    </label>
+                    <input
+                      type="text"
+                      name="name"
+                      id="name"
+                      value={form.name}
+                      onChange={handleFormChange}
+                      className="mt-1 block w-full border border-gray-300 rounded-xl shadow-sm py-3 px-4 focus:outline-none focus:ring-2 focus:ring-amber-500 focus:border-transparent sm:text-sm transition-all"
+                      placeholder="Enter gemstone name"
+                    />
+                  </div>
+
+                  <div className="sm:col-span-3">
+                    <label htmlFor="type" className="block text-sm font-medium text-gray-700 mb-1">
+                      Type
+                    </label>
+                    <input
+                      type="text"
+                      name="type"
+                      id="type"
+                      value={form.type}
+                      onChange={handleFormChange}
+                      className="mt-1 block w-full border border-gray-300 rounded-xl shadow-sm py-3 px-4 focus:outline-none focus:ring-2 focus:ring-amber-500 focus:border-transparent sm:text-sm transition-all"
+                      placeholder="e.g., Ruby, Sapphire"
+                    />
+                  </div>
+
+                  <div className="sm:col-span-3">
+                    <label htmlFor="price" className="block text-sm font-medium text-gray-700 mb-1">
+                      Price (USD)
+                    </label>
+                    <input
+                      type="number"
+                      name="price"
+                      id="price"
+                      value={form.price}
+                      onChange={handleFormChange}
+                      className="mt-1 block w-full border border-gray-300 rounded-xl shadow-sm py-3 px-4 focus:outline-none focus:ring-2 focus:ring-amber-500 focus:border-transparent sm:text-sm transition-all"
+                      placeholder="0.00"
+                    />
+                  </div>
+
+                  <div className="sm:col-span-3">
+                    <label htmlFor="categoryId" className="block text-sm font-medium text-gray-700 mb-1">
+                      Category
+                    </label>
+                    <select
+                      name="categoryId"
+                      id="categoryId"
+                      value={form.categoryId || ''}
+                      onChange={handleFormChange}
+                      className="mt-1 block w-full border border-gray-300 rounded-xl shadow-sm py-3 px-4 focus:outline-none focus:ring-2 focus:ring-amber-500 focus:border-transparent sm:text-sm transition-all bg-white"
+                    >
+                      <option value="">Select a category</option>
+                      {categories.map((category) => (
+                        <option key={category.id} value={category.id}>
+                          {category.name}
+                        </option>
+                      ))}
+                    </select>
+                  </div>
+
+                  <div className="sm:col-span-3">
+                    <label htmlFor="certification" className="block text-sm font-medium text-gray-700 mb-1">
+                      Certification
+                    </label>
+                    <input
+                      type="text"
+                      name="certification"
+                      id="certification"
+                      value={form.certification}
+                      onChange={handleFormChange}
+                      className="mt-1 block w-full border border-gray-300 rounded-xl shadow-sm py-3 px-4 focus:outline-none focus:ring-2 focus:ring-amber-500 focus:border-transparent sm:text-sm transition-all"
+                      placeholder="GIA, IGI, etc."
+                    />
+                  </div>
+
+                  <div className="sm:col-span-3">
+                    <label className="block text-sm font-medium text-gray-700 mb-1">
+                      Availability
+                    </label>
+                    <div className="flex space-x-4 mt-1">
+                      <div className="flex items-center">
+                        <input
+                          type="checkbox"
+                          name="active"
+                          id="active"
+                          checked={form.active}
+                          onChange={(e) => setForm({ ...form, active: e.target.checked })}
+                          className="h-5 w-5 text-amber-600 focus:ring-amber-500 border-gray-300 rounded"
+                        />
+                        <label htmlFor="active" className="ml-2 block text-sm text-gray-700">
+                          Active Listing
+                        </label>
+                      </div>
+                      <div className="flex items-center">
+                        <input
+                          type="checkbox"
+                          name="cashOnDelivery"
+                          id="cashOnDelivery"
+                          checked={form.cashOnDelivery}
+                          onChange={(e) => setForm({ ...form, cashOnDelivery: e.target.checked })}
+                          className="h-5 w-5 text-green-600 focus:ring-green-500 border-gray-300 rounded"
+                        />
+                        <label htmlFor="cashOnDelivery" className="ml-2 block text-sm text-gray-700 flex items-center">
+                          <DollarSign className="w-4 h-4 mr-1 text-green-600" />
+                          Cash on Delivery
+                        </label>
+                      </div>
+                    </div>
+                  </div>
+
+                  <div className="sm:col-span-6">
+                    <label htmlFor="description" className="block text-sm font-medium text-gray-700 mb-1">
+                      Description
+                    </label>
+                    <textarea
+                      name="description"
+                      id="description"
+                      rows={4}
+                      value={form.description}
+                      onChange={handleFormChange}
+                      className="mt-1 block w-full border border-gray-300 rounded-xl shadow-sm py-3 px-4 focus:outline-none focus:ring-2 focus:ring-amber-500 focus:border-transparent sm:text-sm transition-all"
+                      placeholder="Detailed description of the gemstone..."
+                    />
+                  </div>
+
+                  <div className="sm:col-span-6">
+                    <label className="block text-sm font-medium text-gray-700 mb-2">
+                      Product Images
+                    </label>
+                    <ExpertImageManager
+                      images={Array.isArray(form.images) ? form.images : []}
+                      onImagesChange={handleImagesChange}
+                    />
+                  </div>
+
+                  <div className="sm:col-span-6 flex justify-end space-x-4 pt-4 border-t border-gray-200">
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setForm(emptyGem);
+                        setEditingId(null);
+                        setShowForm(false);
+                      }}
+                      className="bg-white py-3 px-6 border border-gray-300 rounded-xl shadow-sm text-base font-medium text-gray-700 hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-amber-500 transition-all"
+                    >
+                      Cancel
+                    </button>
+                    <button
+                      type="submit"
+                      disabled={formLoading}
+                      className="inline-flex justify-center py-3 px-6 border border-transparent shadow-sm text-base font-medium rounded-xl text-white bg-gradient-to-r from-amber-600 to-orange-600 hover:from-amber-700 hover:to-orange-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-amber-500 disabled:opacity-50 transition-all"
+                    >
+                      {formLoading ? (
+                        <div className="flex items-center">
+                          <div className="w-5 h-5 border-2 border-white border-t-transparent rounded-full animate-spin mr-2"></div>
+                          Saving...
+                        </div>
+                      ) : editingId ? 'Update Gemstone' : 'Create Gemstone'}
+                    </button>
+                  </div>
+                </form>
+              </motion.div>
+            )}
+          </AnimatePresence>
+
+          {/* Enhanced Messages */}
+          <AnimatePresence>
+            {error && (
+              <motion.div
+                initial={{ opacity: 0, y: -10 }}
+                animate={{ opacity: 1, y: 0 }}
+                exit={{ opacity: 0, y: -10 }}
+                className="mb-6 rounded-xl bg-red-50 border border-red-200 p-4"
+              >
+                <div className="flex">
+                  <div className="flex-shrink-0">
+                    <svg className="h-5 w-5 text-red-400" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor">
+                      <path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zM8.707 7.293a1 1 0 00-1.414 1.414L8.586 10l-1.293 1.293a1 1 0 101.414 1.414L10 11.414l1.293 1.293a1 1 0 001.414-1.414L11.414 10l1.293-1.293a1 1 0 00-1.414-1.414L10 8.586 8.707 7.293z" clipRule="evenodd" />
+                    </svg>
+                  </div>
+                  <div className="ml-3">
+                    <h3 className="text-sm font-medium text-red-800">Error</h3>
+                    <div className="mt-2 text-sm text-red-700">
+                      <p>{error}</p>
+                    </div>
+                  </div>
+                </div>
+              </motion.div>
+            )}
+
+            {success && (
+              <motion.div
+                initial={{ opacity: 0, y: -10 }}
+                animate={{ opacity: 1, y: 0 }}
+                exit={{ opacity: 0, y: -10 }}
+                className="mb-6 rounded-xl bg-green-50 border border-green-200 p-4"
+              >
+                <div className="flex">
+                  <div className="flex-shrink-0">
+                    <svg className="h-5 w-5 text-green-400" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor">
+                      <path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" clipRule="evenodd" />
+                    </svg>
+                  </div>
+                  <div className="ml-3">
+                    <h3 className="text-sm font-medium text-green-800">Success</h3>
+                    <div className="mt-2 text-sm text-green-700">
+                      <p>{success}</p>
+                    </div>
+                  </div>
+                </div>
+              </motion.div>
+            )}
+          </AnimatePresence>
+
+          {/* Enhanced Filters */}
+          <div className="mb-6 flex flex-col lg:flex-row gap-4">
+            <div className="flex-1">
+              <div className="relative">
+                <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
+                  <svg className="h-5 w-5 text-gray-400" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor">
+                    <path fillRule="evenodd" d="M8 4a4 4 0 100 8 4 4 0 000-8zM2 8a6 6 0 1110.89 3.476l4.817 4.817a1 1 0 01-1.414 1.414l-4.816-4.816A6 6 0 012 8z" clipRule="evenodd" />
+                  </svg>
+                </div>
+                <input
+                  type="text"
+                  placeholder="Search gemstones by name or description..."
+                  value={searchQuery}
+                  onChange={(e) => setSearchQuery(e.target.value)}
+                  className="block w-full pl-10 pr-3 py-3 border border-gray-300 rounded-xl shadow-sm focus:outline-none focus:ring-2 focus:ring-amber-500 focus:border-transparent sm:text-sm transition-all"
+                />
+              </div>
             </div>
             <div>
-              <label className="block text-sm font-semibold text-amber-700 mb-2">
-                📂 Filter by Category
-              </label>
               <select
                 value={categoryFilter}
-                onChange={(e) =>
-                  setCategoryFilter(e.target.value === '' ? '' : Number(e.target.value))
-                }
-                className="w-full rounded-xl border border-amber-200 px-4 py-3 focus:ring-amber-500 focus:border-amber-500 transition-all duration-200"
+                onChange={(e) => setCategoryFilter(e.target.value === '' ? '' : Number(e.target.value))}
+                className="block w-full py-3 px-4 border border-gray-300 rounded-xl shadow-sm focus:outline-none focus:ring-2 focus:ring-amber-500 focus:border-transparent sm:text-sm bg-white transition-all"
               >
                 <option value="">All Categories</option>
-                {categories.map((cat) => (
-                  <option key={cat.id} value={cat.id}>
-                    {cat.name}
+                {categories.map((category) => (
+                  <option key={category.id} value={category.id}>
+                    {category.name}
                   </option>
                 ))}
               </select>
             </div>
-            <div>
-              <label className="block text-sm font-semibold text-amber-700 mb-2">
-                ⚡ Bulk Actions
-              </label>
-              <select
-                value={bulkAction}
-                onChange={(e) => setBulkAction(e.target.value)}
-                className="w-full rounded-xl border border-amber-200 px-4 py-3 focus:ring-amber-500 focus:border-amber-500 transition-all duration-200"
-              >
-                <option value="">Select Action</option>
-                <option value="activate">Activate Selected</option>
-                <option value="deactivate">Deactivate Selected</option>
-                <option value="delete">Delete Selected</option>
-              </select>
-            </div>
-            <div className="flex items-end space-x-2">
-              <motion.button
-                onClick={handleBulkAction}
-                disabled={!bulkAction || selectedGems.length === 0 || bulkLoading}
-                className="flex-1 bg-amber-600 text-white px-4 py-3 rounded-xl font-semibold hover:bg-amber-700 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
-                whileHover={{ scale: bulkAction && selectedGems.length > 0 ? 1.02 : 1 }}
-                whileTap={{ scale: bulkAction && selectedGems.length > 0 ? 0.98 : 1 }}
-              >
-                {bulkLoading ? 'Processing...' : 'Apply'}
-              </motion.button>
-              <motion.button
-                onClick={() => {
-                  fetchGems();
-                  fetchCategories();
-                }}
-                className="bg-gray-600 text-white px-4 py-3 rounded-xl font-semibold hover:bg-gray-700 transition-colors"
-                whileHover={{ scale: 1.02 }}
-                whileTap={{ scale: 0.98 }}
-              >
-                🔄
-              </motion.button>
-            </div>
           </div>
-        </motion.div>
 
-        {/* Gemstones Grid */}
-        <motion.div
-          className="bg-white rounded-3xl shadow-xl border border-amber-100 overflow-hidden"
-          initial={{ opacity: 0, y: 20 }}
-          animate={{ opacity: 1, y: 0 }}
-          transition={{ duration: 0.5, delay: 0.3 }}
-        >
-          <div className="overflow-x-auto">
-            <table className="w-full">
-              <thead className="bg-gradient-to-r from-amber-50 to-orange-50">
-                <tr>
-                  <th className="px-6 py-4 text-left">
-                    <input
-                      type="checkbox"
-                      checked={
-                        selectedGems.length === filteredGems.length && filteredGems.length > 0
-                      }
-                      onChange={handleSelectAll}
-                      className="rounded border-amber-300 text-amber-600 focus:ring-amber-500"
-                    />
-                  </th>
-                  <th className="px-6 py-4 text-left text-sm font-semibold text-amber-900">
-                    Gemstone
-                  </th>
-                  <th className="px-6 py-4 text-left text-sm font-semibold text-amber-900">Type</th>
-                  <th className="px-6 py-4 text-left text-sm font-semibold text-amber-900">
-                    Category
-                  </th>
-                  <th className="px-6 py-4 text-left text-sm font-semibold text-amber-900">
-                    Price
-                  </th>
-                  <th className="px-6 py-4 text-left text-sm font-semibold text-amber-900">
-                    Status
-                  </th>
-                  <th className="px-6 py-4 text-left text-sm font-semibold text-amber-900">
-                    Actions
-                  </th>
-                </tr>
-              </thead>
-              <tbody className="divide-y divide-amber-100">
-                {filteredGems.map((gem, index) => (
-                  <motion.tr
-                    key={gem.id}
-                    initial={{ opacity: 0, y: 20 }}
-                    animate={{ opacity: 1, y: 0 }}
-                    transition={{ duration: 0.3, delay: index * 0.05 }}
-                    className="hover:bg-amber-50 transition-colors duration-200"
-                  >
-                    <td className="px-6 py-4">
-                      <input
-                        type="checkbox"
-                        checked={selectedGems.includes(gem.id)}
-                        onChange={() => handleSelectGem(gem.id)}
-                        className="rounded border-amber-300 text-amber-600 focus:ring-amber-500"
-                      />
-                    </td>
-                    <td className="px-6 py-4">
-                      <div className="flex items-center space-x-3">
-                        <div className="w-12 h-12 rounded-lg overflow-hidden bg-gradient-to-br from-amber-200 to-orange-200 flex items-center justify-center">
-                          {gem.images && gem.images.length > 0 ? (
-                            <img
-                              src={gem.images[0]}
-                              alt={gem.name}
-                              className="w-full h-full object-cover"
-                              onError={(e) => {
-                                e.currentTarget.src = '/images/placeholder-gemstone.jpg';
-                              }}
-                            />
-                          ) : (
-                            <span className="text-2xl">💎</span>
-                          )}
-                        </div>
-                        <div>
-                          <div className="font-semibold text-amber-900">{gem.name}</div>
-                          <div className="text-sm text-amber-600">
-                            {gem.description.substring(0, 50)}...
+          {/* Enhanced Bulk Actions */}
+          <div className="mb-6 flex flex-col sm:flex-row sm:items-center sm:justify-between bg-white p-4 rounded-xl shadow-sm border border-gray-200">
+            <div className="flex items-center mb-3 sm:mb-0">
+              <input
+                type="checkbox"
+                checked={selectedGems.length === filteredGems.length && filteredGems.length > 0}
+                onChange={handleSelectAll}
+                className="h-5 w-5 text-amber-600 focus:ring-amber-500 border-gray-300 rounded"
+              />
+              <span className="ml-3 text-sm text-gray-700">
+                {selectedGems.length} of {filteredGems.length} selected
+              </span>
+            </div>
+            {selectedGems.length > 0 && (
+              <div className="flex flex-col sm:flex-row gap-3">
+                <select
+                  value={bulkAction}
+                  onChange={(e) => setBulkAction(e.target.value)}
+                  className="block w-full py-2 px-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-amber-500 focus:border-transparent sm:text-sm bg-white"
+                >
+                  <option value="">Choose bulk action</option>
+                  <option value="activate">Activate</option>
+                  <option value="deactivate">Deactivate</option>
+                  <option value="enableCod">Enable COD</option>
+                  <option value="disableCod">Disable COD</option>
+                  <option value="delete">Delete</option>
+                </select>
+                <button
+                  onClick={handleBulkAction}
+                  disabled={bulkLoading}
+                  className="inline-flex items-center justify-center px-4 py-2 border border-transparent text-sm font-medium rounded-lg shadow-sm text-white bg-gradient-to-r from-amber-600 to-orange-600 hover:from-amber-700 hover:to-orange-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-amber-500 disabled:opacity-50 transition-all"
+                >
+                  {bulkLoading ? (
+                    <div className="flex items-center">
+                      <div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin mr-2"></div>
+                      Processing...
+                    </div>
+                  ) : 'Apply'}
+                </button>
+              </div>
+            )}
+          </div>
+
+          {/* Enhanced Gemstones Table */}
+          <div className="flex flex-col">
+            <div className="-my-2 overflow-x-auto sm:-mx-6 lg:-mx-8">
+              <div className="py-2 align-middle inline-block min-w-full sm:px-6 lg:px-8">
+                <div className="shadow overflow-hidden border-b border-gray-200 sm:rounded-2xl">
+                  <table className="min-w-full divide-y divide-gray-200">
+                    <thead className="bg-gradient-to-r from-gray-50 to-gray-100">
+                      <tr>
+                        <th scope="col" className="px-6 py-4 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                          <input
+                            type="checkbox"
+                            checked={selectedGems.length === filteredGems.length && filteredGems.length > 0}
+                            onChange={handleSelectAll}
+                            className="h-5 w-5 text-amber-600 focus:ring-amber-500 border-gray-300 rounded"
+                          />
+                        </th>
+                        <th scope="col" className="px-6 py-4 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                          Product
+                        </th>
+                        <th scope="col" className="px-6 py-4 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                          Type
+                        </th>
+                        <th scope="col" className="px-6 py-4 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                          Price
+                        </th>
+                        <th scope="col" className="px-6 py-4 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                          Category
+                        </th>
+                        <th scope="col" className="px-6 py-4 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                          <div className="flex items-center">
+                            <DollarSign className="w-4 h-4 mr-1 text-green-600" />
+                            COD
                           </div>
-                          {gem.images && gem.images.length > 1 && (
-                            <div className="text-xs text-amber-500">
-                              +{gem.images.length - 1} more images
+                        </th>
+                        <th scope="col" className="px-6 py-4 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                          Status
+                        </th>
+                        <th scope="col" className="px-6 py-4 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                          Actions
+                        </th>
+                      </tr>
+                    </thead>
+                    <tbody className="bg-white divide-y divide-gray-200">
+                      {loading ? (
+                        <tr>
+                          <td colSpan={8} className="px-6 py-8 whitespace-nowrap text-center">
+                            <div className="flex flex-col items-center justify-center">
+                              <div className="w-12 h-12 border-4 border-amber-500 border-t-transparent rounded-full animate-spin mb-3"></div>
+                              <p className="text-gray-600">Loading gemstone inventory...</p>
                             </div>
-                          )}
-                        </div>
-                      </div>
-                    </td>
-                    <td className="px-6 py-4">
-                      <span className="inline-flex items-center px-3 py-1 rounded-full text-xs font-medium bg-blue-100 text-blue-800">
-                        {categories.find((c) => c.id === gem.categoryId)?.name || 'Uncategorized'}
-                      </span>
-                    </td>
-                    <td className="px-6 py-4">
-                      <span className="text-amber-700">
-                        {categories.find((c) => c.id === gem.categoryId)?.name || 'Uncategorized'}
-                      </span>
-                    </td>
-                    <td className="px-6 py-4">
-                      <span className="font-semibold text-green-600">
-                        ₹{gem.price.toLocaleString()}
-                      </span>
-                    </td>
-                    <td className="px-6 py-4">
-                      <span
-                        className={`inline-flex items-center px-3 py-1 rounded-full text-xs font-medium ${
-                          gem.active ? 'bg-green-100 text-green-800' : 'bg-red-100 text-red-800'
-                        }`}
-                      >
-                        {gem.active ? 'Active' : 'Inactive'}
-                      </span>
-                    </td>
-                    <td className="px-6 py-4">
-                      <div className="flex space-x-2">
-                        <motion.button
-                          onClick={() => handleEdit(gem)}
-                          className="text-amber-600 hover:text-amber-900 transition-colors"
-                          whileHover={{ scale: 1.1 }}
-                          whileTap={{ scale: 0.9 }}
-                        >
-                          ✏️
-                        </motion.button>
-                        <motion.button
-                          onClick={() => handleDelete(gem.id)}
-                          className="text-red-600 hover:text-red-900 transition-colors"
-                          whileHover={{ scale: 1.1 }}
-                          whileTap={{ scale: 0.9 }}
-                        >
-                          🗑️
-                        </motion.button>
-                      </div>
-                    </td>
-                  </motion.tr>
-                ))}
-              </tbody>
-            </table>
-          </div>
-        </motion.div>
-
-        {/* Add/Edit Form Modal */}
-        <AnimatePresence>
-          {showForm && (
-            <motion.div
-              className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4"
-              initial={{ opacity: 0 }}
-              animate={{ opacity: 1 }}
-              exit={{ opacity: 0 }}
-            >
-              <motion.div
-                className="bg-white rounded-3xl shadow-2xl max-w-2xl w-full max-h-[90vh] overflow-y-auto"
-                initial={{ scale: 0.9, opacity: 0 }}
-                animate={{ scale: 1, opacity: 1 }}
-                exit={{ scale: 0.9, opacity: 0 }}
-                transition={{ duration: 0.3 }}
-              >
-                <div className="p-6 border-b border-amber-200">
-                  <div className="flex justify-between items-center">
-                    <h2 className="text-2xl font-bold text-amber-900">
-                      {editingId ? 'Edit Gemstone' : 'Add New Gemstone'}
-                    </h2>
-                    <motion.button
-                      onClick={() => {
-                        setShowForm(false);
-                        setEditingId(null);
-                        setForm(emptyGem);
-                      }}
-                      className="text-amber-600 hover:text-amber-900 text-2xl"
-                      whileHover={{ scale: 1.1 }}
-                      whileTap={{ scale: 0.9 }}
-                    >
-                      ✕
-                    </motion.button>
-                  </div>
+                          </td>
+                        </tr>
+                      ) : filteredGems.length === 0 ? (
+                        <tr>
+                          <td colSpan={8} className="px-6 py-12 whitespace-nowrap text-center">
+                            <div className="flex flex-col items-center justify-center">
+                              <div className="text-5xl mb-4">🔍</div>
+                              <h3 className="text-lg font-medium text-gray-900 mb-1">No gemstones found</h3>
+                              <p className="text-gray-500">Try adjusting your search or filter criteria</p>
+                            </div>
+                          </td>
+                        </tr>
+                      ) : (
+                        filteredGems.map((gem) => (
+                          <motion.tr 
+                            key={gem.id} 
+                            className={selectedGems.includes(gem.id) ? 'bg-amber-50' : 'hover:bg-gray-50'}
+                            initial={{ opacity: 0 }}
+                            animate={{ opacity: 1 }}
+                            transition={{ duration: 0.3 }}
+                          >
+                            <td className="px-6 py-4 whitespace-nowrap">
+                              <input
+                                type="checkbox"
+                                checked={selectedGems.includes(gem.id)}
+                                onChange={(e) => {
+                                  if (e.target.checked) {
+                                    setSelectedGems([...selectedGems, gem.id]);
+                                  } else {
+                                    setSelectedGems(selectedGems.filter((id) => id !== gem.id));
+                                  }
+                                }}
+                                className="h-5 w-5 text-amber-600 focus:ring-amber-500 border-gray-300 rounded"
+                              />
+                            </td>
+                            <td className="px-6 py-4 whitespace-nowrap">
+                              <div className="flex items-center">
+                                {gem.images && gem.images.length > 0 && (
+                                  <div className="flex-shrink-0 h-12 w-12 rounded-lg overflow-hidden border border-gray-200">
+                                    <Image
+                                      className="h-12 w-12 object-cover"
+                                      src={gem.images[0]}
+                                      alt={gem.name}
+                                      width={48}
+                                      height={48}
+                                    />
+                                  </div>
+                                )}
+                                <div className="ml-4">
+                                  <div className="text-sm font-medium text-gray-900">{gem.name}</div>
+                                </div>
+                              </div>
+                            </td>
+                            <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
+                              {gem.type}
+                            </td>
+                            <td className="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900">
+                              ${gem.price.toLocaleString()}
+                            </td>
+                            <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
+                              {categories.find((c) => c.id === gem.categoryId)?.name || 'N/A'}
+                            </td>
+                            <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
+                              {gem.cashOnDelivery ? (
+                                <span className="inline-flex items-center px-3 py-1 rounded-full text-xs font-semibold bg-green-100 text-green-800">
+                                  <DollarSign className="w-3 h-3 mr-1" />
+                                  Available
+                                </span>
+                              ) : (
+                                <span className="px-3 inline-flex text-xs leading-5 font-semibold rounded-full bg-red-100 text-red-800">
+                                  Not Available
+                                </span>
+                              )}
+                            </td>
+                            <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
+                              {gem.active ? (
+                                <span className="px-3 inline-flex text-xs leading-5 font-semibold rounded-full bg-green-100 text-green-800">
+                                  Active
+                                </span>
+                              ) : (
+                                <span className="px-3 inline-flex text-xs leading-5 font-semibold rounded-full bg-gray-100 text-gray-800">
+                                  Inactive
+                                </span>
+                              )}
+                            </td>
+                            <td className="px-6 py-4 whitespace-nowrap text-sm font-medium">
+                              <button
+                                onClick={() => handleEdit(gem)}
+                                className="text-amber-600 hover:text-amber-900 mr-4 transition-colors"
+                              >
+                                Edit
+                              </button>
+                              <button
+                                onClick={() => handleDelete(gem.id)}
+                                className="text-red-600 hover:text-red-900 transition-colors"
+                              >
+                                Delete
+                              </button>
+                            </td>
+                          </motion.tr>
+                        ))
+                      )}
+                    </tbody>
+                  </table>
                 </div>
-
-                <form onSubmit={handleSubmit} className="p-6 space-y-6">
-                  <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                    <div>
-                      <label className="block text-sm font-semibold text-amber-700 mb-2">
-                        Gemstone Name *
-                      </label>
-                      <input
-                        type="text"
-                        name="name"
-                        value={form.name}
-                        onChange={handleFormChange}
-                        required
-                        className="w-full rounded-xl border border-amber-200 px-4 py-3 focus:ring-amber-500 focus:border-amber-500 transition-all duration-200"
-                        placeholder="Enter gemstone name"
-                      />
-                    </div>
-                    <div>
-                      <label className="block text-sm font-semibold text-amber-700 mb-2">
-                        Type *
-                      </label>
-                      <input
-                        type="text"
-                        name="type"
-                        value={form.type}
-                        onChange={handleFormChange}
-                        required
-                        className="w-full rounded-xl border border-amber-200 px-4 py-3 focus:ring-amber-500 focus:border-amber-500 transition-all duration-200"
-                        placeholder="e.g., Ruby, Diamond, Emerald"
-                      />
-                    </div>
-                  </div>
-
-                  <div>
-                    <label className="block text-sm font-semibold text-amber-700 mb-2">
-                      Description *
-                    </label>
-                    <textarea
-                      name="description"
-                      value={form.description}
-                      onChange={handleFormChange}
-                      required
-                      rows={4}
-                      className="w-full rounded-xl border border-amber-200 px-4 py-3 focus:ring-amber-500 focus:border-amber-500 transition-all duration-200"
-                      placeholder="Describe the gemstone..."
-                    />
-                  </div>
-
-                  <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-                    <div>
-                      <label className="block text-sm font-semibold text-amber-700 mb-2">
-                        Price (₹) *
-                      </label>
-                      <input
-                        type="number"
-                        name="price"
-                        value={form.price}
-                        onChange={handleFormChange}
-                        required
-                        min="0"
-                        className="w-full rounded-xl border border-amber-200 px-4 py-3 focus:ring-amber-500 focus:border-amber-500 transition-all duration-200"
-                        placeholder="0"
-                      />
-                    </div>
-                    <div>
-                      <label className="block text-sm font-semibold text-amber-700 mb-2">
-                        Category
-                      </label>
-                      <select
-                        name="categoryId"
-                        value={form.categoryId || ''}
-                        onChange={handleFormChange}
-                        className="w-full rounded-xl border border-amber-200 px-4 py-3 focus:ring-amber-500 focus:border-amber-500 transition-all duration-200"
-                      >
-                        <option value="">Select Category</option>
-                        {categories.map((cat) => (
-                          <option key={cat.id} value={cat.id}>
-                            {cat.name}
-                          </option>
-                        ))}
-                      </select>
-                    </div>
-                    <div>
-                      <label className="block text-sm font-semibold text-amber-700 mb-2">
-                        Certification
-                      </label>
-                      <input
-                        type="text"
-                        name="certification"
-                        value={form.certification}
-                        onChange={handleFormChange}
-                        className="w-full rounded-xl border border-amber-200 px-4 py-3 focus:ring-amber-500 focus:border-amber-500 transition-all duration-200"
-                        placeholder="e.g., GIA, IGI"
-                      />
-                    </div>
-                  </div>
-
-                  <div>
-                    <ExpertImageManager
-                      images={Array.isArray(form.images) ? form.images : []}
-                      onImagesChange={handleImagesChange}
-                      maxImages={5}
-                      className="w-full"
-                    />
-                  </div>
-
-                  <div className="flex items-center space-x-4">
-                    <label className="flex items-center">
-                      <input
-                        type="checkbox"
-                        name="active"
-                        checked={form.active}
-                        onChange={(e) => setForm({ ...form, active: e.target.checked })}
-                        className="rounded border-amber-300 text-amber-600 focus:ring-amber-500"
-                      />
-                      <span className="ml-2 text-sm text-amber-700">Active</span>
-                    </label>
-                  </div>
-
-                  <div className="flex justify-end space-x-4 pt-6 border-t border-amber-200">
-                    <motion.button
-                      type="button"
-                      onClick={() => {
-                        setShowForm(false);
-                        setEditingId(null);
-                        setForm(emptyGem);
-                      }}
-                      className="px-6 py-3 text-amber-700 hover:text-amber-900 transition-colors font-medium"
-                      whileHover={{ scale: 1.02 }}
-                      whileTap={{ scale: 0.98 }}
-                    >
-                      Cancel
-                    </motion.button>
-                    <motion.button
-                      type="submit"
-                      disabled={formLoading}
-                      className="bg-gradient-to-r from-amber-500 to-orange-500 text-white px-6 py-3 rounded-xl font-semibold hover:from-amber-600 hover:to-orange-600 transition-all duration-200 disabled:opacity-50"
-                      whileHover={{ scale: formLoading ? 1 : 1.02 }}
-                      whileTap={{ scale: formLoading ? 1 : 0.98 }}
-                    >
-                      {formLoading ? 'Saving...' : editingId ? 'Update Gemstone' : 'Add Gemstone'}
-                    </motion.button>
-                  </div>
-                </form>
-              </motion.div>
-            </motion.div>
-          )}
-        </AnimatePresence>
+              </div>
+            </div>
+          </div>
+        </div>
       </div>
     </AdminLayout>
   );
 };
 
 export default AdminGemstonesPage;
+
+export async function getServerSideProps(ctx: any) {
+  const res = await getSessionOrRedirect(ctx, { requireAdmin: true });
+  if ('redirect' in res) return res;
+  return { props: {} };
+}

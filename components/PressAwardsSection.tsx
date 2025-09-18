@@ -1,5 +1,9 @@
 import React, { useEffect, useState } from 'react';
-import { motion } from 'framer-motion';
+import dynamic from 'next/dynamic';
+import OptimizedImage from './ui/OptimizedImage';
+
+// Dynamically import framer-motion components
+const MotionDiv = dynamic(() => import('framer-motion').then(mod => mod.motion.div), { ssr: false });
 
 interface PressLogo {
   id: number;
@@ -59,28 +63,55 @@ const PressAwardsSection: React.FC<PressAwardsSectionProps> = ({
         </h2>
         <div className="flex flex-wrap justify-center items-center gap-8 md:gap-16">
           {press.map((logo, idx) => (
-            <motion.div
-              key={logo.id}
-              initial={{ opacity: 0, y: 20 }}
-              whileInView={{ opacity: 1, y: 0 }}
-              transition={{ duration: 0.5, delay: idx * 0.1 }}
-              viewport={{ once: true }}
-              className="flex items-center"
-              aria-label={logo.title}
-            >
-              {logo.logo ? (
-                <img
-                  src={logo.logo}
-                  alt={logo.title}
-                  className="h-10 w-auto grayscale hover:grayscale-0 hover:drop-shadow-lg transition-all duration-300 cursor-pointer"
-                  style={{ filter: 'grayscale(1)', transition: 'filter 0.3s' }}
-                />
-              ) : (
-                <div className="h-10 px-4 bg-white rounded-lg border border-gray-200 flex items-center justify-center text-sm font-semibold text-gray-600 hover:text-gray-800 hover:shadow-md transition-all duration-300 cursor-pointer">
-                  {logo.title}
-                </div>
-              )}
-            </motion.div>
+            typeof window !== 'undefined' ? (
+              <MotionDiv
+                key={logo.id}
+                initial={{ opacity: 0, y: 20 }}
+                whileInView={{ opacity: 1, y: 0 }}
+                transition={{ duration: 0.5, delay: idx * 0.1 }}
+                viewport={{ once: true }}
+                className="flex items-center"
+                aria-label={logo.title}
+              >
+                {logo.logo ? (
+                  <OptimizedImage
+                    src={logo.logo}
+                    alt={logo.title}
+                    width={120}
+                    height={40}
+                    className="h-10 w-auto grayscale hover:grayscale-0 hover:drop-shadow-lg transition-all duration-300 cursor-pointer"
+                    style={{ filter: 'grayscale(1)', transition: 'filter 0.3s' }}
+                    quality={75}
+                  />
+                ) : (
+                  <div className="h-10 px-4 bg-white rounded-lg border border-gray-200 flex items-center justify-center text-sm font-semibold text-gray-600 hover:text-gray-800 hover:shadow-md transition-all duration-300 cursor-pointer">
+                    {logo.title}
+                  </div>
+                )}
+              </MotionDiv>
+            ) : (
+              <div
+                key={logo.id}
+                className="flex items-center"
+                aria-label={logo.title}
+              >
+                {logo.logo ? (
+                  <OptimizedImage
+                    src={logo.logo}
+                    alt={logo.title}
+                    width={120}
+                    height={40}
+                    className="h-10 w-auto grayscale hover:grayscale-0 hover:drop-shadow-lg transition-all duration-300 cursor-pointer"
+                    style={{ filter: 'grayscale(1)', transition: 'filter 0.3s' }}
+                    quality={75}
+                  />
+                ) : (
+                  <div className="h-10 px-4 bg-white rounded-lg border border-gray-200 flex items-center justify-center text-sm font-semibold text-gray-600 hover:text-gray-800 hover:shadow-md transition-all duration-300 cursor-pointer">
+                    {logo.title}
+                  </div>
+                )}
+              </div>
+            )
           ))}
         </div>
       </div>

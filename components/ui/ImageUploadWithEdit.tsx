@@ -1,6 +1,7 @@
+'use client';
+
 import React, { useRef, useState, useCallback, useEffect } from 'react';
 import Image from 'next/image';
-import Cropper from 'react-easy-crop';
 import Button from './Button';
 import Modal from './Modal';
 import { H4 } from './Typography';
@@ -43,6 +44,16 @@ export const ImageUploadWithEdit: React.FC<ImageUploadWithEditProps> = ({
   const [error, setError] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
   const [blobUrl, setBlobUrl] = useState<string | null>(null);
+  const [CropperComponent, setCropperComponent] = useState<any>(null);
+
+  // Dynamically import the Cropper component on the client side
+  useEffect(() => {
+    if (typeof window !== 'undefined') {
+      import('react-easy-crop').then((module) => {
+        setCropperComponent(() => module.default);
+      });
+    }
+  }, []);
 
   // Cleanup blob URL on unmount or when a new one is set
   useEffect(() => {
@@ -192,7 +203,9 @@ export const ImageUploadWithEdit: React.FC<ImageUploadWithEditProps> = ({
   // Open file dialog
   const openFileDialog = () => {
     if (disabled) return;
-    inputRef.current?.click();
+    if (inputRef.current) {
+      inputRef.current.click();
+    }
   };
 
   return (
@@ -203,101 +216,125 @@ export const ImageUploadWithEdit: React.FC<ImageUploadWithEditProps> = ({
         </H4>
       )}
       <div
-        className={`relative flex flex-col items-center justify-center bg-white dark:bg-gray-900 p-6 ${luxuryBorder} min-h-[220px] cursor-pointer transition-all duration-200 ${disabled ? 'opacity-60 pointer-events-none' : 'hover:shadow-gold-lg'}`}
+        className={`${luxuryBorder} relative bg-white dark:bg-gray-800 p-8 text-center cursor-pointer transition-all duration-300 ${
+          disabled ? 'opacity-50 cursor-not-allowed' : ''
+        }`}
         onClick={openFileDialog}
-        onDrop={onDrop}
         onDragOver={(e) => e.preventDefault()}
-        tabIndex={0}
-        aria-disabled={disabled}
+        onDrop={onDrop}
       >
-        {!imageSrc ? (
-          <>
-            <span className="text-gray-400 text-3xl mb-2">＋</span>
-            <span className="text-gray-500 font-medium">Drag & drop or click to upload</span>
-            {helperText && <span className="text-xs text-gray-400 mt-2">{helperText}</span>}
-            <input
-              ref={inputRef}
-              type="file"
-              accept="image/*"
-              className="hidden"
-              onChange={onFileChange}
-              disabled={disabled}
-              aria-label={label}
+        <input
+          type="file"
+          ref={inputRef}
+          onChange={onFileChange}
+          className="hidden"
+          accept="image/*"
+          disabled={disabled}
+        />
+        {imageSrc ? (
+          <div className="relative">
+            <Image
+              src={imageSrc}
+              alt="Preview"
+              width={200}
+              height={200}
+              className="mx-auto rounded-lg object-cover"
             />
-          </>
-        ) : (
-          <div className="w-full flex flex-col items-center">
-            <div className="relative w-full h-48 mb-4">
-              <Image
-                src={imageSrc}
-                alt="Preview"
-                fill
-                className="rounded-lg shadow-lg object-cover border border-gold-200"
-                style={{ aspectRatio: aspect }}
-                sizes="(max-width: 400px) 100vw, 400px"
-                unoptimized
-              />
-            </div>
-            <div className="flex gap-2">
-              <Button type="button" variant="primary" onClick={() => setShowCropModal(true)}>
-                Edit
+            <div className="mt-4 flex space-x-2 justify-center">
+              <Button 
+                onClick={() => { 
+                  if (inputRef.current) {
+                    inputRef.current.click();
+                  }
+                }} 
+                disabled={disabled}
+              >
+                Change
               </Button>
-              <Button type="button" variant="outline" onClick={openFileDialog}>
-                Replace
-              </Button>
-              <Button type="button" variant="outline" onClick={handleRemove}>
+              <Button 
+                variant="secondary" 
+                onClick={() => { 
+                  handleRemove(); 
+                }} 
+                disabled={disabled}
+              >
                 Remove
               </Button>
             </div>
+
           </div>
-        )}
-        {loading && (
-          <div className="absolute inset-0 flex items-center justify-center bg-white/70 dark:bg-gray-900/70 z-10">
-            <span className="text-gold-600 font-bold animate-pulse">Processing...</span>
+        ) : (
+          <div className="space-y-4">
+            <div className="mx-auto w-16 h-16 bg-gray-200 dark:bg-gray-700 rounded-full flex items-center justify-center">
+              <svg
+                className="w-8 h-8 text-gray-400 dark:text-gray-500"
+                fill="none"
+                stroke="currentColor"
+                viewBox="0 0 24 24"
+                xmlns="http://www.w3.org/2000/svg"
+              >
+                <path
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                  strokeWidth={2}
+                  d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z"
+                />
+              </svg>
+            </div>
+            <p className="text-gray-600 dark:text-gray-400">
+              <span className="font-medium text-amber-600">Click to upload</span> or drag and drop
+            </p>
+            <p className="text-sm text-gray-500 dark:text-gray-400">
+              PNG, JPG, GIF up to 10MB
+            </p>
           </div>
         )}
       </div>
-      {error && <div className="text-red-500 text-xs mt-2">{error}</div>}
+      {helperText && <p className="mt-2 text-sm text-gray-500 dark:text-gray-400">{helperText}</p>}
+      {error && <p className="mt-2 text-sm text-red-600 dark:text-red-500">{error}</p>}
+
       {/* Crop Modal */}
-      <Modal isOpen={showCropModal} onClose={() => setShowCropModal(false)} title="Edit Image">
-        <div className="p-4 w-full max-w-lg mx-auto">
-          <H4 className="mb-2 text-gold-700 font-serif">Edit Image</H4>
-          <div className="relative w-full h-72 bg-gray-100 rounded-lg overflow-hidden">
-            {imageSrc && (
-              <Cropper
+      <Modal isOpen={showCropModal} onClose={() => setShowCropModal(false)} title="Crop Image">
+        <div className="space-y-4">
+          {imageSrc && CropperComponent && (
+            <div className="relative h-80 w-full">
+              <CropperComponent
                 image={imageSrc}
                 crop={crop}
                 zoom={zoom}
                 aspect={aspect}
-                minZoom={1}
-                maxZoom={3}
-                cropShape="rect"
-                showGrid={true}
                 onCropChange={setCrop}
                 onZoomChange={setZoom}
                 onCropComplete={onCropComplete}
+                classes={{ containerClassName: 'rounded-lg overflow-hidden' }}
               />
-            )}
-          </div>
-          <div className="flex flex-col gap-2 mt-4">
-            <label className="text-xs text-gray-500">Zoom</label>
+            </div>
+          )}
+          <div className="flex items-center space-x-4">
+            <label className="text-sm font-medium text-gray-700 dark:text-gray-300">Zoom:</label>
             <input
               type="range"
-              min={1}
-              max={3}
-              step={0.01}
+              min="1"
+              max="3"
+              step="0.1"
               value={zoom}
-              onChange={(e) => setZoom(Number(e.target.value))}
-              className="w-full accent-gold-500"
+              onChange={(e) => setZoom(parseFloat(e.target.value))}
+              className="w-full h-2 bg-gray-200 rounded-lg appearance-none cursor-pointer dark:bg-gray-700"
             />
+            <span className="text-sm text-gray-500 dark:text-gray-400">{zoom.toFixed(1)}x</span>
           </div>
-          <div className="flex justify-end gap-2 mt-6">
-            <Button type="button" variant="outline" onClick={() => setShowCropModal(false)}>
+          <div className="flex justify-end space-x-3">
+            <Button
+              variant="secondary"
+              onClick={() => setShowCropModal(false)}
+              disabled={loading}
+            >
               Cancel
             </Button>
-            <Button type="button" variant="primary" onClick={handleCropSave} loading={loading}>
-              Save
+            <Button onClick={handleCropSave} disabled={loading}>
+              {loading ? 'Saving...' : 'Save'}
             </Button>
+
           </div>
         </div>
       </Modal>

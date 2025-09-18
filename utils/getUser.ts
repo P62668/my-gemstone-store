@@ -2,15 +2,16 @@ import { NextApiRequest, NextApiResponse } from 'next';
 import { getServerSession } from 'next-auth/next';
 import { getToken } from 'next-auth/jwt';
 import { authOptions } from '../pages/api/auth/[...nextauth]';
-import { getTokenFromRequest } from './cookieParser';
 import { getEnv } from './env';
 import { User } from './auth';
+import { verifyToken } from './adminSecurity'; // Import verifyToken directly
+import { PrismaClient } from '@prisma/client';
 
 /**
  * Attempts to resolve an authenticated user from several sources, in order of preference:
  * 1. NextAuth server session
  * 2. NextAuth JWT token (getToken)
- * 3. Legacy JWT token from cookie/header using utils/auth.verifyToken
+ * 3. Legacy JWT token from cookie/header using utils/adminSecurity.verifyToken
  */
 export async function getUserFromRequest(req: NextApiRequest, res?: NextApiResponse): Promise<User | null> {
   try {
@@ -31,6 +32,7 @@ export async function getUserFromRequest(req: NextApiRequest, res?: NextApiRespo
         };
       }
     } catch (e) {
+      console.error('NextAuth session check failed:', e);
       // continue to other checks
     }
 
@@ -53,31 +55,71 @@ export async function getUserFromRequest(req: NextApiRequest, res?: NextApiRespo
         };
       }
     } catch (e) {
+      console.error('NextAuth JWT check failed:', e);
       // continue
     }
 
     // 3) Legacy token from cookie/header
-    const legacyToken = getTokenFromRequest(req);
-    if (legacyToken) {
-      // dynamically import to avoid circular deps
-      const { verifyToken } = await import('./auth');
-      const decoded = verifyToken(legacyToken);
-      if (decoded && decoded.userId) {
-        return {
-          id: decoded.userId,
-          email: decoded.email,
-          firstName: (decoded.firstName as string) || undefined,
-          lastName: (decoded.lastName as string) || undefined,
-          name: undefined,
-          role: decoded.role || 'user',
-          active: true,
-          createdAt: new Date().toISOString(),
-        };
+    // Use the admin security getTokenFromRequest function instead of cookieParser
+    try {
+      const { getTokenFromRequest } = await import('./adminSecurity');
+      const legacyToken = getTokenFromRequest(req);
+      if (legacyToken) {
+        // Use the admin security verifyToken function
+        const decoded = verifyToken(legacyToken);
+        if (decoded && decoded.userId) {
+          // Verify the user exists and is active in the database
+          try {
+            const prisma = new PrismaClient();
+            const dbUser = await prisma.user.findUnique({
+              where: { id: Number(decoded.userId) },
+              select: { 
+                id: true,
+                email: true,
+                firstName: true,
+                lastName: true,
+                role: true,
+                active: true
+              }
+            });
+            
+            await prisma.$disconnect();
+            
+            if (dbUser && dbUser.active) {
+              return {
+                id: dbUser.id,
+                email: dbUser.email,
+                firstName: dbUser.firstName || undefined,
+                lastName: dbUser.lastName || undefined,
+                name: dbUser.firstName && dbUser.lastName ? `${dbUser.firstName} ${dbUser.lastName}` : undefined,
+                role: dbUser.role || 'user',
+                active: dbUser.active,
+                createdAt: new Date().toISOString(),
+              };
+            }
+          } catch (dbError) {
+            console.error('Database verification failed for legacy token:', dbError);
+            // If database check fails, still return the decoded token user
+            return {
+              id: decoded.userId,
+              email: decoded.email,
+              firstName: (decoded.firstName as string) || undefined,
+              lastName: (decoded.lastName as string) || undefined,
+              name: undefined,
+              role: decoded.role || 'user',
+              active: true,
+              createdAt: new Date().toISOString(),
+            };
+          }
+        }
       }
+    } catch (e) {
+      console.error('Legacy token check failed:', e);
     }
 
     return null;
   } catch (error) {
+    console.error('getUserFromRequest failed:', error);
     return null;
   }
 }

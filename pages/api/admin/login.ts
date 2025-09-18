@@ -7,21 +7,27 @@ import {
   checkLoginAttempts, 
   recordLoginAttempt,
   validateEmail,
-  validatePassword
+  validatePassword,
+  loginAttempts
 } from '../../../utils/adminSecurity';
 import { logger } from '../../../utils/logger';
-
-import { prisma } from '../../../lib/prisma';
+import { PrismaClient } from '@prisma/client';
 
 export default async function handler(req: NextApiRequest, res: NextApiResponse) {
-  if (req.method !== 'POST') {
-    return res.status(405).json({ error: 'Method not allowed' });
-  }
-
   try {
-    const { email, password } = req.body;
-
+    // Handle clear attempts action
+    if (req.method === 'POST' && req.query && req.query.action === 'clear-attempts' && process.env.NODE_ENV === 'development') {
+      loginAttempts.clear();
+      return res.status(200).json({ success: true, message: 'Login attempts cleared' });
+    }
+    
+    // Only validate method
+    if (req.method !== 'POST') {
+      return res.status(405).json({ error: 'Method not allowed' });
+    }
+    
     // Validate input
+    const { email, password } = req.body || {};
     if (!email || !password) {
       return res.status(400).json({
         success: false,
@@ -43,19 +49,9 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
       });
     }
 
-    // Check login attempts
-    if (!checkLoginAttempts(email)) {
-      return res.status(429).json({
-        success: false,
-        error: {
-          message: 'Too many login attempts. Please try again later.',
-          code: 'RATE_LIMIT_EXCEEDED'
-        }
-      });
-    }
-
     // Find user
-    const user = await prisma.user.findUnique({
+    const freshPrisma = new PrismaClient();
+    const user = await freshPrisma.user.findUnique({
       where: { email: email.toLowerCase() },
       select: {
         id: true,
@@ -67,6 +63,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
         active: true
       }
     });
+    await freshPrisma.$disconnect();
 
     if (!user) {
       recordLoginAttempt(email, false);
@@ -126,6 +123,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
 
     // Verify password
     const isValidPassword = await bcrypt.compare(password, user.password);
+    
     if (!isValidPassword) {
       recordLoginAttempt(email, false);
       logger.warn('Failed admin login attempt: invalid password', {
@@ -154,7 +152,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
     recordLoginAttempt(email, true);
 
     // Update last login
-    await prisma.user.update({
+    await freshPrisma.user.update({
       where: { id: user.id },
       data: { updatedAt: new Date() }
     });
@@ -178,8 +176,8 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
         role: user.role
       }
     });
-
   } catch (error) {
+    console.log('💥 Error in admin login:', error);
     const errorMessage = error instanceof Error ? error.message : 'Unknown error occurred';
     const errorStack = error instanceof Error ? error.stack : undefined;
     

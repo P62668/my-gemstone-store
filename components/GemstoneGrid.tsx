@@ -1,4 +1,5 @@
 import React, { useEffect, useState } from 'react';
+import OptimizedImage from './ui/OptimizedImage';
 
 interface Gemstone {
   id: number;
@@ -40,29 +41,31 @@ const GemstoneGrid: React.FC = () => {
 
   return (
     <div className="container mx-auto px-4 py-8">
-      <h2 className="text-2xl font-bold mb-6 text-center">Gemstones</h2>
+      <h2 className="text-2xl font-bold mb-6 text-center luxury-font-serif">Gemstones</h2>
       <div className="grid gap-6 grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4">
-        {gemstones.map((gem) => (
+        {gemstones.map((gem, index) => (
           <div
             key={gem.id}
             className="bg-white rounded-lg shadow-md overflow-hidden flex flex-col hover:shadow-xl transition-shadow"
           >
-            <img
-              src={gem.images && gem.images.length > 0 ? gem.images[0] : '/images/placeholder.svg'}
-              alt={gem.name}
-              onError={(e) => {
-                e.currentTarget.src = '/images/placeholder.svg';
-                console.warn('Missing image for', gem.name, gem.images);
-              }}
-              className="w-full h-48 object-cover rounded-t"
-            />
+            <div className="relative w-full h-48">
+              <OptimizedImage
+                src={gem.images && gem.images.length > 0 ? gem.images[0] : '/images/placeholder-gemstone.jpg'}
+                alt={gem.name}
+                fill
+                sizes="(max-width: 768px) 100vw, (max-width: 1200px) 50vw, 33vw"
+                className="object-cover rounded-t"
+                quality={75}
+                priority={index < 4} // Priority loading for first 4 images
+              />
+            </div>
             <div className="p-4 flex-1 flex flex-col">
-              <h3 className="text-lg font-semibold mb-1">{gem.name}</h3>
-              <p className="text-sm text-gray-500 mb-2">{gem.description?.substring(0, 50)}...</p>
-              <p className="text-xl font-bold text-indigo-600 mb-2">
+              <h3 className="text-lg font-semibold mb-1 luxury-font-serif">{gem.name}</h3>
+              <p className="text-sm text-gray-500 mb-2 luxury-font-sans">{gem.description?.substring(0, 50)}...</p>
+              <p className="text-xl font-bold text-indigo-600 mb-2 luxury-font-serif">
                 ${gem.price.toLocaleString()}
               </p>
-              <p className="text-xs text-gray-400 mt-auto">Certification: {gem.certification}</p>
+              <p className="text-xs text-gray-400 mt-auto luxury-font-sans">Certification: {gem.certification}</p>
             </div>
           </div>
         ))}

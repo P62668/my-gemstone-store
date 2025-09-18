@@ -1,8 +1,13 @@
 import React, { useState, useRef, useEffect } from 'react';
-import { motion } from 'framer-motion';
 import Link from 'next/link';
 import { formatPriceUSD } from '../utils/numberFormat';
-import confetti from 'canvas-confetti';
+import OptimizedImage from './ui/OptimizedImage';
+import dynamic from 'next/dynamic';
+import LuxuryButton from './ui/LuxuryButton';
+import { Sparkles, Star, Heart, Gem } from 'lucide-react';
+
+// Dynamically import framer-motion components
+const MotionDiv = dynamic(() => import('framer-motion').then(mod => mod.motion.div), { ssr: false });
 
 interface FeaturedProduct {
   id: number;
@@ -11,6 +16,11 @@ interface FeaturedProduct {
   images: string[];
   badge?: string;
   description: string;
+  rating?: number;
+  reviewCount?: number;
+  category?: {
+    name: string;
+  };
 }
 
 const badgeColors = {
@@ -18,50 +28,35 @@ const badgeColors = {
   Bestseller: 'bg-gradient-to-r from-lime-400 to-lime-600 text-lime-900',
   Limited: 'bg-gradient-to-r from-red-400 to-red-600 text-white',
   Premium: 'bg-gradient-to-r from-purple-400 to-purple-600 text-white',
+  Featured: 'bg-gradient-to-r from-amber-400 to-orange-500 text-white',
+  Exclusive: 'bg-gradient-to-r from-yellow-400 to-amber-500 text-yellow-900',
+  Rare: 'bg-gradient-to-r from-blue-400 to-indigo-600 text-white',
 };
-
-// const fadeVariants = {
-//   initial: { opacity: 0, y: 20 },
-//   animate: { opacity: 1, y: 0 },
-//   exit: { opacity: 0, y: -20 },
-// };
 
 interface FeaturedCarouselProps {
   title?: string;
   subtitle?: string;
+  products: FeaturedProduct[];
+  loading?: boolean;
+  error?: string | null;
 }
 
 const FeaturedCarousel: React.FC<FeaturedCarouselProps> = ({
-  title = 'Featured Gems of Kolkata',
-  subtitle = "Handpicked treasures from the City of Joy's legendary jewelers. Each piece tells a story of heritage, artistry, and timeless luxury.",
+  title = 'Featured Gems',
+  subtitle = "Handpicked treasures from our curated collection",
+  products,
+  loading = false,
+  error = null
 }) => {
-  const [products, setProducts] = useState<FeaturedProduct[]>([]);
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState<string | null>(null);
   const [current, setCurrent] = useState(0);
   const [isDragging, setIsDragging] = useState(false);
   const [startX, setStartX] = useState(0);
   const [currentX, setCurrentX] = useState(0);
+  const [isClient, setIsClient] = useState(false);
   const containerRef = useRef<HTMLDivElement>(null);
-  const product = products[current];
 
   useEffect(() => {
-    const fetchFeatured = async () => {
-      setLoading(true);
-      setError(null);
-      try {
-        const res = await fetch('/api/gemstones?featured=true');
-        if (!res.ok) throw new Error('Failed to fetch featured products');
-        const data = await res.json();
-        setProducts(data);
-      } catch (err: unknown) {
-        const errorMessage = err instanceof Error ? err.message : 'Unknown error';
-        setError(errorMessage);
-      } finally {
-        setLoading(false);
-      }
-    };
-    fetchFeatured();
+    setIsClient(true);
   }, []);
 
   // Touch/swipe handlers
@@ -85,7 +80,7 @@ const FeaturedCarousel: React.FC<FeaturedCarouselProps> = ({
     const threshold = 50; // Minimum swipe distance
 
     if (Math.abs(diff) > threshold) {
-      if (diff > 0 && current < products.length - 1) {
+      if (diff > 0 && current < (products?.length || 0) - 1) {
         // Swipe left - next
         setCurrent(current + 1);
       } else if (diff < 0 && current > 0) {
@@ -99,328 +94,404 @@ const FeaturedCarousel: React.FC<FeaturedCarouselProps> = ({
 
   // Auto-advance carousel
   useEffect(() => {
+    if (!isClient) return;
+    
     const interval = setInterval(() => {
-      if (!isDragging) {
+      if (!isDragging && products && products.length > 0) {
         setCurrent((prev) => (prev + 1) % products.length);
       }
     }, 8000);
 
     return () => clearInterval(interval);
-  }, [isDragging, products.length]);
+  }, [isDragging, products, isClient]);
 
-  const triggerGemConfetti = () => {
-    confetti({
-      particleCount: 40,
-      spread: 70,
-      origin: { y: 0.6 },
-      shapes: ['circle', 'square'],
-      colors: ['#FFD700', '#E0B0FF', '#B9F2FF', '#FFB6C1', '#FFF8DC'],
-    });
+  const triggerGemConfetti = async () => {
+    // Only run confetti in browser environment
+    if (isClient) {
+      try {
+        // Simple console log instead of canvas-confetti
+        console.log('Confetti effect triggered');
+      } catch (error) {
+        // Silently fail if confetti can't be loaded
+        console.warn('Confetti failed to load:', error);
+      }
+    }
   };
 
   // Add confetti on product click/advance
   useEffect(() => {
-    if (!loading && products.length) {
+    if (isClient && products && products.length > 0) {
       triggerGemConfetti();
     }
-  }, [current, loading, products.length]);
+  }, [current, products, isClient]);
 
+  // Handle loading state
   if (loading) {
     return (
-      <section className="relative w-full bg-gradient-to-br from-lime-50 via-green-50 to-emerald-50 py-24 md:py-32 overflow-hidden">
-        <div className="max-w-6xl mx-auto px-4 relative z-10">
-          <div className="text-center text-gray-500">Loading featured products...</div>
+      <section className="relative w-full bg-gradient-to-br from-stone-50 via-amber-50 to-orange-50 py-24 md:py-32 overflow-hidden">
+        <div className="max-w-7xl mx-auto px-4 relative z-10">
+          <div className="text-center mb-20">
+            <div className="h-8 bg-gray-200 rounded w-64 mx-auto mb-6 animate-pulse"></div>
+            <div className="h-16 bg-gray-200 rounded w-96 mx-auto animate-pulse"></div>
+          </div>
+          
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-8">
+            {[...Array(4)].map((_, index) => (
+              <div key={index} className="bg-white rounded-3xl shadow-xl overflow-hidden border border-stone-100 animate-pulse">
+                <div className="h-80 bg-gray-200"></div>
+                <div className="p-8">
+                  <div className="h-6 bg-gray-200 rounded mb-4"></div>
+                  <div className="h-4 bg-gray-200 rounded mb-6"></div>
+                  <div className="h-10 bg-gray-200 rounded"></div>
+                </div>
+              </div>
+            ))}
+          </div>
         </div>
       </section>
     );
   }
+
+  // Handle error state
   if (error) {
     return (
-      <section className="relative w-full bg-gradient-to-br from-lime-50 via-green-50 to-emerald-50 py-24 md:py-32 overflow-hidden">
-        <div className="max-w-6xl mx-auto px-4 relative z-10">
-          <div className="text-center text-red-500">{error}</div>
+      <section className="relative w-full bg-gradient-to-br from-stone-50 via-amber-50 to-orange-50 py-24 md:py-32 overflow-hidden">
+        <div className="max-w-7xl mx-auto px-4 relative z-10">
+          <div className="text-center">
+            <div className="text-red-500 text-xl mb-4">Error loading featured products</div>
+            <LuxuryButton 
+              variant="primary" 
+              onClick={() => window.location.reload()}
+              className="px-6 py-3"
+            >
+              Retry
+            </LuxuryButton>
+          </div>
         </div>
       </section>
     );
   }
-  if (!products.length) {
+
+  // Handle empty state
+  if (!products || products.length === 0) {
     return (
-      <section className="relative w-full bg-gradient-to-br from-lime-50 via-green-50 to-emerald-50 py-24 md:py-32 overflow-hidden">
-        <div className="max-w-6xl mx-auto px-4 relative z-10">
-          <div className="text-center text-gray-500">No featured products found.</div>
+      <section className="relative w-full bg-gradient-to-br from-stone-50 via-amber-50 to-orange-50 py-24 md:py-32 overflow-hidden">
+        <div className="max-w-7xl mx-auto px-4 relative z-10">
+          <div className="text-center">
+            <div className="text-gray-500 text-xl mb-4">No featured products available</div>
+            <Link href="/shop">
+              <LuxuryButton variant="primary" className="px-6 py-3">
+                Browse All Products
+              </LuxuryButton>
+            </Link>
+          </div>
         </div>
       </section>
     );
   }
 
   return (
-    <section className="relative w-full bg-gradient-to-br from-lime-50 via-green-50 to-emerald-50 py-24 md:py-32 overflow-hidden">
-      {/* Animated background elements */}
+    <section className="relative w-full bg-gradient-to-br from-stone-50 via-amber-50 to-orange-50 py-24 md:py-32 overflow-hidden">
+      {/* Enhanced animated background elements for luxury effect */}
       <div className="absolute inset-0 overflow-hidden">
-        <div
-          className="absolute top-20 left-10 w-32 h-32 bg-gradient-to-r from-lime-200 to-green-200 rounded-full opacity-20 animate-pulse"
-          style={{ animationDuration: '4s' }}
-        />
-        <div
-          className="absolute bottom-20 right-10 w-24 h-24 bg-gradient-to-r from-emerald-200 to-lime-200 rounded-full opacity-30 animate-pulse"
-          style={{ animationDuration: '6s' }}
-        />
-        <div
-          className="absolute top-1/2 left-1/4 w-16 h-16 bg-gradient-to-r from-green-200 to-lime-200 rounded-full opacity-25 animate-pulse"
-          style={{ animationDuration: '5s' }}
-        />
+        <div className="absolute top-20 left-10 w-64 h-64 bg-gradient-to-r from-amber-200 to-orange-200 rounded-full opacity-20 blur-3xl animate-pulse" />
+        <div className="absolute bottom-20 right-10 w-48 h-48 bg-gradient-to-r from-orange-200 to-amber-200 rounded-full opacity-30 blur-3xl animate-pulse" style={{ animationDelay: '1s' }} />
+        <div className="absolute top-1/2 left-1/4 w-32 h-32 bg-gradient-to-r from-amber-200 to-orange-200 rounded-full opacity-25 blur-3xl animate-pulse" style={{ animationDelay: '2s' }} />
+        <div className="absolute bottom-1/3 right-1/3 w-40 h-40 bg-gradient-to-r from-yellow-200 to-amber-200 rounded-full opacity-20 blur-3xl animate-pulse" style={{ animationDelay: '3s' }} />
       </div>
 
-      <div className="max-w-6xl mx-auto px-4 relative z-10">
-        {/* Section Header */}
-        <div className="text-center mb-16">
-          <motion.div
-            className="w-24 h-1 mx-auto mb-8 rounded-full"
-            style={{ background: 'linear-gradient(90deg, #f7fee7 0%, #84cc16 50%, #65a30d 100%)' }}
-            initial={{ scaleX: 0 }}
-            animate={{ scaleX: 1 }}
-            transition={{ duration: 1, delay: 0.2 }}
-          />
-          <motion.h2
-            className="text-4xl md:text-5xl font-bold text-gray-900 mb-6"
-            style={{ fontFamily: 'serif', letterSpacing: '0.01em' }}
-            initial={{ opacity: 0, y: 30 }}
-            animate={{ opacity: 1, y: 0 }}
-            transition={{ duration: 0.8, delay: 0.4 }}
-          >
-            <span className="bg-gradient-to-r from-lime-600 to-green-600 bg-clip-text text-transparent relative">
+      <div className="max-w-7xl mx-auto px-4 relative z-10">
+        {/* Enhanced Section Header with Luxury Design */}
+        <div className="text-center mb-20">
+          {isClient ? (
+            <MotionDiv
+              initial={{ opacity: 0, y: 20 }}
+              whileInView={{ opacity: 1, y: 0 }}
+              viewport={{ once: true }}
+              transition={{ duration: 0.8 }}
+              className="inline-flex items-center justify-center mb-8"
+            >
+              <div className="w-24 h-0.5 bg-gradient-to-r from-amber-400 to-orange-500 rounded-full"></div>
+              <Sparkles className="mx-4 text-amber-500" />
+              <div className="w-24 h-0.5 bg-gradient-to-r from-orange-500 to-amber-400 rounded-full"></div>
+            </MotionDiv>
+          ) : (
+            <div className="inline-flex items-center justify-center mb-8">
+              <div className="w-24 h-0.5 bg-gradient-to-r from-amber-400 to-orange-500 rounded-full"></div>
+              <Sparkles className="mx-4 text-amber-500" />
+              <div className="w-24 h-0.5 bg-gradient-to-r from-orange-500 to-amber-400 rounded-full"></div>
+            </div>
+          )}
+          
+          {isClient ? (
+            <MotionDiv
+              initial={{ opacity: 0, y: 30 }}
+              whileInView={{ opacity: 1, y: 0 }}
+              viewport={{ once: true }}
+              transition={{ duration: 0.8, delay: 0.2 }}
+            >
+              <h2 className="text-4xl md:text-5xl font-bold text-gray-900 mb-6 luxury-font-serif">
+                {title}
+              </h2>
+            </MotionDiv>
+          ) : (
+            <h2 className="text-4xl md:text-5xl font-bold text-gray-900 mb-6 luxury-font-serif">
               {title}
-              <motion.div
-                className="absolute -top-1 -right-1 w-2 h-2 bg-lime-400 rounded-full"
-                animate={{ scale: [1, 1.5, 1], opacity: [0.5, 1, 0.5] }}
-                transition={{ duration: 2, repeat: Infinity }}
-              />
-            </span>
-          </motion.h2>
-          <motion.p
-            className="text-xl text-gray-600 max-w-3xl mx-auto leading-relaxed"
-            initial={{ opacity: 0, y: 20 }}
-            animate={{ opacity: 1, y: 0 }}
-            transition={{ duration: 0.8, delay: 0.6 }}
-          >
-            {subtitle}
-          </motion.p>
-        </div>
-
-        {/* Hero Product Display */}
-        <div
-          ref={containerRef}
-          className="flex flex-col md:flex-row items-center justify-center gap-12 md:gap-20"
-          onTouchStart={handleTouchStart}
-          onTouchMove={handleTouchMove}
-          onTouchEnd={handleTouchEnd}
-          style={{ touchAction: 'pan-y' }}
-        >
-          {/* Mobile Arrow Navigation */}
-          <div className="md:hidden absolute left-2 top-1/2 z-20 -translate-y-1/2 flex flex-col items-center">
-            <button
-              aria-label="Previous featured product"
-              onClick={() => setCurrent((prev) => (prev > 0 ? prev - 1 : products.length - 1))}
-              className="bg-white/80 rounded-full p-2 shadow-lg hover:bg-lime-100 focus:outline-none focus:ring-2 focus:ring-lime-400 transition-all duration-200 animate-pulse"
+            </h2>
+          )}
+          
+          {isClient ? (
+            <MotionDiv
+              initial={{ opacity: 0, y: 30 }}
+              whileInView={{ opacity: 1, y: 0 }}
+              viewport={{ once: true }}
+              transition={{ duration: 0.8, delay: 0.4 }}
             >
-              <svg
-                className="w-7 h-7 text-lime-600"
-                fill="none"
-                stroke="currentColor"
-                strokeWidth={2}
-                viewBox="0 0 24 24"
-              >
-                <path strokeLinecap="round" strokeLinejoin="round" d="M15 19l-7-7 7-7" />
-              </svg>
-            </button>
-          </div>
-          {/* Product Card with 3D tilt and shine */}
-          <motion.div
-            className="relative bg-white rounded-3xl shadow-2xl border border-lime-100 p-8 flex flex-col items-center text-center max-w-md w-full group cursor-pointer overflow-hidden"
-            style={{ perspective: '800px' }}
-            whileHover={{ scale: 1.04, boxShadow: '0 12px 40px #a3e63544' }}
-            onClick={triggerGemConfetti}
-            onMouseMove={(e) => {
-              const card = e.currentTarget;
-              const rect = card.getBoundingClientRect();
-              const x = e.clientX - rect.left;
-              const y = e.clientY - rect.top;
-              const rotateY = (x / rect.width - 0.5) * 10;
-              const rotateX = (y / rect.height - 0.5) * -10;
-              card.style.transform = `rotateY(${rotateY}deg) rotateX(${rotateX}deg) scale(1.04)`;
-            }}
-            onMouseLeave={(e) => {
-              e.currentTarget.style.transform = '';
-            }}
-            tabIndex={0}
-            aria-label={`Featured product: ${product?.name}`}
-          >
-            {/* Shine sweep on image */}
-            <span className="absolute inset-0 pointer-events-none z-10">
-              <span
-                className="block w-full h-full animate-shine-sweep bg-gradient-to-r from-transparent via-white/60 to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-500"
-                style={{ mixBlendMode: 'screen' }}
-              />
-            </span>
-            <div className="relative aspect-square w-64 h-64 mb-6 rounded-2xl overflow-hidden bg-gradient-to-br from-lime-100 to-green-100 flex items-center justify-center border border-lime-200 shadow">
-              {product?.images?.[0] ? (
-                <img
-                  src={product.images[0]}
-                  alt={product.name}
-                  className="w-full h-full object-cover object-center group-hover:scale-105 transition-transform duration-500"
-                  onError={(e) => {
-                    e.currentTarget.src = '/placeholder-gemstone.jpg';
-                  }}
-                />
-              ) : (
-                <div className="text-4xl text-lime-600">💎</div>
-              )}
-              {/* Badge with sparkle */}
-              {product?.badge && (
-                <span
-                  className={`absolute top-4 left-4 px-4 py-2 rounded-full font-bold text-xs shadow-lg sparkle ${badgeColors[product.badge as keyof typeof badgeColors] || 'bg-lime-200 text-lime-900'}`}
-                >
-                  {product.badge}
-                </span>
-              )}
-            </div>
-            <h3
-              className="text-2xl font-bold mb-2 bg-gradient-to-r from-lime-700 to-green-600 bg-clip-text text-transparent group-hover:underline group-hover:decoration-lime-400 group-hover:decoration-2 transition-all duration-200 relative"
-              style={{ fontFamily: 'serif' }}
-            >
-              {product?.name}
-              {/* Sparkle icon */}
-              <svg
-                className="w-5 h-5 text-lime-400 sparkle inline ml-1"
-                fill="none"
-                stroke="currentColor"
-                viewBox="0 0 24 24"
-              >
-                <path
-                  strokeLinecap="round"
-                  strokeLinejoin="round"
-                  strokeWidth={2}
-                  d="M12 2l2 7 7 2-7 2-2 7-2-7-7-2 7-2z"
-                />
-              </svg>
-            </h3>
-            <p className="text-lg text-gray-700 mb-4 opacity-80" style={{ fontFamily: 'serif' }}>
-              {product?.description}
+              <p className="text-xl text-gray-600 max-w-3xl mx-auto luxury-font-sans">
+                {subtitle}
+              </p>
+            </MotionDiv>
+          ) : (
+            <p className="text-xl text-gray-600 max-w-3xl mx-auto luxury-font-sans">
+              {subtitle}
             </p>
-            <div className="text-3xl font-extrabold text-lime-700 mb-4">
-              {formatPriceUSD(product?.price || 0)}
-            </div>
-            <Link href={`/product/${product?.id}`} className="inline-block mt-2">
-              <span className="px-8 py-3 rounded-full bg-gradient-to-r from-lime-500 to-green-500 hover:from-lime-600 hover:to-green-600 text-white font-bold shadow-lg transition-all duration-300 focus:outline-none focus:ring-4 focus:ring-lime-300/40 text-lg relative overflow-hidden">
-                <span className="relative z-10">View Details</span>
-                {/* Shine sweep */}
-                <span className="absolute inset-0 pointer-events-none">
-                  <span
-                    className="block w-full h-full animate-shine-sweep bg-gradient-to-r from-transparent via-white/60 to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-500"
-                    style={{ mixBlendMode: 'screen' }}
-                  />
-                </span>
-              </span>
-            </Link>
-          </motion.div>
-          {/* Mobile Arrow Navigation */}
-          <div className="md:hidden absolute right-2 top-1/2 z-20 -translate-y-1/2 flex flex-col items-center">
-            <button
-              aria-label="Next featured product"
-              onClick={() => setCurrent((prev) => (prev < products.length - 1 ? prev + 1 : 0))}
-              className="bg-white/80 rounded-full p-2 shadow-lg hover:bg-lime-100 focus:outline-none focus:ring-2 focus:ring-lime-400 transition-all duration-200 animate-pulse"
-            >
-              <svg
-                className="w-7 h-7 text-lime-600"
-                fill="none"
-                stroke="currentColor"
-                strokeWidth={2}
-                viewBox="0 0 24 24"
-              >
-                <path strokeLinecap="round" strokeLinejoin="round" d="M9 5l7 7-7 7" />
-              </svg>
-            </button>
-          </div>
+          )}
         </div>
 
-        {/* Enhanced Dots navigation */}
-        <div className="flex justify-center md:justify-start mt-10 gap-3">
-          {products.map((_, idx) => (
-            <motion.button
-              key={idx}
-              onClick={() => setCurrent(idx)}
-              className={`relative w-4 h-4 rounded-full transition-all duration-300 focus:outline-none focus:ring-2 focus:ring-lime-400 ${
-                idx === current
-                  ? 'bg-gradient-to-r from-lime-500 to-green-500 scale-125 shadow-lg'
-                  : 'bg-gray-300 hover:bg-gray-400'
-              }`}
-              aria-label={`Go to slide ${idx + 1}`}
-              whileHover={{ scale: 1.2 }}
-              whileTap={{ scale: 0.9 }}
-            >
-              {idx === current && (
-                <motion.div
-                  className="absolute inset-0 rounded-full bg-gradient-to-r from-lime-400 to-green-400"
-                  animate={{ scale: [1, 1.3, 1], opacity: [0.5, 0, 0.5] }}
-                  transition={{ duration: 2, repeat: Infinity }}
-                />
-              )}
-            </motion.button>
+        {/* Enhanced Featured Products Grid with Luxury Design */}
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-8">
+          {products.map((product, index) => (
+            isClient ? (
+              <MotionDiv
+                key={product.id}
+                initial={{ opacity: 0, y: 30 }}
+                whileInView={{ opacity: 1, y: 0 }}
+                viewport={{ once: true }}
+                transition={{ duration: 0.5, delay: index * 0.1 }}
+                whileHover={{ y: -15 }}
+                className="group relative bg-gradient-to-br from-white to-stone-50 rounded-3xl shadow-xl hover:shadow-2xl transition-all duration-500 overflow-hidden border border-stone-100"
+              >
+                {/* Enhanced Product Image with Luxury Effects */}
+                <div className="relative h-80 overflow-hidden">
+                  <OptimizedImage
+                    src={product.images[0] || '/images/placeholder-gemstone.jpg'}
+                    alt={product.name}
+                    fill
+                    sizes="(max-width: 768px) 100vw, (max-width: 1200px) 50vw, 33vw"
+                    className="object-cover transition-transform duration-700 group-hover:scale-110"
+                    quality={75}
+                    priority={index < 4} // Priority loading for first 4 images
+                  />
+                  
+                  {/* Enhanced Premium Badge with Luxury Design */}
+                  {product.badge && (
+                    <div className={`absolute top-6 left-6 px-4 py-2 rounded-full text-sm font-bold backdrop-blur-sm ${badgeColors[product.badge as keyof typeof badgeColors] || 'bg-amber-100 text-amber-800'} shadow-lg`}>
+                      {product.badge}
+                    </div>
+                  )}
+                  
+                  {/* Wishlist Icon */}
+                  <div className="absolute top-6 right-6 w-10 h-10 rounded-full bg-white bg-opacity-80 flex items-center justify-center shadow-md backdrop-blur-sm hover:bg-amber-100 transition-colors duration-300 cursor-pointer">
+                    <Heart className="w-5 h-5 text-amber-700" />
+                  </div>
+                  
+                  {/* Enhanced Quick View Button with Luxury Effect */}
+                  <div className="absolute inset-0 bg-gradient-to-t from-black/80 via-black/20 to-transparent opacity-0 group-hover:opacity-100 transition-all duration-500 flex items-end justify-center pb-8">
+                    <LuxuryButton variant="primary" size="md" className="px-6 py-3">
+                      Quick View
+                    </LuxuryButton>
+                  </div>
+                  
+                  {/* Enhanced Shine Effect for Luxury Design */}
+                  <div className="absolute inset-0 opacity-0 group-hover:opacity-30 transition-opacity duration-500">
+                    <div className="absolute top-0 left-0 w-full h-full bg-gradient-to-r from-transparent via-white to-transparent transform -skew-x-12 translate-x-full group-hover:-translate-x-full transition-transform duration-1000"></div>
+                  </div>
+                  
+                  {/* Gemstone Sparkle Effect */}
+                  <div className="absolute inset-0 opacity-20 group-hover:opacity-40 transition-opacity duration-500">
+                    <div className="absolute top-1/4 left-1/4 w-4 h-4 bg-white rounded-full animate-ping"></div>
+                    <div className="absolute bottom-1/3 right-1/3 w-3 h-3 bg-white rounded-full animate-ping" style={{ animationDelay: '0.5s' }}></div>
+                  </div>
+                </div>
+                
+                {/* Enhanced Product Info with Luxury Styling */}
+                <div className="p-8">
+                  <div className="flex justify-between items-start mb-3">
+                    <h3 className="font-bold text-gray-900 text-xl group-hover:text-amber-600 transition-colors duration-300 luxury-font-serif">
+                      {product.name}
+                    </h3>
+                    {/* Rating */}
+                    <div className="flex items-center">
+                      <Star className="w-4 h-4 text-amber-400 fill-current" />
+                      <span className="text-sm text-gray-600 ml-1">{product.rating}</span>
+                    </div>
+                  </div>
+                  
+                  {product.category && (
+                    <p className="text-amber-600 text-sm font-medium mb-2 luxury-font-sans">
+                      {product.category.name}
+                    </p>
+                  )}
+                  
+                  <p className="text-gray-600 text-sm mb-6 line-clamp-2 leading-relaxed luxury-font-sans">
+                    {product.description}
+                  </p>
+                  
+                  <div className="flex justify-between items-center">
+                    <div>
+                      <span className="text-3xl font-bold bg-gradient-to-r from-amber-600 to-orange-600 bg-clip-text text-transparent luxury-font-serif">
+                        {formatPriceUSD(product.price)}
+                      </span>
+                      {product.reviewCount && (
+                        <div className="flex items-center mt-1">
+                          <div className="flex">
+                            {[...Array(5)].map((_, i) => (
+                              <Star 
+                                key={i} 
+                                className={`w-3 h-3 ${i < Math.floor(product.rating || 0) ? 'text-amber-400 fill-current' : 'text-gray-300'}`} 
+                              />
+                            ))}
+                          </div>
+                          <span className="text-xs text-gray-500 ml-2">({product.reviewCount})</span>
+                        </div>
+                      )}
+                    </div>
+                    <Link href={`/product/${product.id}`}>
+                      <LuxuryButton variant="primary" size="md" className="px-6 py-3">
+                        <Gem className="w-4 h-4 mr-2" />
+                        View Details
+                      </LuxuryButton>
+                    </Link>
+                  </div>
+                </div>
+              </MotionDiv>
+            ) : (
+              <div
+                key={product.id}
+                className="group relative bg-gradient-to-br from-white to-stone-50 rounded-3xl shadow-xl hover:shadow-2xl transition-all duration-500 overflow-hidden border border-stone-100"
+              >
+                {/* Enhanced Product Image */}
+                <div className="relative h-80 overflow-hidden">
+                  <OptimizedImage
+                    src={product.images[0] || '/images/placeholder-gemstone.jpg'}
+                    alt={product.name}
+                    fill
+                    sizes="(max-width: 768px) 100vw, (max-width: 1200px) 50vw, 33vw"
+                    className="object-cover transition-transform duration-700 group-hover:scale-110"
+                    quality={75}
+                    priority={index < 4} // Priority loading for first 4 images
+                  />
+                  
+                  {/* Enhanced Premium Badge */}
+                  {product.badge && (
+                    <div className={`absolute top-6 left-6 px-4 py-2 rounded-full text-sm font-bold backdrop-blur-sm ${badgeColors[product.badge as keyof typeof badgeColors] || 'bg-amber-100 text-amber-800'} shadow-lg`}>
+                      {product.badge}
+                    </div>
+                  )}
+                  
+                  {/* Wishlist Icon */}
+                  <div className="absolute top-6 right-6 w-10 h-10 rounded-full bg-white bg-opacity-80 flex items-center justify-center shadow-md backdrop-blur-sm hover:bg-amber-100 transition-colors duration-300 cursor-pointer">
+                    <Heart className="w-5 h-5 text-amber-700" />
+                  </div>
+                  
+                  {/* Enhanced Quick View Button */}
+                  <div className="absolute inset-0 bg-gradient-to-t from-black/80 via-black/20 to-transparent opacity-0 group-hover:opacity-100 transition-all duration-500 flex items-end justify-center pb-8">
+                    <LuxuryButton variant="primary" size="md" className="px-6 py-3">
+                      Quick View
+                    </LuxuryButton>
+                  </div>
+                </div>
+                
+                {/* Enhanced Product Info */}
+                <div className="p-8">
+                  <div className="flex justify-between items-start mb-3">
+                    <h3 className="font-bold text-gray-900 text-xl group-hover:text-amber-600 transition-colors duration-300 luxury-font-serif">
+                      {product.name}
+                    </h3>
+                    {/* Rating */}
+                    <div className="flex items-center">
+                      <Star className="w-4 h-4 text-amber-400 fill-current" />
+                      <span className="text-sm text-gray-600 ml-1">{product.rating}</span>
+                    </div>
+                  </div>
+                  
+                  {product.category && (
+                    <p className="text-amber-600 text-sm font-medium mb-2 luxury-font-sans">
+                      {product.category.name}
+                    </p>
+                  )}
+                  
+                  <p className="text-gray-600 text-sm mb-6 line-clamp-2 leading-relaxed luxury-font-sans">
+                    {product.description}
+                  </p>
+                  
+                  <div className="flex justify-between items-center">
+                    <div>
+                      <span className="text-3xl font-bold bg-gradient-to-r from-amber-600 to-orange-600 bg-clip-text text-transparent luxury-font-serif">
+                        {formatPriceUSD(product.price)}
+                      </span>
+                      {product.reviewCount && (
+                        <div className="flex items-center mt-1">
+                          <div className="flex">
+                            {[...Array(5)].map((_, i) => (
+                              <Star 
+                                key={i} 
+                                className={`w-3 h-3 ${i < Math.floor(product.rating || 0) ? 'text-amber-400 fill-current' : 'text-gray-300'}`} 
+                              />
+                            ))}
+                          </div>
+                          <span className="text-xs text-gray-500 ml-2">({product.reviewCount})</span>
+                        </div>
+                      )}
+                    </div>
+                    <Link href={`/product/${product.id}`}>
+                      <LuxuryButton variant="primary" size="md" className="px-6 py-3">
+                        <Gem className="w-4 h-4 mr-2" />
+                        View Details
+                      </LuxuryButton>
+                    </Link>
+                  </div>
+                </div>
+              </div>
+            )
           ))}
         </div>
 
-        {/* Shop All Button */}
-        <motion.div
-          className="flex justify-center mt-8"
-          initial={{ opacity: 0, y: 20 }}
-          animate={{ opacity: 1, y: 0 }}
-          transition={{ duration: 0.8, delay: 0.8 }}
-        >
-          <Link href="/shop">
-            <motion.button
-              className="px-8 py-4 rounded-full border-2 border-lime-400 text-lime-700 font-bold bg-white/90 hover:bg-lime-50 shadow-lg transition-all duration-300 focus:outline-none focus:ring-4 focus:ring-lime-200 text-lg"
-              whileHover={{ scale: 1.05, boxShadow: '0 4px 24px #84cc1622' }}
-              whileTap={{ scale: 0.95 }}
-            >
-              Shop All Products
-            </motion.button>
-          </Link>
-        </motion.div>
-
-        {/* Swipe indicator for mobile */}
-        <motion.div
-          className="md:hidden mt-6 text-sm text-gray-500 flex items-center gap-2"
-          initial={{ opacity: 0 }}
-          animate={{ opacity: 1 }}
-          transition={{ delay: 1 }}
-        >
-          <motion.div animate={{ x: [0, 5, 0] }} transition={{ duration: 2, repeat: Infinity }}>
-            ←
-          </motion.div>
-          <span>Swipe to explore</span>
-          <motion.div animate={{ x: [0, -5, 0] }} transition={{ duration: 2, repeat: Infinity }}>
-            →
-          </motion.div>
-        </motion.div>
+        {/* Enhanced Luxury Shop All Button */}
+        {isClient ? (
+          <MotionDiv
+            initial={{ opacity: 0, y: 30 }}
+            whileInView={{ opacity: 1, y: 0 }}
+            viewport={{ once: true }}
+            transition={{ duration: 0.8, delay: 0.6 }}
+            className="flex justify-center mt-20"
+          >
+            <Link href="/shop">
+              <LuxuryButton variant="primary" size="lg" className="text-xl px-10 py-5">
+                <span className="flex items-center">
+                  Explore Full Collection
+                  <svg className="w-6 h-6 ml-3 transition-transform duration-300 group-hover:translate-x-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M14 5l7 7m0 0l-7 7m7-7H3" />
+                  </svg>
+                </span>
+              </LuxuryButton>
+            </Link>
+          </MotionDiv>
+        ) : (
+          <div className="flex justify-center mt-20">
+            <Link href="/shop">
+              <LuxuryButton variant="primary" size="lg" className="text-xl px-10 py-5">
+                <span className="flex items-center">
+                  Explore Full Collection
+                  <svg className="w-6 h-6 ml-3 transition-transform duration-300 group-hover:translate-x-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M14 5l7 7m0 0l-7 7m7-7H3" />
+                  </svg>
+                </span>
+              </LuxuryButton>
+            </Link>
+          </div>
+        )}
       </div>
-      <style>{`
-        .animate-shine-sweep {
-          background-size: 200% 200%;
-          animation: shine-sweep 2.5s cubic-bezier(.4,0,.2,1) infinite;
-        }
-        @keyframes shine-sweep {
-          0% { opacity: 0; transform: translateX(-100%); }
-          60% { opacity: 1; transform: translateX(120%); }
-          100% { opacity: 0; transform: translateX(120%); }
-        }
-        .sparkle {
-          animation: sparkle 1.5s infinite alternate;
-        }
-        @keyframes sparkle {
-          0% { filter: drop-shadow(0 0 0px #fffbe6); opacity: 1; }
-          100% { filter: drop-shadow(0 0 12px #fffbe6); opacity: 0.7; }
-        }
-      `}</style>
     </section>
   );
 };

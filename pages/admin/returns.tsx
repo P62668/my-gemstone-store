@@ -1,5 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import AdminLayout from '../../components/AdminLayout';
+import getSessionOrRedirect from '../../utils/withServerAuth';
+import type { GetServerSideProps } from 'next';
 import { motion, AnimatePresence } from 'framer-motion';
 import toast from 'react-hot-toast';
 
@@ -40,6 +42,7 @@ const ReturnsAdmin: React.FC = () => {
   const [selectedReturn, setSelectedReturn] = useState<ReturnItem | null>(null);
   const [showDetails, setShowDetails] = useState(false);
   const [processingReturn, setProcessingReturn] = useState<number | null>(null);
+  const [success, setSuccess] = useState('');
   const [processingForm, setProcessingForm] = useState({
     status: 'pending',
     refundAmount: 0,
@@ -73,6 +76,7 @@ const ReturnsAdmin: React.FC = () => {
 
   const handleProcessReturn = async (returnId: number) => {
     setProcessingReturn(returnId);
+    setSuccess('');
     try {
       const res = await fetch('/api/admin/returns', {
         method: 'PUT',
@@ -86,11 +90,12 @@ const ReturnsAdmin: React.FC = () => {
 
       if (!res.ok) throw new Error('Failed to process return');
 
-      toast.success('Return processed successfully');
+      setSuccess('Return processed successfully!');
       setProcessingReturn(null);
       setShowDetails(false);
       fetchReturns();
     } catch (error) {
+      setSuccess('');
       toast.error('Failed to process return');
     } finally {
       setProcessingReturn(null);
@@ -110,7 +115,20 @@ const ReturnsAdmin: React.FC = () => {
 
   return (
     <AdminLayout title="Returns Management">
+      {returns.length === 0 && !loading && (
+        <div className="max-w-2xl w-full mx-auto mb-6">
+          <div className="bg-red-100 border border-red-300 text-red-800 px-6 py-6 rounded-xl text-center font-semibold shadow">
+            <div className="text-2xl font-bold text-red-700 mb-2">Error Loading Returns</div>
+            <div className="text-red-800 mb-4">Failed to fetch returns. Please try again later.</div>
+          </div>
+        </div>
+      )}
       <div className="max-w-7xl mx-auto px-4 py-8">
+        {success && (
+          <div className="rounded-xl p-4 mb-6 font-semibold text-center shadow border bg-green-100 border-green-300 text-green-800">
+            {success}
+          </div>
+        )}
         <div className="mb-8">
           <h1 className="text-3xl font-bold text-amber-900 mb-2">Returns Management</h1>
           <p className="text-gray-600">Process customer return requests and manage refunds</p>
@@ -405,3 +423,9 @@ const ReturnsAdmin: React.FC = () => {
 };
 
 export default ReturnsAdmin;
+
+export const getServerSideProps: GetServerSideProps = async (ctx) => {
+  const res = await getSessionOrRedirect(ctx, { requireAdmin: true });
+  if ('redirect' in res) return res;
+  return { props: {} };
+};

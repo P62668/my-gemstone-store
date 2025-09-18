@@ -4,7 +4,8 @@ import { NextApiRequest, NextApiResponse } from 'next';
 export default async function handler(req: NextApiRequest, res: NextApiResponse) {
   if (req.method !== 'GET') {
     res.setHeader('Allow', ['GET']);
-    return res.status(405).end(`Method ${req.method} Not Allowed`);
+    res.status(405).end(`Method ${req.method} Not Allowed`);
+    return;
   }
   try {
     // Return default navigation (no database dependency)
@@ -30,6 +31,6 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
     });
   } catch (error) {
     console.error('Error fetching navigation settings:', error);
-    return res.status(500).json({ error: 'Failed to fetch navigation settings' });
+    res.status(500).json({ error: 'Failed to fetch navigation settings' });
   }
 }

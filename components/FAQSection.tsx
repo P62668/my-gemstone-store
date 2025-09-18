@@ -1,94 +1,83 @@
-import React, { useState, useEffect } from 'react';
-import { motion, AnimatePresence } from 'framer-motion';
+import React, { useState } from 'react';
+import { ChevronDown, HelpCircle } from 'lucide-react';
+import dynamic from 'next/dynamic';
 
-interface FAQ {
-  id: number;
+// Dynamically import framer-motion components
+const MotionDiv = dynamic(() => import('framer-motion').then(mod => mod.motion.div), { ssr: false });
+const AnimatePresence = dynamic(() => import('framer-motion').then(mod => mod.AnimatePresence), { ssr: false });
+
+interface FAQItem {
   question: string;
   answer: string;
 }
 
 interface FAQSectionProps {
-  title?: string;
+  faqs: FAQItem[];
 }
 
-const FAQSection: React.FC<FAQSectionProps> = ({ title = 'Frequently Asked Questions' }) => {
-  const [faqs, setFaqs] = useState<FAQ[]>([]);
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState<string | null>(null);
-  const [openIdx, setOpenIdx] = useState<number | null>(null);
+const FAQSection: React.FC<FAQSectionProps> = ({ faqs }) => {
+  const [openIndex, setOpenIndex] = useState<number | null>(null);
 
-  useEffect(() => {
-    const fetchFaqs = async () => {
-      setLoading(true);
-      setError(null);
-      try {
-        const res = await fetch('/api/faq');
-        if (!res.ok) throw new Error('Failed to fetch FAQs');
-        const data = await res.json();
-        setFaqs(data);
-      } catch (err: any) {
-        setError(err.message || 'Unknown error');
-      } finally {
-        setLoading(false);
-      }
-    };
-    fetchFaqs();
-  }, []);
-
-  if (loading) {
-    return <section className="py-16 text-center text-gray-500">Loading FAQs...</section>;
-  }
-  if (error) {
-    return <section className="py-16 text-center text-red-500">{error}</section>;
-  }
-  if (!faqs.length) {
-    return <section className="py-16 text-center text-gray-500">No FAQs found.</section>;
-  }
+  const toggleFAQ = (index: number) => {
+    setOpenIndex(openIndex === index ? null : index);
+  };
 
   return (
-    <section className="w-full py-16 md:py-24 bg-gradient-to-br from-rose-50 via-pink-50 to-red-50 border-t-2 border-rose-100/40">
-      <div className="max-w-3xl mx-auto px-4">
-        <h2
-          className="text-3xl md:text-4xl font-bold text-center mb-10 bg-gradient-to-r from-rose-600 to-pink-600 bg-clip-text text-transparent"
-          style={{ fontFamily: 'serif' }}
-        >
-          {title}
-        </h2>
-        <div className="space-y-6">
-          {faqs.map((faq, idx) => (
-            <div key={faq.id} className="rounded-2xl bg-white/90 shadow p-6 border border-rose-100">
+    <section className="py-16 bg-gradient-to-br from-gray-50 to-amber-50">
+      <div className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8">
+        <div className="text-center mb-12">
+          <div className="flex justify-center mb-4">
+            <div className="p-3 bg-amber-100 rounded-full">
+              <HelpCircle className="w-8 h-8 text-amber-600" />
+            </div>
+          </div>
+          <h2 className="text-3xl md:text-4xl font-bold text-gray-900 mb-4 luxury-font-serif">
+            Frequently Asked Questions
+          </h2>
+          <p className="text-lg text-gray-600 luxury-font-sans">
+            Everything you need to know about our gemstones and services
+          </p>
+        </div>
+
+        <div className="space-y-4">
+          {faqs.map((faq, index) => (
+            <div key={index} className="bg-white rounded-2xl shadow-sm border border-gray-200 overflow-hidden">
               <button
-                className="w-full flex justify-between items-center text-left focus:outline-none"
-                onClick={() => setOpenIdx(openIdx === idx ? null : idx)}
-                aria-expanded={openIdx === idx}
-                aria-controls={`faq-answer-${idx}`}
+                className="w-full flex justify-between items-center p-6 text-left focus:outline-none focus:ring-2 focus:ring-amber-500 rounded-2xl"
+                onClick={() => toggleFAQ(index)}
+                aria-expanded={openIndex === index}
               >
-                <span
-                  className="text-lg md:text-xl font-semibold bg-gradient-to-r from-rose-700 to-pink-600 bg-clip-text text-transparent"
-                  style={{ fontFamily: 'serif' }}
-                >
-                  {faq.question}
-                </span>
-                <span
-                  className={`ml-4 transition-transform duration-300 text-rose-600 ${openIdx === idx ? 'rotate-45' : ''}`}
-                >
-                  +
-                </span>
+                <h3 className="text-lg font-semibold text-gray-900 luxury-font-serif">{faq.question}</h3>
+                <ChevronDown
+                  className={`w-5 h-5 text-amber-600 transition-transform duration-300 ${
+                    openIndex === index ? 'rotate-180' : ''
+                  }`}
+                />
               </button>
-              <AnimatePresence initial={false} mode="wait">
-                {openIdx === idx && (
-                  <motion.div
-                    id={`faq-answer-${idx}`}
-                    initial={{ opacity: 0, height: 0 }}
-                    animate={{ opacity: 1, height: 'auto' }}
-                    exit={{ opacity: 0, height: 0 }}
-                    transition={{ duration: 0.3 }}
-                    className="overflow-hidden mt-4 text-gray-700 text-base md:text-lg"
-                  >
+              
+              {typeof window !== 'undefined' ? (
+                <AnimatePresence>
+                  {openIndex === index && (
+                    <MotionDiv
+                      initial={{ height: 0, opacity: 0 }}
+                      animate={{ height: 'auto', opacity: 1 }}
+                      exit={{ height: 0, opacity: 0 }}
+                      transition={{ duration: 0.3 }}
+                      className="overflow-hidden"
+                    >
+                      <div className="px-6 pb-6 text-gray-600 border-t border-gray-100 pt-4 luxury-font-sans">
+                        {faq.answer}
+                      </div>
+                    </MotionDiv>
+                  )}
+                </AnimatePresence>
+              ) : (
+                openIndex === index && (
+                  <div className="px-6 pb-6 text-gray-600 border-t border-gray-100 pt-4 luxury-font-sans">
                     {faq.answer}
-                  </motion.div>
-                )}
-              </AnimatePresence>
+                  </div>
+                )
+              )}
             </div>
           ))}
         </div>

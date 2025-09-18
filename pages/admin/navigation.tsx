@@ -1,5 +1,7 @@
 import React, { useState } from 'react';
 import AdminLayout from '../../components/AdminLayout';
+import getSessionOrRedirect from '../../utils/withServerAuth';
+import type { GetServerSideProps } from 'next';
 
 interface MenuItem {
   id: string;
@@ -69,6 +71,8 @@ const NavigationAdmin: React.FC = () => {
 
   const [activeTab, setActiveTab] = useState('main');
   const [saving, setSaving] = useState(false);
+  const [error, setError] = useState('');
+  const [success, setSuccess] = useState('');
 
   const handleItemChange = (
     menuType: keyof NavigationConfig,
@@ -137,16 +141,19 @@ const NavigationAdmin: React.FC = () => {
 
   const handleSave = async () => {
     setSaving(true);
+    setError('');
+    setSuccess('');
     try {
-      await fetch('/api/admin/navigation', {
+      const res = await fetch('/api/admin/navigation', {
         method: 'PUT',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(navigation),
       });
-      alert('Navigation updated successfully!');
-    } catch (error) {
-      console.error('Failed to save navigation:', error);
-      alert('Failed to save navigation. Please try again.');
+      if (!res.ok) throw new Error('Failed to save navigation. Please try again.');
+      setSuccess('Navigation saved successfully!');
+    } catch (err: any) {
+      if (process.env.NODE_ENV !== 'production') console.error('Failed to save navigation:', err);
+      setError(err.message || 'Failed to save navigation. Please try again.');
     } finally {
       setSaving(false);
     }
@@ -246,6 +253,11 @@ const NavigationAdmin: React.FC = () => {
   return (
     <AdminLayout title="Navigation Management - Kolkata Gems">
       <div className="max-w-7xl mx-auto py-12 px-4">
+        {(error || success) && (
+          <div className={`rounded-xl p-4 mb-6 font-semibold text-center shadow border ${error ? 'bg-red-100 border-red-300 text-red-800' : 'bg-green-100 border-green-300 text-green-800'}`}>
+            {error || success}
+          </div>
+        )}
         {/* Header */}
         <div className="mb-8">
           <h1 className="text-4xl font-bold text-amber-900 mb-4">Navigation Management</h1>
@@ -405,3 +417,9 @@ const NavigationAdmin: React.FC = () => {
 };
 
 export default NavigationAdmin;
+
+export const getServerSideProps: GetServerSideProps = async (ctx) => {
+  const res = await getSessionOrRedirect(ctx, { requireAdmin: true });
+  if ('redirect' in res) return res;
+  return { props: {} };
+};

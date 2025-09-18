@@ -1,0 +1,38 @@
+{
+  "timestamp": "2025-09-13T09:24:42.987Z",
+  "css": {
+    "globals.css": {
+      "size": 4887,
+      "sizeFormatted": "4.77 KB"
+    },
+    "luxury-theme.css": {
+      "size": 13078,
+      "sizeFormatted": "12.77 KB"
+    },
+    "globals.min.css": {
+      "size": 1646,
+      "sizeFormatted": "1.61 KB"
+    },
+    "luxury-theme.min.css": {
+      "size": 8414,
+      "sizeFormatted": "8.22 KB"
+    },
+    "critical.min.css": {
+      "size": 2461,
+      "sizeFormatted": "2.4 KB"
+    }
+  },
+  "js": {},
+  "images": {
+    "total": 178,
+    "optimized": 159,
+    "webp": 79,
+    "avif": 0
+  },
+  "overall": {
+    "cssTotal": {
+      "size": 30486,
+      "sizeFormatted": "29.77 KB"
+    }
+  }
+}

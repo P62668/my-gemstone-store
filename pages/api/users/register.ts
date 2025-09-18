@@ -1,6 +1,8 @@
 import { NextApiRequest, NextApiResponse } from 'next';
 import { hashPassword, generateToken } from '../../../utils/auth';
 import { logger } from '../../../utils/logger';
+import { rateLimit } from '../../../utils/rateLimit';
+import { setSecureCookie } from '../../../utils/cookieParser';
 import jwt from 'jsonwebtoken';
 import { getEnv, requireEnv } from '../../../utils/env';
 
@@ -11,6 +13,16 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
   if (req.method !== 'POST') {
     res.setHeader('Allow', ['POST']);
     return res.status(405).json({ error: 'Method not allowed' });
+  }
+
+  const bodyEmail = (req.body && (req.body as any).email) ? String((req.body as any).email).toLowerCase() : undefined;
+  const rl = await rateLimit({ max: 6, windowMs: 60_000, key: 'register', identifier: bodyEmail, lock: { lockMs: 5 * 60 * 1000 } })(req, res);
+  if (!rl.success) {
+    if (rl.locked && rl.lockUntil) {
+      res.setHeader('Retry-After', String(Math.max(0, Math.ceil((rl.lockUntil - Date.now()) / 1000))));
+      return res.status(429).json({ success: false, error: 'Too many failed attempts. Try again later.' });
+    }
+    return res.status(429).json({ success: false, error: 'Too many requests' });
   }
 
   try {
@@ -81,20 +93,17 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
       type: 'refresh',
     }, JWT_SECRET, { expiresIn: '30d' });
 
-    // Set secure cookies
-    const secureFlags = process.env.NODE_ENV === 'production' ? '; Secure; Priority=High' : '';
-    res.setHeader('Set-Cookie', [
-      `token=${token}; HttpOnly; Path=/; Max-Age=86400; SameSite=Strict${secureFlags}`,
-      `refreshToken=${refreshToken}; HttpOnly; Path=/; Max-Age=604800; SameSite=Strict${secureFlags}`
-    ]);
+  // Set secure cookies using helper
+  setSecureCookie(res, 'token', token, { maxAge: 7 * 24 * 60 * 60, httpOnly: true });
+  setSecureCookie(res, 'refreshToken', refreshToken, { maxAge: 30 * 24 * 60 * 60, httpOnly: true });
 
     logger.info('User registration successful', {
       url: req.url,
       method: req.method,
       userAgent: req.headers['user-agent'],
-      ip: req.headers['x-forwarded-for'] || req.connection.remoteAddress,
+      ip: req.headers['x-forwarded-for'] || (req.socket as any)?.remoteAddress,
       userId: user.id,
-      email: user.email
+      email: user.email,
     });
 
     res.status(201).json({

@@ -2,6 +2,7 @@ import { NextApiRequest, NextApiResponse } from 'next';
 import { prisma } from '../../../lib/prisma';
 import { withAdminAuth } from '../../../utils/authMiddleware';
 import { logger } from '../../../utils/logger';
+import { invalidateCategoryCache } from '../../../utils/cache';
 
 async function handler(req: NextApiRequest, res: NextApiResponse) {
   try {
@@ -55,6 +56,9 @@ async function handler(req: NextApiRequest, res: NextApiResponse) {
             active: active !== undefined ? active : true,
           },
         });
+        
+        // Invalidate category cache after creation
+        invalidateCategoryCache();
         
         logger.info('Category created successfully', {
           message: 'Category created',

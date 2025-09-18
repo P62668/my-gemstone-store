@@ -3,6 +3,7 @@ import Link from 'next/link';
 import Layout from '../components/Layout';
 import { useUser } from '../components/context/UserContext';
 import { useRouter } from 'next/router';
+import { signIn, useSession } from 'next-auth/react';
 
 export default function Login() {
   const [mounted, setMounted] = useState(false);
@@ -22,8 +23,28 @@ export default function Login() {
   const [forgotSent, setForgotSent] = useState(false);
   const emailInputRef = useRef<HTMLInputElement>(null);
 
-  const { login } = useUser();
+  const { data: session, status } = useSession();
   const router = useRouter();
+
+  // Redirect if already logged in
+  useEffect(() => {
+    if (status === 'authenticated') {
+      // Check if there's a redirect parameter in the URL
+      const redirectTo = router.query.redirect as string;
+      
+      // Determine the target path based on user role and redirect parameter
+      let targetPath = '/';
+      if (redirectTo && redirectTo !== '/login') {
+        // Use the redirect parameter if it exists and is not login page itself
+        targetPath = redirectTo;
+      } else if (session?.user?.role === 'admin') {
+        // Admin users go to admin dashboard
+        targetPath = '/admin';
+      }
+      
+      router.replace(targetPath);
+    }
+  }, [status, session, router]);
 
   if (!mounted) {
     return (
@@ -57,40 +78,75 @@ export default function Login() {
     e.preventDefault();
     setError('');
     setSuccess('');
+    
     // Validate before submit
     const errors: { email?: string; password?: string } = {};
-    if (!/^\S+@\S+\.\S+$/.test(form.email)) errors.email = 'Enter a valid email.';
-    if (form.password.length < 6) errors.password = 'Password must be at least 6 characters.';
+    if (!form.email.trim()) {
+      errors.email = 'Email is required.';
+    } else if (!/^\S+@\S+\.\S+$/.test(form.email)) {
+      errors.email = 'Enter a valid email address.';
+    }
+    
+    if (!form.password) {
+      errors.password = 'Password is required.';
+    } else if (form.password.length < 6) {
+      errors.password = 'Password must be at least 6 characters.';
+    }
+    
     setFormErrors(errors);
     if (Object.keys(errors).length > 0) return;
+    
     setLoading(true);
     try {
-      const success = await login(form.email, form.password);
-      if (success) {
+      // Use NextAuth's signIn function
+      const result = await signIn('credentials', {
+        email: form.email,
+        password: form.password,
+        redirect: false,
+      });
+
+      console.log('SignIn result:', result); // Debug log
+
+      if (result?.error) {
+        console.log('SignIn error:', result.error); // Debug log
+        // Handle specific error cases
+        if (result.error === 'CredentialsSignIn') {
+          throw new Error('Invalid email or password. Please try again.');
+        } else if (result.error === 'Invalid credentials') {
+          throw new Error('Invalid email or password. Please try again.');
+        } else {
+          throw new Error(result.error);
+        }
+      }
+
+      if (result?.ok) {
         setSuccess('Login successful! Redirecting...');
         setForm({ email: '', password: '' });
         
-        // Wait a moment to show success message
-        await new Promise(resolve => setTimeout(resolve, 1500));
+        // Wait a moment for session to be established
+        await new Promise(resolve => setTimeout(resolve, 500));
         
-        // Check user role and redirect
-        const userRes = await fetch('/api/users/me', { credentials: 'include' });
-        if (userRes.ok) {
-          const userData = await userRes.json();
-          if (userData.role === 'admin') {
-            router.push('/admin');
-          } else {
-            // Check if there's a redirect parameter
-            const redirectTo = router.query.redirect as string;
-            router.push(redirectTo || '/');
-          }
+        // Check if there's a redirect parameter in the URL
+        const redirectTo = router.query.redirect as string;
+        
+        // Determine the target path based on user role and redirect parameter
+        let targetPath = '/';
+        if (redirectTo && redirectTo !== '/login') {
+          // Use the redirect parameter if it exists and is not login page itself
+          targetPath = redirectTo;
+        } else if (session?.user?.role === 'admin') {
+          // Admin users go to admin dashboard
+          targetPath = '/admin';
         } else {
-          throw new Error('Authentication verification failed');
+          // Regular users go to home page
+          targetPath = '/';
         }
-      } else {
-        throw new Error('Invalid email or password. Please try again.');
+        
+        // Use router.replace instead of push for cleaner history
+        router.replace(targetPath);
       }
     } catch (err: any) {
+      console.error('Login error:', err);
       setError(err.message || 'Login failed. Please try again.');
       setSuccess('');
     } finally {
@@ -98,15 +154,23 @@ export default function Login() {
     }
   };
 
-  // Forgot password handler
+  // Forgot password handler with improved error handling
   const handleForgot = async (e: React.FormEvent) => {
     e.preventDefault();
     setError('');
     setForgotSent(false);
-    if (!/^\S+@\S+\.\S+$/.test(forgotEmail)) {
-      setError('Enter a valid email.');
+    
+    // Validate email
+    if (!forgotEmail.trim()) {
+      setError('Email is required.');
       return;
     }
+    
+    if (!/^\S+@\S+\.\S+$/.test(forgotEmail)) {
+      setError('Please enter a valid email address.');
+      return;
+    }
+    
     setLoading(true);
     try {
       const res = await fetch('/api/users/request-password-reset', {
@@ -114,7 +178,13 @@ export default function Login() {
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ email: forgotEmail }),
       });
-      await res.json();
+      
+      const data = await res.json();
+      
+      if (!res.ok) {
+        throw new Error(data.error || 'Failed to send password reset email. Please try again.');
+      }
+      
       setForgotSent(true);
     } catch (err: any) {
       setError(err.message || 'Failed to send reset link');
@@ -124,7 +194,7 @@ export default function Login() {
   };
 
   return (
-    <Layout title="Login - Kolkata Gems">
+    <Layout title="Login - Shankarmala Gemstore">
       <div className="min-h-[70vh] flex items-center justify-center bg-gradient-to-br from-amber-50 via-yellow-50 to-orange-50 py-12 px-4">
         <div className="w-full max-w-md bg-white/80 rounded-3xl shadow-xl border border-amber-100 p-8 relative">
           {/* Loading Overlay */}
@@ -273,12 +343,9 @@ export default function Login() {
                 Forgot password?
               </button>
               {error && (
-                <div className="mt-4 p-3 bg-red-50 border border-red-200 rounded-lg" role="alert">
-                  <div className="flex items-center">
-                    <svg className="w-5 h-5 text-red-500 mr-2" fill="currentColor" viewBox="0 0 20 20">
-                      <path fillRule="evenodd" d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zm-7 4a1 1 0 11-2 0 1 1 0 012 0zm-1-9a1 1 0 00-1 1v4a1 1 0 102 0V6a1 1 0 00-1-1z" clipRule="evenodd" />
-                    </svg>
-                    <span className="text-red-700 text-sm font-medium">{error}</span>
+                <div className="max-w-md mx-auto mt-4 mb-2">
+                  <div className="bg-red-100 border border-red-300 text-red-800 px-6 py-4 rounded-xl text-center font-semibold shadow" role="alert">
+                    {error}
                   </div>
                 </div>
               )}
@@ -339,8 +406,10 @@ export default function Login() {
                 </div>
               )}
               {error && (
-                <div className="text-red-600 text-sm mt-2" role="alert">
-                  {error}
+                <div className="max-w-md mx-auto mt-4 mb-2">
+                  <div className="bg-red-100 border border-red-300 text-red-800 px-6 py-4 rounded-xl text-center font-semibold shadow" role="alert">
+                    {error}
+                  </div>
                 </div>
               )}
             </form>

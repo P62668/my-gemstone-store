@@ -1,8 +1,12 @@
 import type { NextApiRequest, NextApiResponse } from 'next';
 import bcrypt from 'bcryptjs';
 import jwt from 'jsonwebtoken';
-import { enforceRateLimit } from '../../../utils/rateLimit';
+import { rateLimit } from '../../../utils/rateLimit';
+import { verifyRecaptcha } from '../../../utils/recaptcha';
 import { sendMail } from '../../../utils/mailer';
+import { setSecureCookie } from '../../../utils/cookieParser';
+import { logger } from '../../../utils/logger';
+import { maskIdentifier, getRequestIp } from '../../../utils/logHelpers';
 import { getEnv, requireEnv } from '../../../utils/env';
 
 import { prisma } from '../../../lib/prisma';
@@ -12,9 +16,24 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
   if (req.method !== 'POST') {
     return res.status(405).json({ error: 'Method not allowed' });
   }
-  if (!enforceRateLimit(req, res, { max: 5, windowMs: 60_000, key: 'signup' })) return;
+  const bodyEmail = (req.body && (req.body as any).email) ? String((req.body as any).email).toLowerCase() : undefined;
+  const rl = await rateLimit({ max: 5, windowMs: 60_000, key: 'signup', identifier: bodyEmail, lock: { lockMs: 5 * 60 * 1000 } })(req, res);
+  if (!rl.success) {
+    if (rl.locked && rl.lockUntil) {
+      res.setHeader('Retry-After', String(Math.max(0, Math.ceil((rl.lockUntil - Date.now()) / 1000))));
+      return res.status(429).json({ error: 'Too many failed attempts. Try again later.' });
+    }
+    return res.status(429).json({ error: 'Too many requests' });
+  }
 
   const { firstName, lastName, email, password } = req.body;
+
+  // Optional recaptcha protection: enforce only if RECAPTCHA_SECRET is configured
+  const recaptchaToken = (req.body && (req.body as any).recaptchaToken) ? String((req.body as any).recaptchaToken) : undefined;
+  const recaptchaResult = await verifyRecaptcha(recaptchaToken, req.headers['x-forwarded-for'] as string | undefined);
+  if (!recaptchaResult.success) {
+    return res.status(400).json({ error: 'Recaptcha verification failed' });
+  }
 
   if (!firstName || !lastName || !email || !password) {
     return res.status(400).json({ error: 'First name, last name, email, and password are required.' });
@@ -54,17 +73,20 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
         html: `<p>Welcome to Shankarmala!</p><p>Thank you for creating your account. You can now start exploring our luxury gemstone collection.</p>`,
       });
     } catch (mailErr) {
-      console.warn('Welcome email send failed:', mailErr);
+      logger.warn('Welcome email send failed', { error: mailErr });
     }
 
-    // Issue JWT and set as httpOnly cookie
+  // Issue JWT and set as httpOnly cookie
     const token = jwt.sign({ id: user.id, email: user.email, role: user.role }, JWT_SECRET, {
       expiresIn: '7d',
     });
-    res.setHeader(
-      'Set-Cookie',
-      `token=${token}; HttpOnly; Path=/; Max-Age=604800; SameSite=Strict${process.env.NODE_ENV === 'production' ? '; Secure; Priority=High' : ''}`,
-    );
+  setSecureCookie(res, 'token', token, { maxAge: 7 * 24 * 60 * 60, httpOnly: true });
+
+  try {
+    logger.info('User signup created', { identifier: maskIdentifier(user.email), id: user.id, ip: getRequestIp(req) });
+  } catch (e) {
+    logger.info('User signup created (fallback)', { id: user.id });
+  }
 
     return res.status(201).json({
       id: user.id,
@@ -75,7 +97,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
       createdAt: user.createdAt,
     });
   } catch (err: any) {
-    console.error('Signup error:', err);
+    logger.error('Signup error', err, { url: req.url, method: req.method });
     return res.status(500).json({ error: 'Failed to create user account.' });
   }
 }

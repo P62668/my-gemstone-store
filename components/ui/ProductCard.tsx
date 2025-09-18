@@ -1,336 +1,279 @@
-import React, { useState, useMemo } from 'react';
-import { motion, AnimatePresence } from 'framer-motion';
-import { Heart, ShoppingCart, Eye, Star, Sparkles } from 'lucide-react';
+import React, { useState } from 'react';
 import Link from 'next/link';
-import toast from 'react-hot-toast';
-import { useCart } from '../context/CartContext';
-import { parseImages, getFirstImage } from '../../utils/imageUtils';
+import Image from 'next/image';
+import { Heart, ShoppingCart, Star, Eye, Sparkles, Package } from 'lucide-react';
+import { motion, AnimatePresence } from 'framer-motion';
+import { getFirstImage } from '../../utils/imageUtils';
+import { formatPriceUSD } from '../../utils/numberFormat';
+import { useCart } from '../../components/context/CartContext';
+import { useWishlist } from '../../components/context/WishlistContext';
+import { useUser } from '../../components/context/UserContext';
+import dynamic from 'next/dynamic';
+import LuxuryCard from './LuxuryCard';
+
+// Dynamically import framer-motion components
+const MotionDiv = dynamic(() => import('framer-motion').then(mod => mod.motion.div), { ssr: false });
+const AnimatePresenceClient = dynamic(() => import('framer-motion').then(mod => mod.AnimatePresence), { ssr: false });
 
 interface ProductCardProps {
-  product: {
-    id: number;
+  id: number;
+  name: string;
+  price: number;
+  images: string[];
+  category?: {
     name: string;
-    description: string;
-    price: number;
-    originalPrice?: number;
-    images: string[] | string;
-    category?: string | { id: number; name: string };
-    rating?: number;
-    reviewCount?: number;
-    isNew?: boolean;
-    isFeatured?: boolean;
-    discount?: number;
-    stockCount?: number;
   };
-  onAddToCart?: (productId: number) => void;
-  onAddToWishlist?: (productId: number) => void;
-  onQuickView?: (productId: number) => void;
-  onViewDetails?: (id: string) => void;
+  averageRating?: number;
+  reviewCount?: number;
+  discountPercentage?: number;
+  isNew?: boolean;
+  isFeatured?: boolean;
+  isExclusive?: boolean;
+  onQuickView?: (id: number) => void;
+  onCompare?: (product: any) => void;
 }
 
 const ProductCard: React.FC<ProductCardProps> = ({
-  product,
-  onAddToCart,
-  onAddToWishlist,
+  id,
+  name,
+  price,
+  images,
+  category,
+  averageRating,
+  reviewCount,
+  discountPercentage,
+  isNew,
+  isFeatured,
+  isExclusive,
   onQuickView,
-  onViewDetails,
 }) => {
-  const [currentImageIndex, setCurrentImageIndex] = useState(0);
   const [isHovered, setIsHovered] = useState(false);
-  const [isWishlisted, setIsWishlisted] = useState(false);
-  const [isLoading, setIsLoading] = useState(false);
   const { addToCart } = useCart();
-
-  // Process images to handle both string and array formats
-  const processedImages = useMemo(() => {
-    return parseImages(product.images);
-  }, [product.images]);
-
-  const handleAddToCart = async (event: React.MouseEvent) => {
-    event.preventDefault();
-    event.stopPropagation();
-    
-    if (!product.stockCount || product.stockCount <= 0) {
-      toast.error('This item is currently out of stock');
-      return;
-    }
-
-    setIsLoading(true);
-    try {
-      await addToCart(product, 1);
-      toast.success('Added to cart successfully!');
-      onAddToCart?.(product.id);
-    } catch (error) {
-      toast.error('Failed to add to cart');
-    } finally {
-      setIsLoading(false);
+  const { items: wishlist, addToWishlist, removeFromWishlist } = useWishlist();
+  const { user } = useUser();
+  
+  const isInWishlist = wishlist.some(item => item.gemstoneId === id);
+  
+  const handleAddToCart = (e: React.MouseEvent) => {
+    e.preventDefault();
+    addToCart({ 
+      id,
+      price
+    }, 1);
+  };
+  
+  const handleWishlistToggle = (e: React.MouseEvent) => {
+    e.preventDefault();
+    if (isInWishlist) {
+      removeFromWishlist(id);
+    } else {
+      addToWishlist(id);
     }
   };
 
-  const handleAddToWishlist = async (event: React.MouseEvent) => {
-    event.preventDefault();
-    event.stopPropagation();
-    
-    try {
-      const response = await fetch('/api/users/wishlist', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        credentials: 'include',
-        body: JSON.stringify({
-          gemstoneId: product.id,
-        }),
-      });
-
-      if (response.ok) {
-        setIsWishlisted(!isWishlisted);
-        toast.success(isWishlisted ? 'Removed from wishlist' : 'Added to wishlist');
-        onAddToWishlist?.(product.id);
-      } else {
-        const errorData = await response.json();
-        toast.error(errorData.error || 'Failed to update wishlist');
-      }
-    } catch (error) {
-      toast.error('An error occurred');
-    }
-  };
-
-  const handleQuickView = (event: React.MouseEvent) => {
-    event.preventDefault();
-    event.stopPropagation();
-    onQuickView?.(product.id);
-  };
-
-  const handleImageClick = (event: React.MouseEvent) => {
-    event.preventDefault();
-    event.stopPropagation();
-    // Navigate to product detail page
-    window.location.href = `/product/${product.id}`;
-  };
-
-  const formatPrice = (price: number) => {
-    return new Intl.NumberFormat('en-IN', {
-      style: 'currency',
-      currency: 'INR',
-      minimumFractionDigits: 0,
-    }).format(price);
-  };
+  // Calculate discounted price if applicable
+  const discountedPrice = discountPercentage 
+    ? price * (1 - discountPercentage / 100)
+    : price;
 
   return (
-    <motion.div
-      initial={{ opacity: 0, y: 20 }}
-      animate={{ opacity: 1, y: 0 }}
-      whileHover={{ y: -5 }}
-      className="group relative bg-white rounded-2xl shadow-lg hover:shadow-2xl transition-all duration-500 overflow-hidden"
+    <LuxuryCard 
+      className="group rounded-3xl border border-stone-100 hover:shadow-2xl transition-all duration-500 relative overflow-hidden transform hover:-translate-y-2 luxury-hover-glow luxury-ripple luxury-card-enter"
+      padding="none"
+      rounded="3xl"
+      border={true}
+      shadow="xl"
+      hoverEffect={true}
       onMouseEnter={() => setIsHovered(true)}
       onMouseLeave={() => setIsHovered(false)}
     >
-      {/* Badges */}
-      <div className="absolute top-4 left-4 z-10 flex flex-col gap-2">
-        {product.isNew && (
-          <motion.div
-            initial={{ scale: 0 }}
-            animate={{ scale: 1 }}
-            className="bg-blue-500 text-white px-3 py-1 rounded-full text-xs font-bold"
-          >
-            NEW
-          </motion.div>
+      {/* Premium Shine Effect for Luxury Design */}
+      <div className="absolute inset-0 opacity-0 group-hover:opacity-20 transition-opacity duration-700">
+        <div className="absolute top-0 left-0 w-full h-full bg-gradient-to-r from-transparent via-white to-transparent transform -skew-x-12 translate-x-full group-hover:-translate-x-full transition-transform duration-1000"></div>
+      </div>
+      
+      {/* Premium Border Glow Effect */}
+      <div className="absolute inset-0 rounded-3xl opacity-0 group-hover:opacity-100 transition-opacity duration-500">
+        <div className="absolute inset-0 rounded-3xl shadow-[0_0_20px_5px_rgba(212,175,55,0.3)] luxury-glow"></div>
+      </div>
+      
+      {/* Luxury Badges */}
+      <div className="absolute top-5 left-5 z-10 flex flex-col gap-2">
+        {isNew && (
+          <span className="luxury-badge luxury-badge-gold flex items-center">
+            <Sparkles className="w-3 h-3 mr-1" />
+            New
+          </span>
         )}
-        {product.isFeatured && (
-          <motion.div
-            initial={{ scale: 0 }}
-            animate={{ scale: 1 }}
-            className="bg-amber-500 text-white px-3 py-1 rounded-full text-xs font-bold flex items-center gap-1"
-          >
-            <Sparkles className="w-3 h-3" />
-            FEATURED
-          </motion.div>
+        {discountPercentage && discountPercentage > 0 && (
+          <span className="luxury-badge luxury-badge-amber">
+            -{discountPercentage}%
+          </span>
         )}
-        {product.discount && (
-          <motion.div
-            initial={{ scale: 0 }}
-            animate={{ scale: 1 }}
-            className="bg-red-500 text-white px-3 py-1 rounded-full text-xs font-bold"
-          >
-            -{product.discount}%
-          </motion.div>
+        {isFeatured && (
+          <span className="luxury-badge luxury-badge-gold">
+            Featured
+          </span>
+        )}
+        {isExclusive && (
+          <span className="luxury-badge luxury-badge-amber">
+            Exclusive
+          </span>
         )}
       </div>
 
-      {/* Wishlist Button */}
-      <motion.button
-        whileHover={{ scale: 1.1 }}
-        whileTap={{ scale: 0.9 }}
-        onClick={handleAddToWishlist}
-        className={`absolute top-4 right-4 z-10 p-2 rounded-full transition-all duration-300 ${
-          isWishlisted
-            ? 'bg-red-500 text-white'
-            : 'bg-white/80 text-gray-600 hover:bg-red-500 hover:text-white'
-        }`}
-      >
-        <Heart className={`w-5 h-5 ${isWishlisted ? 'fill-current' : ''}`} />
-      </motion.button>
-
-      {/* Image Container */}
-      <div className="relative aspect-square overflow-hidden">
-        <div className="relative w-full h-full cursor-pointer" onClick={handleImageClick}>
-          <AnimatePresence mode="wait">
-            <motion.img
-              key={currentImageIndex}
-              src={processedImages[currentImageIndex] || '/images/placeholder.jpg'}
-              alt={product.name}
-              className="w-full h-full object-cover transition-transform duration-500 group-hover:scale-110"
-              initial={{ opacity: 0 }}
-              animate={{ opacity: 1 }}
-              exit={{ opacity: 0 }}
-              onError={(e) => {
-                e.currentTarget.src = '/images/placeholder.jpg';
-              }}
+      <Link href={`/product/${id}`} className="block">
+        {/* Product Image with Luxury Styling */}
+        <div className="relative aspect-square overflow-hidden rounded-t-3xl">
+          <Image
+            src={getFirstImage(images)}
+            alt={name}
+            fill
+            sizes="(max-width: 768px) 50vw, 25vw"
+            className="object-cover transition-transform duration-700 group-hover:scale-110"
+          />
+          
+          {/* Premium Wishlist Button with Luxury Design */}
+          <button
+            onClick={handleWishlistToggle}
+            className="absolute top-5 right-5 p-3 bg-white/90 backdrop-blur-sm rounded-full shadow-lg hover:bg-white transition-all duration-300 hover:shadow-xl transform hover:scale-110 group/btn luxury-icon-gold luxury-ripple"
+            aria-label={isInWishlist ? "Remove from wishlist" : "Add to wishlist"}
+          >
+            <Heart 
+              className={`w-5 h-5 transition-all duration-300 ${isInWishlist ? 'fill-red-500 text-red-500' : 'text-gray-700 group-hover/btn:text-red-500'}`} 
             />
-          </AnimatePresence>
-
-          {/* Image Navigation Dots */}
-          {Array.isArray(processedImages) && processedImages.length > 1 && (
-            <div className="absolute bottom-4 left-1/2 transform -translate-x-1/2 flex space-x-2">
-              {processedImages.map((_, index) => (
-                <button
-                  key={index}
-                  onClick={(e) => {
-                    e.preventDefault();
-                    e.stopPropagation();
-                    setCurrentImageIndex(index);
-                  }}
-                  className={`w-2 h-2 rounded-full transition-all duration-300 ${
-                    index === currentImageIndex
-                      ? 'bg-white scale-125'
-                      : 'bg-white/50 hover:bg-white/75'
-                  }`}
-                />
-              ))}
+          </button>
+          
+          {/* Premium Rating with Luxury Design */}
+          {averageRating && (
+            <div className="absolute bottom-5 left-5 bg-black/70 backdrop-blur-sm text-white text-sm font-bold px-3 py-1.5 rounded-full flex items-center shadow-lg">
+              <Star className="w-4 h-4 mr-1.5 fill-current text-amber-400" />
+              <span>{averageRating.toFixed(1)}</span>
+              {reviewCount && reviewCount > 0 && (
+                <span className="ml-1.5 text-gray-300">({reviewCount})</span>
+              )}
             </div>
           )}
-
-          {/* Quick View Overlay */}
-          <AnimatePresence>
-            {isHovered && (
-              <motion.div
-                initial={{ opacity: 0 }}
-                animate={{ opacity: 1 }}
-                exit={{ opacity: 0 }}
-                className="absolute inset-0 bg-black/40 flex items-center justify-center"
-              >
-                <motion.button
-                  whileHover={{ scale: 1.1 }}
-                  whileTap={{ scale: 0.9 }}
-                  onClick={handleQuickView}
-                  className="bg-white text-gray-900 px-4 py-2 rounded-full font-medium hover:bg-gray-100 transition-colors duration-300 flex items-center gap-2"
-                >
-                  <Eye className="w-4 h-4" />
-                  Quick View
-                </motion.button>
-              </motion.div>
-            )}
-          </AnimatePresence>
         </div>
-      </div>
-
-      {/* Product Info */}
-      <div className="p-6">
-        {/* Category */}
-        <p className="text-sm text-amber-600 font-medium mb-2">
-          {typeof product.category === 'string' ? product.category : product.category?.name}
-        </p>
-
-        {/* Title */}
-        <Link href={`/product/${product.id}`} onClick={(e) => e.stopPropagation()}>
-          <h3 className="text-lg font-bold text-gray-900 mb-2 hover:text-amber-600 transition-colors duration-300 line-clamp-2">
-            {product.name}
+        
+        {/* Product Info with Luxury Styling */}
+        <div className="p-6">
+          {category && (
+            <p className="text-sm text-amber-600 font-medium mb-2 flex items-center luxury-font-serif">
+              <Sparkles className="w-3.5 h-3.5 mr-1.5" />
+              {category.name}
+            </p>
+          )}
+          
+          <h3 className="font-bold text-luxury-text-primary text-lg mb-3 line-clamp-2 group-hover:text-luxury-gold-dark transition-colors duration-300 luxury-font-serif">
+            {name}
           </h3>
-        </Link>
-
-        {/* Rating */}
-        {product.rating && (
-          <div className="flex items-center gap-2 mb-3">
-            <div className="flex items-center">
-              {[...Array(5)].map((_, i) => (
-                <Star
-                  key={i}
-                  className={`w-4 h-4 ${
-                    i < Math.floor(product.rating!)
-                      ? 'text-yellow-400 fill-current'
-                      : 'text-gray-300'
-                  }`}
-                />
-              ))}
+          
+          <div className="flex items-center justify-between">
+            <div className="flex flex-col">
+              <div className="flex items-baseline gap-3">
+                <span className="text-2xl font-bold bg-gradient-to-r from-luxury-gold to-luxury-amber bg-clip-text text-transparent luxury-font-serif">
+                  {formatPriceUSD(discountedPrice)}
+                </span>
+                {discountPercentage && discountPercentage > 0 && (
+                  <span className="text-base text-gray-500 line-through">
+                    {formatPriceUSD(price)}
+                  </span>
+                )}
+              </div>
+              {reviewCount && reviewCount > 0 && (
+                <div className="flex items-center mt-1">
+                  <div className="flex">
+                    {[...Array(5)].map((_, i) => (
+                      <Star
+                        key={i}
+                        className={`w-3.5 h-3.5 ${i < Math.floor(averageRating || 0) ? 'text-amber-400 fill-current' : 'text-gray-300'}`}
+                      />
+                    ))}
+                  </div>
+                  <span className="text-xs text-gray-500 ml-1">
+                    ({reviewCount})
+                  </span>
+                </div>
+              )}
             </div>
-            <span className="text-sm text-gray-600">({product.reviewCount || 0} reviews)</span>
           </div>
-        )}
-
-        {/* Description */}
-        <p className="text-gray-600 text-sm mb-4 line-clamp-2">{product.description}</p>
-
-        {/* Price */}
-        <div className="flex items-center gap-3 mb-4">
-          <span className="text-2xl font-bold text-gray-900">{formatPrice(product.price)}</span>
-          {product.originalPrice && product.originalPrice > product.price && (
-            <span className="text-lg text-gray-500 line-through">
-              {formatPrice(product.originalPrice)}
-            </span>
-          )}
         </div>
+      </Link>
 
-        {/* Stock Status */}
-        <div className="mb-4">
-          {product.stockCount && product.stockCount > 0 ? (
-            <span className="text-green-600 text-sm font-medium flex items-center gap-1">
-              <div className="w-2 h-2 bg-green-500 rounded-full"></div>
-              In Stock ({product.stockCount} available)
-            </span>
-          ) : (
-            <span className="text-red-600 text-sm font-medium flex items-center gap-1">
-              <div className="w-2 h-2 bg-red-500 rounded-full"></div>
-              Out of Stock
-            </span>
-          )}
-        </div>
-
-        {/* Action Buttons */}
-        <div className="flex gap-3">
-          <motion.button
-            whileHover={{ scale: 1.02 }}
-            whileTap={{ scale: 0.98 }}
-            onClick={handleAddToCart}
-            disabled={!product.stockCount || product.stockCount <= 0 || isLoading}
-            className={`flex-1 flex items-center justify-center gap-2 py-3 px-4 rounded-xl font-medium transition-all duration-300 ${
-              product.stockCount && product.stockCount > 0 && !isLoading
-                ? 'bg-amber-500 text-white hover:bg-amber-600 shadow-lg hover:shadow-xl'
-                : 'bg-gray-300 text-gray-500 cursor-not-allowed'
-            }`}
-          >
-            {isLoading ? (
-              <div className="w-5 h-5 border-2 border-white border-t-transparent rounded-full animate-spin"></div>
-            ) : (
-              <>
-                <ShoppingCart className="w-5 h-5" />
-                Add to Cart
-              </>
-            )}
-          </motion.button>
-
-          <Link href={`/product/${product.id}`} onClick={(e) => e.stopPropagation()}>
-            <motion.button
-              whileHover={{ scale: 1.02 }}
-              whileTap={{ scale: 0.98 }}
-              className="px-4 py-3 border-2 border-amber-500 text-amber-600 rounded-xl font-medium hover:bg-amber-500 hover:text-white transition-all duration-300"
+      {/* Hover Actions with Luxury Design */}
+      {typeof window !== 'undefined' ? (
+        <AnimatePresenceClient>
+          {isHovered && (
+            <MotionDiv
+              initial={{ opacity: 0, y: 15 }}
+              animate={{ opacity: 1, y: 0 }}
+              exit={{ opacity: 0, y: 15 }}
+              transition={{ duration: 0.3 }}
+              className="absolute bottom-6 left-6 right-6"
             >
-              View
-            </motion.button>
-          </Link>
-        </div>
-      </div>
-    </motion.div>
+              <div className="flex gap-3">
+                <button
+                  onClick={handleAddToCart}
+                  className="flex-1 group/btn relative px-5 py-3 luxury-button-primary hover:from-luxury-gold-dark hover:to-luxury-amber-dark transition-all duration-300 shadow-lg overflow-hidden transform hover:scale-105 luxury-ripple"
+                >
+                  <span className="relative z-10 flex items-center justify-center gap-2">
+                    <ShoppingCart className="w-4 h-4" />
+                    <span>Add to Cart</span>
+                  </span>
+                  <span className="absolute inset-0 bg-gradient-to-r from-luxury-gold-dark to-luxury-amber-dark opacity-0 group-hover/btn:opacity-100 transition-opacity duration-300"></span>
+                </button>
+                <div className="flex flex-col gap-2">
+                  {onQuickView && (
+                    <button
+                      onClick={(e) => {
+                        e.preventDefault();
+                        onQuickView(id);
+                      }}
+                      className="p-3 bg-white text-gray-700 rounded-xl shadow-lg hover:bg-gray-50 transition-all duration-300 hover:shadow-xl transform hover:scale-105 group/btn luxury-icon-gold luxury-ripple"
+                      aria-label="Quick view"
+                    >
+                      <Eye className="w-5 h-5 group-hover/btn:text-amber-600 transition-colors" />
+                    </button>
+                  )}
+                </div>
+              </div>
+            </MotionDiv>
+          )}
+        </AnimatePresenceClient>
+      ) : (
+        isHovered && (
+          <div className="absolute bottom-6 left-6 right-6">
+            <div className="flex gap-3">
+              <button
+                onClick={handleAddToCart}
+                className="flex-1 group/btn relative px-5 py-3 luxury-button-primary hover:from-luxury-gold-dark hover:to-luxury-amber-dark transition-all duration-300 shadow-lg overflow-hidden transform hover:scale-105 luxury-ripple"
+              >
+                <span className="relative z-10 flex items-center justify-center gap-2">
+                  <ShoppingCart className="w-4 h-4" />
+                  <span>Add to Cart</span>
+                </span>
+                <span className="absolute inset-0 bg-gradient-to-r from-luxury-gold-dark to-luxury-amber-dark opacity-0 group-hover/btn:opacity-100 transition-opacity duration-300"></span>
+              </button>
+              <div className="flex flex-col gap-2">
+                {onQuickView && (
+                  <button
+                    onClick={(e) => {
+                      e.preventDefault();
+                      onQuickView(id);
+                    }}
+                    className="p-3 bg-white text-gray-700 rounded-xl shadow-lg hover:bg-gray-50 transition-all duration-300 hover:shadow-xl transform hover:scale-105 group/btn luxury-icon-gold luxury-ripple"
+                    aria-label="Quick view"
+                  >
+                    <Eye className="w-5 h-5 group-hover/btn:text-amber-600 transition-colors" />
+                  </button>
+                )}
+              </div>
+            </div>
+          </div>
+        )
+      )}
+    </LuxuryCard>
   );
 };
 

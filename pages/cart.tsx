@@ -1,390 +1,299 @@
 import React, { useState, useEffect } from 'react';
 import Head from 'next/head';
 import Link from 'next/link';
+import Image from 'next/image';
 import Layout from '../components/Layout';
 import { useCart } from '../components/context/CartContext';
-import { motion, AnimatePresence } from 'framer-motion';
-import {
-  ShoppingBag,
-  Shield,
-  Truck,
-  CreditCard,
-  Heart,
-  Star,
-  Sparkles,
-  ArrowRight,
-  Trash2,
-  Plus,
-  Minus,
-} from 'lucide-react';
 import { toast } from 'react-hot-toast';
+import { Minus as MinusIcon, Plus as PlusIcon, Lock as LockClosedIcon, RefreshCw as RefreshIcon, Truck as TruckIcon, ShoppingBag, X } from 'lucide-react';
+import { getFirstImage } from '../utils/imageUtils';
+import SkeletonLoader from '../components/ui/SkeletonLoader';
+import LuxuryButton from '../components/ui/LuxuryButton';
+import LuxuryCard from '../components/ui/LuxuryCard';
 
 const CartPage: React.FC = () => {
   const [mounted, setMounted] = useState(false);
-  
+  const [isLoading, setIsLoading] = useState(false);
+  const { items: cartItems, updateQuantity, removeFromCart, clearCart, error, getCartTotal } = useCart();
+
+  // Ensure cartItems is always an array
+  const safeCartItems = Array.isArray(cartItems) ? cartItems : [];
+
   useEffect(() => {
     setMounted(true);
   }, []);
 
-  const { items: cart, updateQuantity, removeFromCart } = useCart();
-  const [removingItem, setRemovingItem] = useState<string | null>(null);
+  const TAX_RATE = 0.18;
+  const subtotal = safeCartItems.reduce((sum, item) => sum + (item.gemstone?.price || 0) * item.quantity, 0);
+  const tax = subtotal * TAX_RATE;
+  const total = subtotal + tax;
+
+  const handleRemoveItem = async (itemId: number) => {
+    try {
+      setIsLoading(true);
+      await removeFromCart(itemId);
+      toast.success('Item removed from cart');
+    } catch (err) {
+      toast.error('Failed to remove item');
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  const handleQuantityChange = async (itemId: number, newQuantity: number) => {
+    try {
+      if (newQuantity < 0) return;
+      setIsLoading(true);
+      await updateQuantity(itemId, newQuantity);
+      if (newQuantity === 0) {
+        toast.success('Item removed from cart');
+      } else {
+        toast.success('Cart updated');
+      }
+    } catch (err) {
+      toast.error('Failed to update quantity');
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  const handleClearCart = async () => {
+    if (safeCartItems.length === 0) return;
+    
+    if (window.confirm('Are you sure you want to clear your cart?')) {
+      try {
+        setIsLoading(true);
+        await clearCart();
+        toast.success('Cart cleared');
+      } catch (err) {
+        toast.error('Failed to clear cart');
+      } finally {
+        setIsLoading(false);
+      }
+    }
+  };
+
+  const seoJsonLd = {
+    '@context': 'https://schema.org/',
+    '@type': 'ItemList',
+    itemListElement: safeCartItems.map((item, idx) => ({
+      '@type': 'ListItem',
+      position: idx + 1,
+      item: {
+        '@type': 'Product',
+        name: item.gemstone?.name || 'Unknown Product',
+        image: getFirstImage(item.gemstone?.images),
+        description: item.gemstone?.description,
+        offers: {
+          '@type': 'Offer',
+          priceCurrency: 'USD',
+          price: item.gemstone?.price || 0,
+          availability: 'https://schema.org/InStock'
+        }
+      }
+    }))
+  } as const;
 
   if (!mounted) {
     return (
       <Layout title="Your Cart - Shankarmala Gemstore">
-        <div className="min-h-screen flex items-center justify-center">
-          <div className="animate-spin rounded-full h-32 w-32 border-b-2 border-amber-500"></div>
+        <div className="min-h-screen bg-gray-50 py-8">
+          <div className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8">
+            <div className="h-8 bg-gray-200 rounded w-1/4 mb-8" />
+            <div className="space-y-6">
+              <SkeletonLoader type="cart-item" count={3} />
+            </div>
+          </div>
         </div>
       </Layout>
     );
   }
-      const total = cart.reduce((sum, item) => sum + (item.gemstone?.price || 0) * item.quantity, 0);
-
-  const handleRemoveItem = async (itemId: string) => {
-    setRemovingItem(itemId);
-    // Add a small delay for animation
-    await new Promise((resolve) => setTimeout(resolve, 300));
-    removeFromCart(Number(itemId));
-    setRemovingItem(null);
-    toast.success('Item removed from cart');
-  };
-
-  const handleQuantityChange = (itemId: string, newQuantity: number) => {
-    if (newQuantity < 1) return;
-    updateQuantity(Number(itemId), newQuantity);
-    toast.success('Cart updated');
-  };
-
-  // SEO structured data (JSON-LD)
-  const seoJsonLd = {
-    '@context': 'https://schema.org/',
-    '@type': 'ShoppingCart',
-    name: 'Your Cart - Shankarmala Gemstore',
-    description:
-      'View and manage your gemstone cart at Shankarmala Gemstore. Secure checkout, free shipping, and 30-day returns.',
-    url: 'https://shankarmala.com/cart',
-    itemListElement: cart.map((item, idx) => ({
-      '@type': 'Product',
-      position: idx + 1,
-      name: item.gemstone?.name || 'Unknown Product',
-      images: item.gemstone?.images ? [item.gemstone.images] : ['/images/placeholder-gemstone.jpg'],
-      sku: item.gemstone?.id || 0,
-      offers: {
-        '@type': 'Offer',
-        priceCurrency: 'INR',
-        price: item.gemstone?.price || 0,
-        availability: 'https://schema.org/InStock',
-      },
-    })),
-  };
 
   return (
     <Layout title="Your Cart - Shankarmala">
+      {error && (
+        <div className="max-w-3xl mx-auto mt-6 mb-4">
+          <div className="bg-red-100 border border-red-300 text-red-800 px-6 py-4 rounded-xl text-center font-semibold shadow">
+            {error}
+          </div>
+        </div>
+      )}
       <Head>
         <title>Your Cart - Shankarmala Gemstore</title>
-        <meta
-          name="description"
-          content="View and manage your gemstone cart at Shankarmala Gemstore. Secure checkout, free shipping, and 30-day returns."
-        />
+        <meta name="description" content="View and manage your gemstone cart at Shankarmala Gemstore. Secure checkout, free shipping, and 30-day returns." />
         <meta property="og:title" content="Your Cart - Shankarmala Gemstore" />
-        <meta
-          property="og:description"
-          content="View and manage your gemstone cart at Shankarmala Gemstore. Secure checkout, free shipping, and 30-day returns."
-        />
-        <meta
-          property="og:image"
-          content={cart[0]?.gemstone?.images || '/images/placeholder-gemstone.jpg'}
-        />
+        <meta property="og:description" content="View and manage your gemstone cart at Shankarmala Gemstore. Secure checkout, free shipping, and 30-day returns." />
+        <meta property="og:image" content={getFirstImage(safeCartItems[0]?.gemstone?.images)} />
         <meta property="og:type" content="website" />
         <meta property="og:url" content="https://shankarmala.com/cart" />
         <meta name="twitter:card" content="summary_large_image" />
         <meta name="twitter:title" content="Your Cart - Shankarmala Gemstore" />
-        <meta
-          name="twitter:description"
-          content="View and manage your gemstone cart at Shankarmala Gemstore."
-        />
-        <meta
-          name="twitter:image"
-          content={cart[0]?.gemstone?.images || '/images/placeholder-gemstone.jpg'}
-        />
-        <script
-          type="application/ld+json"
-          dangerouslySetInnerHTML={{ __html: JSON.stringify(seoJsonLd) }}
-        />
+        <meta name="twitter:description" content="View and manage your gemstone cart at Shankarmala Gemstore." />
+        <meta name="twitter:image" content={getFirstImage(safeCartItems[0]?.gemstone?.images)} />
+        <script type="application/ld+json" dangerouslySetInnerHTML={{ __html: JSON.stringify(seoJsonLd) }} />
       </Head>
 
-      <div className="max-w-6xl mx-auto py-12 px-4">
-        {/* Premium Header */}
-        <motion.div
-          className="text-center mb-12"
-          initial={{ opacity: 0, y: 20 }}
-          animate={{ opacity: 1, y: 0 }}
-          transition={{ duration: 0.6 }}
-        >
-          <motion.div
-            initial={{ scale: 0.8 }}
-            animate={{ scale: 1 }}
-            className="inline-flex items-center space-x-2 bg-gradient-to-r from-amber-500 to-orange-500 text-white px-4 py-2 rounded-full text-sm font-medium mb-4"
-          >
-            <Sparkles className="w-4 h-4" />
-            <span>Premium Shopping Cart</span>
-          </motion.div>
-          <h1 className="text-5xl font-bold text-gray-900 mb-4 bg-gradient-to-r from-amber-600 to-orange-600 bg-clip-text text-transparent">
-            Your Luxury Cart
-          </h1>
-          <p className="text-xl text-gray-600 max-w-2xl mx-auto">
-            Review your selected gemstones and proceed to secure checkout
-          </p>
-        </motion.div>
+      <div className="min-h-screen bg-gradient-to-br from-stone-50 via-amber-50 to-orange-50 py-6 sm:py-8 px-3 sm:px-6 lg:px-8">
+        <div className="max-w-4xl mx-auto">
+          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 mb-6 sm:mb-8">
+            <h1 className="text-2xl sm:text-3xl md:text-4xl font-bold text-gray-900 bg-gradient-to-r from-amber-600 to-orange-600 bg-clip-text text-transparent">Shopping Cart</h1>
+            {safeCartItems.length > 0 && (
+              <LuxuryButton
+                onClick={handleClearCart}
+                variant="ghost"
+                size="sm"
+                className="text-red-600 hover:text-red-700"
+              >
+                <X className="w-4 h-4 mr-1" />
+                Clear Cart
+              </LuxuryButton>
+            )}
+          </div>
 
-        <AnimatePresence mode="wait">
-          {cart.length === 0 ? (
-            <motion.div
-              className="text-center py-20"
-              initial={{ opacity: 0, y: 20 }}
-              animate={{ opacity: 1, y: 0 }}
-              exit={{ opacity: 0, y: -20 }}
-            >
-              <motion.div
-                initial={{ scale: 0.5 }}
-                animate={{ scale: 1 }}
-                transition={{ delay: 0.2, type: 'spring', bounce: 0.4 }}
-                className="w-32 h-32 mx-auto mb-8 bg-gradient-to-br from-amber-100 to-orange-100 rounded-full flex items-center justify-center"
-              >
-                <ShoppingBag className="w-16 h-16 text-amber-600" />
-              </motion.div>
-              <h2 className="text-3xl font-bold text-gray-900 mb-4">Your cart is empty</h2>
-              <p className="text-gray-600 mb-8 max-w-md mx-auto text-lg">
-                Discover our exclusive collection of premium gemstones and start building your
-                luxury collection
-              </p>
-              <Link
-                href="/shop"
-                className="inline-flex items-center space-x-2 bg-gradient-to-r from-amber-600 to-orange-600 text-white px-8 py-4 rounded-2xl font-bold text-lg shadow-lg hover:shadow-xl transition-all duration-200 hover:scale-105"
-              >
-                <Sparkles className="w-5 h-5" />
-                <span>Start Shopping</span>
-                <ArrowRight className="w-5 h-5" />
+          {isLoading && safeCartItems.length === 0 ? (
+            <div className="space-y-6">
+              <SkeletonLoader type="cart-item" count={3} />
+            </div>
+          ) : safeCartItems.length === 0 ? (
+            <div className="text-center py-8 sm:py-16 bg-white rounded-3xl shadow-xl px-4 border border-stone-100">
+              <div className="mx-auto w-16 h-16 bg-gradient-to-r from-amber-100 to-orange-100 rounded-full flex items-center justify-center mb-4 shadow-lg">
+                <ShoppingBag className="w-8 h-8 text-amber-600" />
+              </div>
+              <p className="text-base sm:text-xl text-gray-600 mb-4 sm:mb-6">Your cart is empty</p>
+              <Link href="/shop">
+                <LuxuryButton variant="primary" size="lg">
+                  Continue Shopping
+                </LuxuryButton>
               </Link>
-            </motion.div>
+            </div>
           ) : (
-            <motion.div
-              className="bg-white/90 backdrop-blur-sm rounded-3xl shadow-2xl border border-amber-100 p-8"
-              initial={{ opacity: 0, y: 20 }}
-              animate={{ opacity: 1, y: 0 }}
-              exit={{ opacity: 0, y: -20 }}
-            >
-              <div className="flex items-center justify-between mb-8">
-                <div className="flex items-center space-x-3">
-                  <div className="w-12 h-12 bg-gradient-to-br from-amber-500 to-orange-500 rounded-full flex items-center justify-center">
-                    <ShoppingBag className="w-6 h-6 text-white" />
-                  </div>
-                  <div>
-                    <h2 className="text-2xl font-bold text-gray-900">Cart Items ({cart.length})</h2>
-                    <p className="text-gray-600">Premium gemstones selected</p>
-                  </div>
-                </div>
-                <Link
-                  href="/shop"
-                  className="flex items-center space-x-2 text-amber-600 hover:text-amber-700 font-medium transition-colors group"
-                >
-                  <span>Continue Shopping</span>
-                  <ArrowRight className="w-4 h-4 group-hover:translate-x-1 transition-transform" />
-                </Link>
+            <div className="space-y-4 sm:space-y-6 md:space-y-8">
+              <div className="bg-white shadow-xl rounded-3xl overflow-hidden border border-stone-100">
+                <ul className="divide-y divide-gray-200">
+                  {safeCartItems.map((item) => (
+                    <li key={item.id} className="p-3 sm:p-4 md:p-6 hover:bg-amber-50/50 transition-all duration-300">
+                      <div className="flex flex-col sm:flex-row items-start sm:items-center gap-3 sm:gap-4 md:gap-6">
+                        <div className="w-full sm:w-24 md:w-32 h-20 sm:h-24 md:h-32 relative rounded-2xl overflow-hidden flex-shrink-0 bg-gradient-to-br from-gray-100 to-stone-100 shadow-md">
+                          <Image 
+                            src={getFirstImage(item.gemstone?.images)} 
+                            alt={item.gemstone?.name || 'Product image'} 
+                            fill 
+                            sizes="(max-width: 640px) 50vw, 25vw" 
+                            className="rounded-2xl object-cover" 
+                          />
+                        </div>
+                        <div className="flex-1 min-w-0 w-full">
+                          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 sm:gap-4">
+                            <div>
+                              <h3 className="text-sm sm:text-lg font-bold text-gray-900">{item.gemstone?.name || item.name}</h3>
+                              <p className="mt-0.5 sm:mt-1 text-xs sm:text-sm text-amber-600 font-medium">{(item.gemstone as any)?.category?.name || ''}</p>
+                            </div>
+                            <div className="text-right sm:text-left">
+                              <p className="text-sm sm:text-xl font-bold bg-gradient-to-r from-amber-600 to-orange-600 bg-clip-text text-transparent">${((item.gemstone?.price || item.price || 0) * item.quantity).toFixed(2)}</p>
+                              {item.quantity > 1 && (
+                                <p className="text-xs text-gray-500 mt-1">
+                                  ${item.gemstone?.price || item.price || 0} each
+                                </p>
+                              )}
+                            </div>
+                          </div>
+                          <div className="mt-3 sm:mt-4 flex flex-wrap items-center justify-between gap-3">
+                            <div className="flex items-center space-x-2 sm:space-x-3">
+                              <LuxuryButton 
+                                onClick={() => handleQuantityChange(item.id, Math.max(0, item.quantity - 1))} 
+                                variant="secondary"
+                                size="sm"
+                                aria-label="Decrease quantity"
+                              >
+                                <MinusIcon className="h-5 w-5 text-gray-600" />
+                              </LuxuryButton>
+                              <span className="text-base text-gray-900 font-bold min-w-[2rem] text-center bg-amber-50 px-3 py-1 rounded-lg luxury-font-sans">{item.quantity}</span>
+                              <LuxuryButton 
+                                onClick={() => handleQuantityChange(item.id, item.quantity + 1)} 
+                                variant="secondary"
+                                size="sm"
+                                aria-label="Increase quantity"
+                              >
+                                <PlusIcon className="h-5 w-5 text-gray-600" />
+                              </LuxuryButton>
+                            </div>
+                            <LuxuryButton 
+                              onClick={() => handleRemoveItem(item.id)} 
+                              variant="ghost"
+                              size="sm"
+                              className="text-red-600 hover:text-red-700"
+                              aria-label="Remove item"
+                            >
+                              <X className="w-4 h-4 mr-1" />
+                              Remove
+                            </LuxuryButton>
+                          </div>
+                        </div>
+                      </div>
+                    </li>
+                  ))}
+                </ul>
               </div>
 
-              <ul className="divide-y divide-amber-100">
-                <AnimatePresence>
-                  {cart.map((item, index) => (
-                    <motion.li
-                      key={item.id}
-                      className="flex flex-col md:flex-row items-center gap-6 py-8"
-                      initial={{ opacity: 0, x: -20 }}
-                      animate={{ opacity: 1, x: 0 }}
-                      exit={{ opacity: 0, x: 20, height: 0 }}
-                      transition={{ duration: 0.3, delay: index * 0.1 }}
-                    >
-                      <div className="relative group">
-                        <motion.div
-                          whileHover={{ scale: 1.05 }}
-                          className="relative overflow-hidden rounded-2xl shadow-lg"
-                        >
-                          <img
-                            src={item.images?.[0] || '/images/placeholder-gemstone.jpg'}
-                            alt={item.name}
-                            className="w-24 h-24 object-cover border border-amber-200"
-                          />
-                          <div className="absolute inset-0 bg-gradient-to-t from-black/20 to-transparent opacity-0 group-hover:opacity-100 transition-opacity" />
-                        </motion.div>
-                        {removingItem === String(item.id) && (
-                          <motion.div
-                            initial={{ opacity: 0 }}
-                            animate={{ opacity: 1 }}
-                            className="absolute inset-0 bg-red-500/20 rounded-2xl flex items-center justify-center"
-                          >
-                            <div className="w-6 h-6 border-2 border-red-500 border-t-transparent rounded-full animate-spin"></div>
-                          </motion.div>
-                        )}
-                      </div>
-
-                      <div className="flex-1 w-full">
-                        <div className="font-bold text-xl text-gray-900 mb-2">{item.name}</div>
-                        <div className="text-amber-700 font-bold text-2xl mb-3">
-                          ₹{item.price.toLocaleString('en-IN')}
-                        </div>
-                        <div className="flex items-center gap-1 mb-3">
-                          {[...Array(5)].map((_, i) => (
-                            <Star key={i} className="w-4 h-4 text-amber-400 fill-current" />
-                          ))}
-                          <span className="text-sm text-gray-600 ml-2">Premium Quality</span>
-                        </div>
-                        <div className="flex items-center gap-3">
-                          <span className="bg-green-100 text-green-800 px-3 py-1 rounded-full text-sm font-medium">
-                            GIA Certified
-                          </span>
-                          <span className="text-green-600 text-sm font-medium flex items-center">
-                            <div className="w-2 h-2 bg-green-500 rounded-full mr-2"></div>
-                            In Stock
-                          </span>
-                        </div>
-                      </div>
-
-                      <div className="flex items-center gap-4">
-                        <div className="flex items-center border border-amber-200 rounded-xl overflow-hidden shadow-sm">
-                          <button
-                            onClick={() => handleQuantityChange(String(item.id), item.quantity - 1)}
-                            disabled={item.quantity <= 1}
-                            className="p-2 bg-amber-50 hover:bg-amber-100 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
-                          >
-                            <Minus className="w-4 h-4" />
-                          </button>
-                          <span className="px-4 py-2 bg-white font-bold min-w-[3rem] text-center text-lg">
-                            {item.quantity}
-                          </span>
-                          <button
-                            onClick={() => handleQuantityChange(String(item.id), item.quantity + 1)}
-                            className="p-2 bg-amber-50 hover:bg-amber-100 transition-colors"
-                          >
-                            <Plus className="w-4 h-4" />
-                          </button>
-                        </div>
-                      </div>
-
-                                              <div className="text-right">
-                          <div className="text-2xl font-bold text-gray-900 mb-3">
-                            ₹{(item.price * item.quantity).toLocaleString('en-IN')}
-                          </div>
-                          <div className="flex flex-col gap-2">
-                            <button
-                              onClick={() => handleQuantityChange(String(item.id), item.quantity)}
-                              className="flex items-center space-x-1 text-blue-600 hover:text-blue-700 text-sm font-semibold transition-colors"
-                            >
-                              <span>Update Cart</span>
-                            </button>
-                            <button
-                              onClick={() => handleRemoveItem(String(item.id))}
-                              disabled={removingItem === String(item.id)}
-                              className="flex items-center space-x-1 text-red-600 hover:text-red-700 text-sm font-semibold transition-colors disabled:opacity-50"
-                            >
-                              <Trash2 className="w-4 h-4" />
-                              <span>Remove</span>
-                            </button>
-                          </div>
-                        </div>
-                    </motion.li>
-                  ))}
-                </AnimatePresence>
-              </ul>
-
-              {/* Premium Order Summary */}
-              <motion.div
-                className="mt-8 pt-8 border-t border-amber-200"
-                initial={{ opacity: 0, y: 20 }}
-                animate={{ opacity: 1, y: 0 }}
-                transition={{ duration: 0.6, delay: 0.3 }}
-              >
-                <div className="bg-gradient-to-br from-amber-50 to-orange-50 rounded-2xl p-8 border border-amber-200">
-                  <div className="flex items-center space-x-3 mb-6">
-                    <div className="w-10 h-10 bg-gradient-to-br from-amber-500 to-orange-500 rounded-full flex items-center justify-center">
-                      <CreditCard className="w-5 h-5 text-white" />
-                    </div>
-                    <h3 className="text-2xl font-bold text-gray-900">Order Summary</h3>
+              <div className="bg-white shadow-xl rounded-3xl p-4 sm:p-6 border border-stone-100">
+                <h2 className="text-xl sm:text-2xl font-bold text-gray-900 mb-4 bg-gradient-to-r from-amber-600 to-orange-600 bg-clip-text text-transparent">Order Summary</h2>
+                <div className="space-y-3 sm:space-y-4 text-sm sm:text-base">
+                  <div className="flex justify-between text-gray-600">
+                    <p>Subtotal ({safeCartItems.reduce((sum, item) => sum + item.quantity, 0)} items)</p>
+                    <p className="font-bold">${subtotal.toFixed(2)}</p>
                   </div>
-                  <div className="space-y-4">
-                    <div className="flex justify-between text-gray-700 text-lg">
-                      <span>Subtotal ({cart.length} items)</span>
-                      <span className="font-semibold">₹{total.toLocaleString('en-IN')}</span>
-                    </div>
-                    <div className="flex justify-between text-gray-700 text-lg">
-                      <span>Shipping</span>
-                      <span className="text-green-600 font-semibold">Free</span>
-                    </div>
-                    <div className="flex justify-between text-gray-700 text-lg">
-                      <span>Tax</span>
-                      <span>₹{(total * 0.18).toLocaleString('en-IN')}</span>
-                    </div>
-                    <div className="border-t border-amber-300 pt-4">
-                      <div className="flex justify-between text-3xl font-bold text-gray-900">
-                        <span>Total</span>
-                        <span>₹{(total * 1.18).toLocaleString('en-IN')}</span>
-                      </div>
+                  <div className="flex justify-between text-gray-600">
+                    <p>Shipping</p>
+                    <p className="text-green-600 font-bold">Free</p>
+                  </div>
+                  <div className="flex justify-between text-gray-600">
+                    <p>Tax</p>
+                    <p className="font-bold">${tax.toFixed(2)}</p>
+                  </div>
+                  <div className="pt-3 sm:pt-4 border-t border-gray-200">
+                    <div className="flex justify-between text-base sm:text-2xl font-bold text-gray-900">
+                      <p>Total</p>
+                      <p className="bg-gradient-to-r from-amber-600 to-orange-600 bg-clip-text text-transparent">${total.toFixed(2)}</p>
                     </div>
                   </div>
                 </div>
 
-                <div className="mt-8 flex flex-col sm:flex-row gap-4">
-                  <Link
-                    href="/checkout"
-                    className="flex-1 bg-gradient-to-r from-amber-600 to-orange-600 text-white px-8 py-4 rounded-2xl font-bold text-lg shadow-lg hover:shadow-xl transition-all duration-200 hover:scale-105 text-center flex items-center justify-center space-x-2"
-                  >
-                    <span>Proceed to Checkout</span>
-                    <ArrowRight className="w-5 h-5" />
-                  </Link>
-                  <Link
-                    href="/shop"
-                    className="flex-1 border-2 border-amber-600 text-amber-600 px-8 py-4 rounded-2xl font-bold text-lg hover:bg-amber-50 transition-all duration-200 text-center"
-                  >
-                    Continue Shopping
+                <div className="mt-5 sm:mt-6">
+                  <Link href="/checkout">
+                    <LuxuryButton variant="primary" size="lg" className="w-full">
+                      Proceed to Checkout
+                    </LuxuryButton>
                   </Link>
                 </div>
 
-                {/* Premium Trust indicators */}
-                <div className="mt-8 pt-8 border-t border-amber-200">
-                  <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-                    <div className="flex items-center space-x-3 p-4 bg-white rounded-xl border border-amber-100">
-                      <div className="w-10 h-10 bg-green-100 rounded-full flex items-center justify-center">
-                        <Shield className="w-5 h-5 text-green-600" />
-                      </div>
-                      <div>
-                        <div className="font-semibold text-gray-900">Secure Checkout</div>
-                        <div className="text-sm text-gray-600">SSL Encrypted</div>
-                      </div>
-                    </div>
-                    <div className="flex items-center space-x-3 p-4 bg-white rounded-xl border border-amber-100">
-                      <div className="w-10 h-10 bg-blue-100 rounded-full flex items-center justify-center">
-                        <Truck className="w-5 h-5 text-blue-600" />
-                      </div>
-                      <div>
-                        <div className="font-semibold text-gray-900">Free Shipping</div>
-                        <div className="text-sm text-gray-600">Worldwide</div>
-                      </div>
-                    </div>
-                    <div className="flex items-center space-x-3 p-4 bg-white rounded-xl border border-amber-100">
-                      <div className="w-10 h-10 bg-purple-100 rounded-full flex items-center justify-center">
-                        <Heart className="w-5 h-5 text-purple-600" />
-                      </div>
-                      <div>
-                        <div className="font-semibold text-gray-900">30-Day Returns</div>
-                        <div className="text-sm text-gray-600">No Questions</div>
-                      </div>
-                    </div>
+                <div className="mt-5 sm:mt-6 grid grid-cols-1 sm:grid-cols-3 gap-3 text-center">
+                  <div className="flex flex-col items-center justify-center p-4 bg-gradient-to-br from-amber-50 to-orange-50 rounded-2xl border border-amber-100 shadow-md">
+                    <LockClosedIcon className="h-6 w-6 text-amber-600 mb-2" />
+                    <span className="text-sm text-amber-700 font-bold">Secure checkout</span>
+                  </div>
+                  <div className="flex flex-col items-center justify-center p-4 bg-gradient-to-br from-amber-50 to-orange-50 rounded-2xl border border-amber-100 shadow-md">
+                    <TruckIcon className="h-6 w-6 text-amber-600 mb-2" />
+                    <span className="text-sm text-amber-700 font-bold">Free shipping</span>
+                  </div>
+                  <div className="flex flex-col items-center justify-center p-4 bg-gradient-to-br from-amber-50 to-orange-50 rounded-2xl border border-amber-100 shadow-md">
+                    <RefreshIcon className="h-6 w-6 text-amber-600 mb-2" />
+                    <span className="text-sm text-amber-700 font-bold">30-day returns</span>
                   </div>
                 </div>
-              </motion.div>
-            </motion.div>
+              </div>
+            </div>
           )}
-        </AnimatePresence>
+        </div>
       </div>
+
+      {isLoading && (
+        <div className="fixed inset-0 bg-black/20 backdrop-blur-sm z-50 flex items-center justify-center">
+          <div className="bg-white p-6 rounded-2xl shadow-2xl flex items-center space-x-4">
+            <div className="animate-spin rounded-full h-8 w-8 border-2 border-amber-500 border-t-transparent"></div>
+            <span className="text-gray-700 font-bold text-lg">Updating cart...</span>
+          </div>
+        </div>
+      )}
     </Layout>
   );
 };

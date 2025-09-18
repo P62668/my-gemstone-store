@@ -1,6 +1,6 @@
 import React from 'react';
-import { motion } from 'framer-motion';
 import Link from 'next/link';
+import Image from 'next/image';
 import {
   Facebook,
   Twitter,
@@ -15,6 +15,10 @@ import {
   CreditCard,
   Heart,
 } from 'lucide-react';
+import dynamic from 'next/dynamic';
+
+// Dynamically import framer-motion components
+const MotionDiv = dynamic(() => import('framer-motion').then(mod => mod.motion.div), { ssr: false });
 
 const Footer: React.FC = () => {
   const currentYear = new Date().getFullYear();
@@ -120,54 +124,63 @@ const Footer: React.FC = () => {
   return (
     <footer className="bg-gradient-to-br from-gray-900 via-gray-800 to-black text-white">
       {/* Main Footer */}
-      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-16">
-        {/* Features Section */}
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-8 mb-16">
+      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8 sm:py-12 lg:py-16">
+        {/* Features Section with Luxury Design */}
+        <div className="grid grid-cols-2 sm:grid-cols-2 lg:grid-cols-4 gap-4 sm:gap-6 lg:gap-8 mb-8 sm:mb-12 lg:mb-16">
           {features.map((feature, index) => (
-            <motion.div
-              key={index}
-              initial={{ opacity: 0, y: 20 }}
-              whileInView={{ opacity: 1, y: 0 }}
-              transition={{ duration: 0.6, delay: index * 0.1 }}
-              viewport={{ once: true }}
-              className="text-center"
-            >
-              <div className="w-16 h-16 mx-auto mb-4 bg-amber-500 rounded-full flex items-center justify-center">
-                <feature.icon className="w-8 h-8 text-white" />
+            typeof window !== 'undefined' ? (
+              <MotionDiv
+                key={index}
+                initial={{ opacity: 0, y: 20 }}
+                whileInView={{ opacity: 1, y: 0 }}
+                transition={{ duration: 0.6, delay: index * 0.1 }}
+                className="text-center p-3 sm:p-4"
+              >
+                <div className="w-12 h-12 sm:w-16 sm:h-16 mx-auto mb-3 sm:mb-4 bg-gradient-to-r from-luxury-gold to-luxury-amber rounded-full flex items-center justify-center shadow-lg">
+                  <feature.icon className="w-6 h-6 sm:w-8 sm:h-8 text-white" />
+                </div>
+                <h3 className="text-base sm:text-lg font-bold mb-1 sm:mb-2 bg-gradient-to-r from-luxury-gold-light to-luxury-amber bg-clip-text text-transparent">{feature.title}</h3>
+                <p className="text-gray-400 text-xs sm:text-sm">{feature.description}</p>
+              </MotionDiv>
+            ) : (
+              <div
+                key={index}
+                className="text-center p-3 sm:p-4"
+              >
+                <div className="w-12 h-12 sm:w-16 sm:h-16 mx-auto mb-3 sm:mb-4 bg-gradient-to-r from-luxury-gold to-luxury-amber rounded-full flex items-center justify-center shadow-lg">
+                  <feature.icon className="w-6 h-6 sm:w-8 sm:h-8 text-white" />
+                </div>
+                <h3 className="text-base sm:text-lg font-bold mb-1 sm:mb-2 bg-gradient-to-r from-luxury-gold-light to-luxury-amber bg-clip-text text-transparent">{feature.title}</h3>
+                <p className="text-gray-400 text-xs sm:text-sm">{feature.description}</p>
               </div>
-              <h3 className="text-lg font-semibold mb-2">{feature.title}</h3>
-              <p className="text-gray-400 text-sm">{feature.description}</p>
-            </motion.div>
+            )
           ))}
         </div>
 
         {/* Main Content */}
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-5 gap-8 mb-12">
-          {/* Company Info */}
-          <div className="lg:col-span-1">
-            <motion.div
-              initial={{ opacity: 0, x: -20 }}
-              whileInView={{ opacity: 1, x: 0 }}
-              transition={{ duration: 0.6 }}
-              viewport={{ once: true }}
-            >
-              <div className="flex items-center space-x-3 mb-6">
-                <img src="/images/shankarmala-logo.svg" alt="Shankarmala" className="w-12 h-12" />
+        <div className="grid grid-cols-2 sm:grid-cols-2 lg:grid-cols-5 gap-6 sm:gap-8 mb-8 sm:mb-12">
+          {/* Company Info with Luxury Design */}
+          <div className="col-span-2 sm:col-span-2 lg:col-span-1 mb-6 sm:mb-0">
+            <div>
+              <div className="flex items-center space-x-3 mb-4 sm:mb-6">
+                <div className="relative w-10 h-10 sm:w-12 sm:h-12">
+                  <Image src="/images/shankarmala-logo.png" alt="Shankarmala" fill sizes="(max-width: 640px) 40px, 48px" priority className="object-contain" />
+                </div>
                 <div>
-                  <h2 className="text-2xl font-bold">Shankarmala</h2>
-                  <p className="text-amber-400 text-sm">Luxury Gemstones</p>
+                  <h2 className="text-xl sm:text-2xl font-bold bg-gradient-to-r from-amber-300 to-orange-300 bg-clip-text text-transparent">Shankarmala</h2>
+                  <p className="text-amber-400 text-xs sm:text-sm">Luxury Gemstones</p>
                 </div>
               </div>
-              <p className="text-gray-400 mb-6 leading-relaxed">
+              <p className="text-gray-400 mb-4 sm:mb-6 text-sm sm:text-base leading-relaxed">
                 Discover the finest gemstones from our heritage jewelry collection. GIA certified,
                 worldwide shipping, and personalized luxury service.
               </p>
 
-              {/* Contact Info */}
-              <div className="space-y-3">
+              {/* Contact Info with Luxury Design */}
+              <div className="space-y-2 sm:space-y-3 text-sm">
                 <div className="flex items-center space-x-3 text-gray-400">
-                  <Phone className="w-4 h-4 text-amber-400" />
-                  <span>+91 98765 43210</span>
+                  <Phone className="w-4 h-4 text-amber-400 flex-shrink-0" />
+                  <span className="text-xs sm:text-sm">+91 98765 43210</span>
                 </div>
                 <div className="flex items-center space-x-3 text-gray-400">
                   <Mail className="w-4 h-4 text-amber-400" />
@@ -182,126 +195,91 @@ const Footer: React.FC = () => {
                   <span>Mon-Sat: 10AM-8PM</span>
                 </div>
               </div>
-            </motion.div>
+            </div>
           </div>
 
-          {/* Footer Links */}
+          {/* Footer Links with Luxury Design */}
           {footerSections.map((section, index) => (
-            <motion.div
-              key={section.title}
-              initial={{ opacity: 0, y: 20 }}
-              whileInView={{ opacity: 1, y: 0 }}
-              transition={{ duration: 0.6, delay: index * 0.1 }}
-              viewport={{ once: true }}
-            >
-              <h3 className="text-lg font-semibold mb-4 text-amber-400">{section.title}</h3>
-              <ul className="space-y-3">
-                {section.links.map((link) => (
-                  <li key={link.name}>
-                    <Link
-                      href={link.href}
-                      className="text-gray-400 hover:text-amber-400 transition-colors duration-300 text-sm"
-                    >
-                      {link.name}
-                    </Link>
-                  </li>
-                ))}
-              </ul>
-            </motion.div>
+            typeof window !== 'undefined' ? (
+              <MotionDiv
+                key={section.title}
+                initial={{ opacity: 0, y: 20 }}
+                whileInView={{ opacity: 1, y: 0 }}
+                transition={{ duration: 0.6, delay: index * 0.1 }}
+                className="col-span-1"
+              >
+                <h3 className="text-base sm:text-lg font-bold mb-3 sm:mb-4 bg-gradient-to-r from-luxury-gold-light to-luxury-amber bg-clip-text text-transparent">{section.title}</h3>
+                <ul className="space-y-2">
+                  {section.links.map((link) => (
+                    <li key={link.name}>
+                      <Link
+                        href={link.href}
+                        className="text-gray-400 hover:text-luxury-gold text-sm sm:text-base transition-colors duration-200 hover:underline"
+                      >
+                        {link.name}
+                      </Link>
+                    </li>
+                  ))}
+                </ul>
+              </MotionDiv>
+            ) : (
+              <div
+                key={section.title}
+                className="col-span-1"
+              >
+                <h3 className="text-base sm:text-lg font-bold mb-3 sm:mb-4 bg-gradient-to-r from-luxury-gold-light to-luxury-amber bg-clip-text text-transparent">{section.title}</h3>
+                <ul className="space-y-2">
+                  {section.links.map((link) => (
+                    <li key={link.name}>
+                      <Link
+                        href={link.href}
+                        className="text-gray-400 hover:text-luxury-gold text-sm sm:text-base transition-colors duration-200 hover:underline"
+                      >
+                        {link.name}
+                      </Link>
+                    </li>
+                  ))}
+                </ul>
+              </div>
+            )
           ))}
         </div>
 
-        {/* Newsletter Section */}
-        <motion.div
-          initial={{ opacity: 0, y: 20 }}
-          whileInView={{ opacity: 1, y: 0 }}
-          transition={{ duration: 0.6 }}
-          viewport={{ once: true }}
-          className="bg-gradient-to-r from-amber-500 to-yellow-500 rounded-2xl p-8 mb-12"
-        >
-          <div className="text-center max-w-2xl mx-auto">
-            <h3 className="text-2xl font-bold text-white mb-4">Stay in the Circle of Luxury</h3>
-            <p className="text-amber-100 mb-6">
-              Get exclusive access to new collections, gemstone insights, and heritage stories
-            </p>
-            <form className="flex flex-col sm:flex-row gap-4 max-w-md mx-auto">
-              <input
-                type="email"
-                placeholder="Enter your email"
-                className="flex-1 px-4 py-3 rounded-full text-gray-900 placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-white"
-                required
-              />
-              <motion.button
-                whileHover={{ scale: 1.05 }}
-                whileTap={{ scale: 0.95 }}
-                type="submit"
-                className="px-6 py-3 bg-white text-amber-600 font-semibold rounded-full hover:bg-gray-100 transition-colors duration-300"
-              >
-                Subscribe
-              </motion.button>
-            </form>
-          </div>
-        </motion.div>
-
-        {/* Social Links */}
-        <motion.div
-          initial={{ opacity: 0, y: 20 }}
-          whileInView={{ opacity: 1, y: 0 }}
-          transition={{ duration: 0.6 }}
-          viewport={{ once: true }}
-          className="text-center mb-8"
-        >
-          <h3 className="text-lg font-semibold mb-4">Follow Our Journey</h3>
-          <div className="flex justify-center space-x-4">
-            {socialLinks.map((social) => (
-              <motion.a
-                key={social.name}
-                href={social.href}
-                target="_blank"
-                rel="noopener noreferrer"
-                whileHover={{ scale: 1.1 }}
-                whileTap={{ scale: 0.9 }}
-                className={`w-12 h-12 bg-gray-800 rounded-full flex items-center justify-center text-white transition-all duration-300 ${social.color}`}
-              >
-                <social.icon className="w-5 h-5" />
-              </motion.a>
-            ))}
-          </div>
-        </motion.div>
-      </div>
-
-      {/* Bottom Bar */}
-      <div className="border-t border-gray-800">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-6">
-          <div className="flex flex-col md:flex-row justify-between items-center space-y-4 md:space-y-0">
-            <div className="text-gray-400 text-sm">
-              © {currentYear} Shankarmala. All rights reserved.
+        {/* Social Links and Copyright with Luxury Design */}
+        <div className="pt-8 sm:pt-12 border-t border-gray-800">
+          <div className="flex flex-col sm:flex-row justify-between items-center">
+            <div className="flex space-x-4 mb-6 sm:mb-0">
+              {socialLinks.map((social) => {
+                const Icon = social.icon;
+                return (
+                  <a
+                    key={social.name}
+                    href={social.href}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className={`w-10 h-10 rounded-full bg-gradient-to-r from-luxury-gold to-luxury-amber flex items-center justify-center text-white hover:text-white transition-all duration-200 shadow-lg ${social.color}`}
+                    aria-label={social.name}
+                  >
+                    <Icon className="w-5 h-5" />
+                  </a>
+                );
+              })}
             </div>
-            <div className="flex flex-wrap justify-center gap-6 text-sm">
-              <Link
-                href="/privacy"
-                className="text-gray-400 hover:text-amber-400 transition-colors duration-300"
-              >
-                Privacy Policy
-              </Link>
-              <Link
-                href="/terms"
-                className="text-gray-400 hover:text-amber-400 transition-colors duration-300"
-              >
-                Terms of Service
-              </Link>
-              <Link
-                href="/cookies"
-                className="text-gray-400 hover:text-amber-400 transition-colors duration-300"
-              >
-                Cookie Policy
-              </Link>
-              <Link
-                href="/accessibility"
-                className="text-gray-400 hover:text-amber-400 transition-colors duration-300"
-              >
-                Accessibility
-              </Link>
+            <div className="text-center sm:text-right">
+              <p className="text-gray-400 text-sm">
+                © {currentYear} Shankarmala. All rights reserved.
+              </p>
+              <div className="flex flex-wrap justify-center sm:justify-end gap-4 mt-2 text-xs text-gray-500">
+                <Link href="/privacy" className="hover:text-luxury-gold transition-colors hover:underline">
+                  Privacy Policy
+                </Link>
+                <Link href="/terms" className="hover:text-luxury-gold transition-colors hover:underline">
+                  Terms of Service
+                </Link>
+                <Link href="/accessibility" className="hover:text-luxury-gold transition-colors hover:underline">
+                  Accessibility
+                </Link>
+              </div>
             </div>
           </div>
         </div>

@@ -1,4 +1,5 @@
 import React from 'react';
+import LuxuryCard from './ui/LuxuryCard';
 
 interface OrderTrackingProps {
   status: string;
@@ -91,11 +92,11 @@ const OrderTracking: React.FC<OrderTrackingProps> = ({
   const statusInfo = getStatusInfo(status);
 
   return (
-    <div className="bg-white rounded-xl shadow-lg border border-gray-200 p-6 mb-6">
+    <LuxuryCard className="bg-white border border-gray-200 mb-6" padding="lg" rounded="xl" shadow="lg">
       <div className="flex items-center justify-between mb-4">
-        <h3 className="text-xl font-bold text-gray-900">Order Tracking</h3>
+        <h3 className="text-xl font-bold text-gray-900 luxury-font-serif">Order Tracking</h3>
         <span
-          className={`px-3 py-1 rounded-full text-sm font-semibold ${statusInfo.bgColor} ${statusInfo.color}`}
+          className={`px-3 py-1 rounded-full text-sm font-semibold ${statusInfo.bgColor} ${statusInfo.color} luxury-font-sans`}
         >
           {statusInfo.title}
         </span>
@@ -124,7 +125,7 @@ const OrderTracking: React.FC<OrderTrackingProps> = ({
                     : isCancelled && step.key === 'cancelled'
                       ? 'text-red-600'
                       : 'text-gray-400'
-                }`}
+                } luxury-font-sans`}
               >
                 {step.label}
               </div>
@@ -152,8 +153,8 @@ const OrderTracking: React.FC<OrderTrackingProps> = ({
         <div className="flex items-start gap-3">
           <span className="text-2xl">{statusInfo.icon}</span>
           <div>
-            <h4 className={`font-semibold ${statusInfo.color}`}>{statusInfo.title}</h4>
-            <p className="text-gray-700 text-sm mt-1">{statusInfo.description}</p>
+            <h4 className={`font-semibold ${statusInfo.color} luxury-font-serif`}>{statusInfo.title}</h4>
+            <p className="text-gray-700 text-sm mt-1 luxury-font-sans">{statusInfo.description}</p>
           </div>
         </div>
       </div>
@@ -161,17 +162,17 @@ const OrderTracking: React.FC<OrderTrackingProps> = ({
       {/* Order Details */}
       <div className="grid grid-cols-1 md:grid-cols-2 gap-4 text-sm">
         <div>
-          <h5 className="font-semibold text-gray-900 mb-2">Order Information</h5>
+          <h5 className="font-semibold text-gray-900 mb-2 luxury-font-serif">Order Information</h5>
           <div className="space-y-1 text-gray-600">
-            <p>
+            <p className="luxury-font-sans">
               <span className="font-medium">Order ID:</span> #{orderId}
             </p>
-            <p>
+            <p className="luxury-font-sans">
               <span className="font-medium">Order Date:</span>{' '}
               {new Date(createdAt).toLocaleDateString()}
             </p>
             {estimatedDelivery && (
-              <p>
+              <p className="luxury-font-sans">
                 <span className="font-medium">Estimated Delivery:</span>{' '}
                 {new Date(estimatedDelivery).toLocaleDateString()}
               </p>
@@ -181,19 +182,19 @@ const OrderTracking: React.FC<OrderTrackingProps> = ({
 
         {trackingNumber && courierName && (
           <div>
-            <h5 className="font-semibold text-gray-900 mb-2">Shipping Information</h5>
+            <h5 className="font-semibold text-gray-900 mb-2 luxury-font-serif">Shipping Information</h5>
             <div className="space-y-1 text-gray-600">
-              <p>
+              <p className="luxury-font-sans">
                 <span className="font-medium">Courier:</span> {courierName}
               </p>
-              <p>
+              <p className="luxury-font-sans">
                 <span className="font-medium">Tracking Number:</span> {trackingNumber}
               </p>
               <a
                 href={`https://tracking.com/${trackingNumber}`}
                 target="_blank"
                 rel="noopener noreferrer"
-                className="text-blue-600 hover:text-blue-800 underline text-xs"
+                className="text-blue-600 hover:text-blue-800 underline text-xs luxury-font-sans"
               >
                 Track Package →
               </a>
@@ -205,7 +206,7 @@ const OrderTracking: React.FC<OrderTrackingProps> = ({
       {/* Additional Information */}
       {status === 'shipped' && (
         <div className="mt-4 p-3 bg-blue-50 border border-blue-200 rounded-lg">
-          <p className="text-blue-800 text-sm">
+          <p className="text-blue-800 text-sm luxury-font-sans">
             📦 Your package is on its way! You&apos;ll receive updates as it moves through our delivery
             network.
           </p>
@@ -214,7 +215,7 @@ const OrderTracking: React.FC<OrderTrackingProps> = ({
 
       {status === 'delivered' && (
         <div className="mt-4 p-3 bg-green-50 border border-green-200 rounded-lg">
-          <p className="text-green-800 text-sm">
+          <p className="text-green-800 text-sm luxury-font-sans">
             ✅ Your order has been delivered! Please check your package and let us know if you have
             any questions.
           </p>
@@ -223,13 +224,13 @@ const OrderTracking: React.FC<OrderTrackingProps> = ({
 
       {status === 'cancelled' && (
         <div className="mt-4 p-3 bg-red-50 border border-red-200 rounded-lg">
-          <p className="text-red-800 text-sm">
+          <p className="text-red-800 text-sm luxury-font-sans">
             ❌ Your order has been cancelled. If you have any questions, please contact our support
             team.
           </p>
         </div>
       )}
-    </div>
+    </LuxuryCard>
   );
 };
 

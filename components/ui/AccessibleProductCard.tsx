@@ -2,6 +2,8 @@ import React, { useState } from 'react';
 import { Star, Heart, Eye } from 'lucide-react';
 import AccessibleButton from './AccessibleButton';
 import { useAccessibility } from './AccessibilityProvider';
+import Image from 'next/image';
+import LuxuryCard from './LuxuryCard';
 
 interface AccessibleProductCardProps {
   product: {
@@ -68,8 +70,13 @@ const AccessibleProductCard: React.FC<AccessibleProductCardProps> = ({
   };
 
   return (
-    <article
+    <LuxuryCard
       className={`bg-white rounded-2xl shadow-lg overflow-hidden transition-all duration-500 ease-out hover:shadow-2xl group cursor-pointer animate-fade-in-scale hover:scale-[1.02] hover:-translate-y-1 ${className}`}
+      padding="none"
+      rounded="2xl"
+      border={false}
+      shadow="lg"
+      hoverEffect={true}
       role="article"
       aria-labelledby={`product-${product.id}-name`}
       aria-describedby={`product-${product.id}-description`}
@@ -78,9 +85,11 @@ const AccessibleProductCard: React.FC<AccessibleProductCardProps> = ({
     >
       {/* Image Section */}
       <div className="relative aspect-square bg-gradient-to-br from-gray-200 to-gray-300 overflow-hidden">
-        <img
+        <Image
           src={product.image || '/images/placeholder-gemstone.jpg'}
           alt={`${product.name}, ${product.type}, ${product.certification} certified`}
+          fill
+          sizes="(max-width: 768px) 100vw, 33vw"
           className="w-full h-full object-cover transition-all duration-500 ease-out group-hover:scale-110 group-hover:brightness-110"
           loading="lazy"
           onError={(e) => {
@@ -196,7 +205,7 @@ const AccessibleProductCard: React.FC<AccessibleProductCardProps> = ({
           {product.inStock ? `${product.stockCount} available` : 'Out of stock'}
         </p>
       </div>
-    </article>
+    </LuxuryCard>
   );
 };
 

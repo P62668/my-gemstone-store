@@ -1,6 +1,8 @@
 import React, { useEffect, useState } from 'react';
 import { useRouter } from 'next/router';
 import AdminLayout from '../../components/AdminLayout';
+import getSessionOrRedirect from '../../utils/withServerAuth';
+import type { GetServerSideProps } from 'next';
 
 interface FAQ {
   id: number;
@@ -22,6 +24,7 @@ const AdminFAQsPage: React.FC = () => {
   const [faqs, setFAQs] = useState<FAQ[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
+  const [success, setSuccess] = useState('');
   const [form, setForm] = useState(emptyFAQ);
   const [editingId, setEditingId] = useState<number | null>(null);
   const [formLoading, setFormLoading] = useState(false);
@@ -66,6 +69,8 @@ const AdminFAQsPage: React.FC = () => {
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setFormLoading(true);
+    setError('');
+    setSuccess('');
     try {
       // For demo purposes, simulate success
       await new Promise((resolve) => setTimeout(resolve, 1000));
@@ -75,17 +80,18 @@ const AdminFAQsPage: React.FC = () => {
         setFAQs((prev) =>
           prev.map((faq) => (faq.id === editingId ? { ...form, id: editingId } : faq)),
         );
+        setSuccess('FAQ updated successfully!');
       } else {
         // Add new FAQ
         const newFAQ = { ...form, id: Date.now() };
         setFAQs((prev) => [...prev, newFAQ]);
+        setSuccess('FAQ added successfully!');
       }
 
       setForm(emptyFAQ);
       setEditingId(null);
-      alert(editingId ? 'FAQ updated successfully!' : 'FAQ added successfully!');
     } catch (err: any) {
-      alert(err.message);
+      setError(err.message || 'An error occurred.');
     } finally {
       setFormLoading(false);
     }
@@ -99,13 +105,15 @@ const AdminFAQsPage: React.FC = () => {
   const handleDelete = async (id: number) => {
     if (!window.confirm('Delete this FAQ?')) return;
     setFormLoading(true);
+    setError('');
+    setSuccess('');
     try {
       // For demo purposes, simulate success
       await new Promise((resolve) => setTimeout(resolve, 500));
       setFAQs((prev) => prev.filter((faq) => faq.id !== id));
-      alert('FAQ deleted successfully!');
+      setSuccess('FAQ deleted successfully!');
     } catch (err: any) {
-      alert(err.message);
+      setError(err.message || 'An error occurred.');
     } finally {
       setFormLoading(false);
     }
@@ -134,9 +142,9 @@ const AdminFAQsPage: React.FC = () => {
           </button>
         </div>
 
-        {error && (
-          <div className="bg-red-50 border border-red-200 rounded-xl p-4 mb-6">
-            <div className="text-red-800">{error}</div>
+        {(error || success) && (
+          <div className={`rounded-xl p-4 mb-6 font-semibold text-center shadow border ${error ? 'bg-red-100 border-red-300 text-red-800' : 'bg-green-100 border-green-300 text-green-800'}`}>
+            {error || success}
           </div>
         )}
 
@@ -269,3 +277,9 @@ const AdminFAQsPage: React.FC = () => {
 };
 
 export default AdminFAQsPage;
+
+export const getServerSideProps: GetServerSideProps = async (ctx) => {
+  const res = await getSessionOrRedirect(ctx, { requireAdmin: true });
+  if ('redirect' in res) return res;
+  return { props: {} };
+};

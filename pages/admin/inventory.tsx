@@ -2,6 +2,8 @@ import React, { useState, useEffect } from 'react';
 import AdminLayout from '../../components/AdminLayout';
 import { motion } from 'framer-motion';
 import toast from 'react-hot-toast';
+import getSessionOrRedirect from '../../utils/withServerAuth';
+import type { GetServerSideProps } from 'next';
 
 interface InventoryItem {
   id: number;
@@ -27,6 +29,7 @@ const InventoryPage: React.FC = () => {
   const [inventory, setInventory] = useState<InventoryItem[]>([]);
   const [stats, setStats] = useState<InventoryStats | null>(null);
   const [loading, setLoading] = useState(true);
+  const [success, setSuccess] = useState('');
   const [filter, setFilter] = useState<'all' | 'lowStock' | 'outOfStock'>('all');
   const [editingItem, setEditingItem] = useState<number | null>(null);
   const [editForm, setEditForm] = useState({
@@ -78,13 +81,14 @@ const InventoryPage: React.FC = () => {
       });
 
       if (res.ok) {
-        toast.success('Inventory updated successfully');
+        setSuccess('Inventory updated successfully!');
         setEditingItem(null);
         fetchInventory();
       } else {
         throw new Error('Failed to update');
       }
     } catch (error) {
+      setSuccess('');
       toast.error('Failed to update inventory');
     }
   };
@@ -92,6 +96,7 @@ const InventoryPage: React.FC = () => {
   const handleBulkUpdate = async (action: 'add' | 'subtract' | 'set', quantity: number) => {
     const selectedItems = inventory.filter((item) => item.stockCount > 0);
     if (selectedItems.length === 0) {
+      setSuccess('');
       toast.error('No items selected for bulk update');
       return;
     }
@@ -108,12 +113,13 @@ const InventoryPage: React.FC = () => {
       });
 
       if (res.ok) {
-        toast.success('Bulk update completed');
+        setSuccess('Bulk update completed!');
         fetchInventory();
       } else {
         throw new Error('Failed to update');
       }
     } catch (error) {
+      setSuccess('');
       toast.error('Failed to perform bulk update');
     }
   };
@@ -131,7 +137,20 @@ const InventoryPage: React.FC = () => {
 
   return (
     <AdminLayout title="Inventory Management">
+      {inventory.length === 0 && !loading && (
+        <div className="max-w-2xl w-full mx-auto mb-6">
+          <div className="bg-red-100 border border-red-300 text-red-800 px-6 py-6 rounded-xl text-center font-semibold shadow">
+            <div className="text-2xl font-bold text-red-700 mb-2">Error Loading Inventory</div>
+            <div className="text-red-800 mb-4">Failed to fetch inventory. Please try again later.</div>
+          </div>
+        </div>
+      )}
       <div className="max-w-7xl mx-auto px-4 py-8">
+        {success && (
+          <div className="rounded-xl p-4 mb-6 font-semibold text-center shadow border bg-green-100 border-green-300 text-green-800">
+            {success}
+          </div>
+        )}
         {/* Header */}
         <div className="mb-8">
           <h1 className="text-3xl font-bold text-amber-900 mb-2">Inventory Management</h1>
@@ -351,3 +370,9 @@ const InventoryPage: React.FC = () => {
 };
 
 export default InventoryPage;
+
+export const getServerSideProps: GetServerSideProps = async (ctx) => {
+  const res = await getSessionOrRedirect(ctx, { requireAdmin: true });
+  if ('redirect' in res) return res;
+  return { props: {} };
+};

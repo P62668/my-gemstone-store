@@ -27,6 +27,7 @@ async function handler(req: NextApiRequest, res: NextApiResponse) {
             link,
             order: order || 0,
             active: active !== undefined ? active : true,
+            pageId: 1, // Assuming homepage (pageId = 1)
           },
         });
         res.status(201).json(banner);

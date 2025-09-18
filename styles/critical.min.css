@@ -1,0 +1,108 @@
+:root {
+  --luxury-gold-light: #f5d042;
+  --luxury-gold: #d4af37;
+  --luxury-gold-dark: #b8860b;
+  --luxury-gold-darker: #8b6914;
+  --luxury-amber: #f59e0b;
+  --luxury-amber-dark: #d97706;
+  --luxury-bg-gradient: linear-gradient(135deg, #fff9e6 0%, #fff5d9 100%);
+  --luxury-bg-cream: #fff9e6;
+  --luxury-bg-ivory: #fffaee;
+  --luxury-text-primary: #2d2d2d;
+  --luxury-text-secondary: #5a5a5a;
+  --luxury-text-light: #ffffff;
+  --luxury-border-gold: 1px solid #d4af3740;
+  --luxury-shadow-gold: 0 10px 30px rgba(212, 175, 55, 0.15);
+  --luxury-transition-medium: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+.luxury-font-serif {
+  font-family: 'Playfair Display', 'Georgia', serif;
+}
+
+.luxury-font-sans {
+  font-family: 'Montserrat', 'Helvetica Neue', sans-serif;
+}
+
+.luxury-button-primary {
+  background: linear-gradient(135deg, var(--luxury-gold) 0%, var(--luxury-gold-dark) 100%);
+  color: var(--luxury-text-light);
+  border: none;
+  border-radius: 50px;
+  padding: 12px 32px;
+  font-weight: 600;
+  font-size: 1rem;
+  transition: var(--luxury-transition-medium);
+  box-shadow: var(--luxury-shadow-gold);
+  position: relative;
+  overflow: hidden;
+}
+
+.luxury-button-secondary {
+  background: transparent;
+  color: var(--luxury-gold);
+  border: 2px solid var(--luxury-gold);
+  border-radius: 50px;
+  padding: 12px 32px;
+  font-weight: 600;
+  font-size: 1rem;
+  transition: var(--luxury-transition-medium);
+  position: relative;
+  overflow: hidden;
+}
+
+.luxury-card {
+  background: var(--luxury-bg-ivory);
+  border-radius: 24px;
+  border: var(--luxury-border-gold);
+  box-shadow: var(--luxury-shadow-gold);
+  transition: var(--luxury-transition-medium);
+  position: relative;
+  overflow: hidden;
+}
+
+.luxury-section-header {
+  position: relative;
+  text-align: center;
+  margin-bottom: 3rem;
+}
+
+.luxury-section-header h2 {
+  font-family: 'Playfair Display', serif;
+  font-size: 2.5rem;
+  font-weight: 700;
+  color: var(--luxury-text-primary);
+  margin-bottom: 1rem;
+  position: relative;
+  display: inline-block;
+}
+
+@keyframes luxury-fade-in {
+  from {
+    opacity: 0;
+    transform: translateY(20px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+.luxury-fade-in {
+  animation: luxury-fade-in 0.8s cubic-bezier(0.4, 0, 0.2, 1) both;
+}
+
+@keyframes fadein {
+  from {
+    opacity: 0;
+    transform: translateY(24px);
+  }
+  to {
+    opacity: 1;
+    transform: none;
+  }
+}
+
+.animate-fadein {
+  animation: fadein 0.8s cubic-bezier(0.4, 0, 0.2, 1) both;
+}

@@ -1,5 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import AdminLayout from '../../components/AdminLayout';
+import getSessionOrRedirect from '../../utils/withServerAuth';
+import type { GetServerSideProps } from 'next';
 
 interface ThemeSettings {
   colors: {
@@ -78,6 +80,8 @@ const ThemeAdmin: React.FC = () => {
 
   const [activeTab, setActiveTab] = useState('colors');
   const [saving, setSaving] = useState(false);
+  const [error, setError] = useState('');
+  const [success, setSuccess] = useState('');
 
   const handleColorChange = (colorKey: keyof ThemeSettings['colors'], value: string) => {
     setTheme((prev) => ({
@@ -144,16 +148,19 @@ const ThemeAdmin: React.FC = () => {
 
   const handleSave = async () => {
     setSaving(true);
+    setError('');
+    setSuccess('');
     try {
-      await fetch('/api/admin/theme', {
+      const res = await fetch('/api/admin/theme', {
         method: 'PUT',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(theme),
       });
-      alert('Theme settings updated successfully!');
-    } catch (error) {
-      console.error('Failed to save theme:', error);
-      alert('Failed to save theme settings. Please try again.');
+      if (!res.ok) throw new Error('Failed to save theme settings. Please try again.');
+      setSuccess('Theme settings saved successfully!');
+    } catch (err: any) {
+      if (process.env.NODE_ENV !== 'production') console.error('Failed to save theme:', err);
+      setError(err.message || 'Failed to save theme settings. Please try again.');
     } finally {
       setSaving(false);
     }
@@ -250,6 +257,13 @@ const ThemeAdmin: React.FC = () => {
           <h1 className="text-4xl font-bold text-amber-900 mb-4">Theme Settings</h1>
           <p className="text-lg text-gray-600">Customize the visual appearance of your store</p>
         </div>
+
+
+        {(error || success) && (
+          <div className={`rounded-xl p-4 mb-6 font-semibold text-center shadow border ${error ? 'bg-red-100 border-red-300 text-red-800' : 'bg-green-100 border-green-300 text-green-800'}`}>
+            {error || success}
+          </div>
+        )}
 
         {/* Tabs */}
         <div className="mb-8">
@@ -564,3 +578,9 @@ const ThemeAdmin: React.FC = () => {
 };
 
 export default ThemeAdmin;
+
+export const getServerSideProps: GetServerSideProps = async (ctx) => {
+  const res = await getSessionOrRedirect(ctx, { requireAdmin: true });
+  if ('redirect' in res) return res;
+  return { props: {} };
+};

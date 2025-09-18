@@ -1,12 +1,13 @@
 import { NextApiRequest, NextApiResponse } from 'next';
 import bcrypt from 'bcryptjs';
-import { enforceRateLimit } from '../../../utils/rateLimit';
+import { rateLimit } from '../../../utils/rateLimit';
 
 import { prisma } from '../../../lib/prisma';
 
 const handler = async (req: NextApiRequest, res: NextApiResponse) => {
   if (req.method === 'POST') {
-    if (!enforceRateLimit(req, res, { max: 5, windowMs: 60_000, key: 'signup_legacy' })) return;
+  const rl = await rateLimit({ max: 5, windowMs: 60_000, key: 'signup_legacy' })(req, res);
+  if (!rl.success) return res.status(429).json({ error: 'Too many requests' });
     const { name, email, password } = req.body;
     if (!name || !email || !password) {
       return res.status(400).json({ error: 'Name, email, and password are required.' });

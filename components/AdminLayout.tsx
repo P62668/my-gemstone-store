@@ -1,463 +1,363 @@
 import React, { useState, useEffect } from 'react';
-import Head from 'next/head';
-import Link from 'next/link';
 import { useRouter } from 'next/router';
-import { motion, AnimatePresence } from 'framer-motion';
+import Link from 'next/link';
+import Head from 'next/head';
+import { 
+  LayoutDashboard, 
+  Gem, 
+  ShoppingCart, 
+  Users, 
+  Tags, 
+  FileText, 
+  Image, 
+  Settings, 
+  LogOut,
+  BarChart3,
+  Package,
+  Truck,
+  Ticket,
+  UserCircle,
+  Navigation,
+  Palette,
+  Shield,
+  File,
+  BookOpen,
+  Star,
+  ShieldCheck,
+  Home,
+  Menu,
+  X,
+  Search,
+  ChevronDown,
+  Zap
+} from 'lucide-react';
+import { toast } from 'react-hot-toast';
 
 interface AdminLayoutProps {
   children: React.ReactNode;
   title?: string;
   description?: string;
-  showBackButton?: boolean;
-  backUrl?: string;
-  pageIcon?: string;
 }
 
-const AdminLayout: React.FC<AdminLayoutProps> = ({
-  children,
-  title = 'Admin Dashboard - Shankarmala',
-  description = 'Admin panel for Shankarmala Gemstones',
-  showBackButton = false,
-  backUrl = '/admin',
-  pageIcon = '🏛️',
+const AdminLayout: React.FC<AdminLayoutProps> = ({ 
+  children, 
+  title = 'Admin Panel - Shankarmala', 
+  description = 'Admin panel for Shankarmala Gemstones' 
 }) => {
-  const [currentYear, setCurrentYear] = useState('');
-  const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
-  const [dropdownOpen, setDropdownOpen] = useState<string | null>(null);
-  const [isScrolled, setIsScrolled] = useState(false);
   const router = useRouter();
+  const [sidebarOpen, setSidebarOpen] = useState(false);
+  const [user, setUser] = useState<{name?: string, email?: string, role?: string} | null>(null);
+  const [searchQuery, setSearchQuery] = useState('');
+  const [isSearchFocused, setIsSearchFocused] = useState(false);
 
   useEffect(() => {
-    setCurrentYear(new Date().getFullYear().toString());
-    const handleScroll = () => setIsScrolled(window.scrollY > 10);
-    window.addEventListener('scroll', handleScroll, { passive: true });
-    return () => window.removeEventListener('scroll', handleScroll);
+    // Get user data from localStorage or session
+    const userData = localStorage.getItem('adminUser');
+    if (userData) {
+      try {
+        setUser(JSON.parse(userData));
+      } catch (e) {
+        console.error('Failed to parse user data', e);
+      }
+    }
   }, []);
 
   const handleLogout = async () => {
     try {
-      await fetch('/api/admin/logout', { method: 'POST' });
+      const response = await fetch('/api/admin/logout', {
+        method: 'POST',
+        credentials: 'include',
+      });
+
+      if (response.ok) {
+        localStorage.removeItem('adminUser');
+        toast.success('Logged out successfully');
+        router.push('/admin/login');
+      } else {
+        throw new Error('Logout failed');
+      }
     } catch (error) {
       console.error('Logout error:', error);
+      toast.error('Failed to logout');
     }
-    router.push('/admin/login');
   };
 
-  const toggleDropdown = (menu: string) => {
-    setDropdownOpen(dropdownOpen === menu ? null : menu);
-  };
+  const navItems = [
+    { 
+      title: 'Dashboard', 
+      href: '/admin', 
+      icon: LayoutDashboard,
+      allowedRoles: ['admin', 'manager'],
+      description: 'Overview of your store performance'
+    },
+    { 
+      title: 'Products', 
+      href: '/admin/gemstones', 
+      icon: Gem,
+      allowedRoles: ['admin', 'manager'],
+      description: 'Manage gemstones and inventory'
+    },
+    { 
+      title: 'Categories', 
+      href: '/admin/categories', 
+      icon: Tags,
+      allowedRoles: ['admin', 'manager'],
+      description: 'Organize product categories'
+    },
+    { 
+      title: 'Orders', 
+      href: '/admin/orders', 
+      icon: ShoppingCart,
+      allowedRoles: ['admin', 'manager'],
+      description: 'View and manage customer orders'
+    },
+    { 
+      title: 'Customers', 
+      href: '/admin/users', 
+      icon: Users,
+      allowedRoles: ['admin', 'manager'],
+      description: 'Manage customer accounts and data'
+    },
+    { 
+      title: 'Inventory', 
+      href: '/admin/inventory', 
+      icon: Package,
+      allowedRoles: ['admin', 'manager'],
+      description: 'Track stock levels and movements'
+    },
+    { 
+      title: 'Shipping', 
+      href: '/admin/shipping', 
+      icon: Truck,
+      allowedRoles: ['admin', 'manager'],
+      description: 'Manage shipping methods and rates'
+    },
+    { 
+      title: 'Coupons', 
+      href: '/admin/coupons', 
+      icon: Ticket,
+      allowedRoles: ['admin', 'manager'],
+      description: 'Create and manage discount codes'
+    },
+    { 
+      title: 'Content', 
+      href: '#', 
+      icon: FileText,
+      allowedRoles: ['admin'],
+      description: 'Manage website content',
+      subItems: [
+        { title: 'Blogs', href: '/admin/blogs', icon: BookOpen, description: 'Manage blog posts' },
+        { title: 'FAQs', href: '/admin/faqs', icon: File, description: 'Frequently asked questions' },
+        { title: 'Testimonials', href: '/admin/testimonials', icon: Star, description: 'Customer testimonials' },
+        { title: 'Press', href: '/admin/press', icon: File, description: 'Press releases and media' },
+        { title: 'Policies', href: '/admin/policies', icon: ShieldCheck, description: 'Legal policies and terms' },
+      ]
+    },
+    { 
+      title: 'Marketing', 
+      href: '#', 
+      icon: BarChart3,
+      allowedRoles: ['admin'],
+      description: 'Marketing and analytics tools',
+      subItems: [
+        { title: 'SEO', href: '/admin/seo', icon: FileText, description: 'Search engine optimization' },
+        { title: 'Analytics', href: '/admin/analytics', icon: BarChart3, description: 'Website analytics and reports' },
+        { title: 'Reports', href: '/admin/reports', icon: File, description: 'Business performance reports' },
+        { title: 'Performance', href: '/admin/performance', icon: Zap, description: 'Performance monitoring and optimization' },
+      ]
+    },
+    { 
+      title: 'Appearance', 
+      href: '#', 
+      icon: Palette,
+      allowedRoles: ['admin'],
+      description: 'Customize website appearance',
+      subItems: [
+        { title: 'Homepage', href: '/admin/homepage', icon: Home, description: 'Manage homepage content' },
+        { title: 'Banners', href: '/admin/banners', icon: Image, description: 'Manage promotional banners' },
+        { title: 'Navigation', href: '/admin/navigation', icon: Navigation, description: 'Website navigation menus' },
+        { title: 'Theme', href: '/admin/theme', icon: Palette, description: 'Theme and styling options' },
+      ]
+    },
+    { 
+      title: 'Settings', 
+      href: '#', 
+      icon: Settings,
+      allowedRoles: ['admin'],
+      description: 'System configuration and settings',
+      subItems: [
+        { title: 'Site Settings', href: '/admin/sitesettings', icon: Settings, description: 'General site configuration' },
+        { title: 'Security', href: '/admin/security', icon: Shield, description: 'Security settings and controls' },
+        { title: 'Loyalty', href: '/admin/loyalty', icon: UserCircle, description: 'Loyalty program management' },
+      ]
+    },
+  ];
 
-  const adminSections = {
-    'Content Management': [
-      {
-        href: '/admin/gemstones',
-        label: 'Gemstones',
-        icon: '💎',
-        description: 'Manage gemstone inventory',
-      },
-      {
-        href: '/admin/categories',
-        label: 'Categories',
-        icon: '📂',
-        description: 'Organize gemstone categories',
-      },
-      {
-        href: '/admin/homepage',
-        label: 'Homepage',
-        icon: '🏠',
-        description: 'Customize homepage content',
-      },
-      {
-        href: '/admin/banners',
-        label: 'Banners',
-        icon: '🖼️',
-        description: 'Manage promotional banners',
-      },
-      {
-        href: '/admin/testimonials',
-        label: 'Testimonials',
-        icon: '💬',
-        description: 'Customer testimonials',
-      },
-      { href: '/admin/faqs', label: 'FAQs', icon: '❓', description: 'Frequently asked questions' },
-      { href: '/admin/press', label: 'Press', icon: '📰', description: 'Press releases & media' },
-    ],
-    'E-commerce': [
-      { href: '/admin/orders', label: 'Orders', icon: '📦', description: 'Manage customer orders' },
-      { href: '/admin/users', label: 'Users', icon: '👥', description: 'Customer management' },
-      { href: '/admin/inventory', label: 'Inventory', icon: '📊', description: 'Stock management' },
-    ],
-    'Site Management': [
-      {
-        href: '/admin/seo',
-        label: 'SEO Settings',
-        icon: '🔍',
-        description: 'Search engine optimization',
-      },
-      {
-        href: '/admin/sitesettings',
-        label: 'Site Settings',
-        icon: '⚙️',
-        description: 'General site configuration',
-      },
-      {
-        href: '/admin/theme',
-        label: 'Theme Customization',
-        icon: '🎨',
-        description: 'Customize site appearance',
-      },
-      {
-        href: '/admin/navigation',
-        label: 'Navigation',
-        icon: '🧭',
-        description: 'Menu structure management',
-      },
-      {
-        href: '/admin/analytics',
-        label: 'Analytics',
-        icon: '📊',
-        description: 'Site performance metrics',
-      },
-    ],
-  };
+  const userRole = user?.role || 'admin';
 
-  const isActivePage = (href: string) => {
-    if (href === '/admin') {
-      return router.pathname === '/admin' && !router.query.id;
+  const filteredNavItems = navItems.filter(item => 
+    item.allowedRoles.includes(userRole)
+  );
+
+  // Quick search functionality for admin panel
+  const handleSearch = (e: React.FormEvent) => {
+    e.preventDefault();
+    if (searchQuery.trim()) {
+      // Redirect to search results page
+      router.push(`/admin/search?q=${encodeURIComponent(searchQuery.trim())}`);
+      setSearchQuery('');
     }
-    return router.pathname === href;
   };
 
   return (
-    <>
+    <div className="min-h-screen bg-gray-50 flex">
       <Head>
         <title>{title}</title>
         <meta name="description" content={description} />
-        <meta name="viewport" content="width=device-width, initial-scale=1" />
-        <link rel="icon" href="/favicon.ico" />
       </Head>
 
-      <div
-        className="min-h-screen bg-gradient-to-br from-amber-50 via-yellow-50 to-orange-50"
-        role="main"
-        aria-label="Admin dashboard"
+      {/* Mobile sidebar */}
+      {sidebarOpen && (
+        <div 
+          className="fixed inset-0 z-40 bg-black bg-opacity-50 lg:hidden luxury-modal-overlay"
+          onClick={() => setSidebarOpen(false)}
+        ></div>
+      )}
+
+      {/* Sidebar */}
+      <div 
+        className={`fixed inset-y-0 left-0 z-50 w-64 bg-white shadow-lg transform transition-transform duration-300 ease-in-out lg:translate-x-0 lg:static lg:inset-0 ${
+          sidebarOpen ? 'translate-x-0' : '-translate-x-full'
+        } luxury-modal-content`}
       >
-        {/* Admin Header */}
-        <motion.header
-          className={`sticky top-0 z-50 transition-all duration-300 ${
-            isScrolled
-              ? 'bg-white/95 backdrop-blur-xl shadow-2xl border-b border-amber-200'
-              : 'bg-white/90 backdrop-blur-lg shadow-lg border-b border-amber-200'
-          }`}
-          initial={{ y: -100 }}
-          animate={{ y: 0 }}
-          transition={{ duration: 0.5 }}
-        >
-          <div className="max-w-7xl mx-auto px-4 py-4">
-            <div className="flex justify-between items-center">
-              {/* Logo and Desktop Navigation */}
-              <div className="flex items-center space-x-6">
-                <Link
-                  href="/admin"
-                  className="text-2xl font-bold text-amber-900 hover:text-amber-700 transition flex items-center gap-2 group"
-                >
-                  <motion.span
-                    className="text-3xl"
-                    whileHover={{ rotate: 360 }}
-                    transition={{ duration: 0.6 }}
-                  >
-                    {pageIcon}
-                  </motion.span>
-                  <span className="hidden sm:inline font-serif">Shankarmala Admin</span>
-                </Link>
-
-                {/* Desktop Navigation */}
-                <nav className="hidden lg:flex space-x-1">
-                  {/* Dashboard */}
-                  <motion.div whileHover={{ scale: 1.05 }} whileTap={{ scale: 0.95 }}>
-                    <Link
-                      href="/admin"
-                      className={`px-4 py-2 rounded-xl font-medium transition-all duration-200 flex items-center gap-2 ${
-                        isActivePage('/admin')
-                          ? 'bg-gradient-to-r from-amber-500 to-orange-500 text-white shadow-lg'
-                          : 'text-amber-700 hover:text-amber-900 hover:bg-amber-50 hover:shadow-md'
-                      }`}
-                    >
-                      <span>📊</span>
-                      <span>Dashboard</span>
-                    </Link>
-                  </motion.div>
-
-                  {/* Dropdown Menus */}
-                  {Object.entries(adminSections).map(([sectionName, items]) => (
-                    <div key={sectionName} className="relative">
-                      <motion.button
-                        onClick={() => toggleDropdown(sectionName)}
-                        className={`px-4 py-2 rounded-xl font-medium transition-all duration-200 flex items-center gap-2 ${
-                          dropdownOpen === sectionName
-                            ? 'bg-gradient-to-r from-amber-500 to-orange-500 text-white shadow-lg'
-                            : 'text-amber-700 hover:text-amber-900 hover:bg-amber-50 hover:shadow-md'
-                        }`}
-                        aria-expanded={dropdownOpen === sectionName}
-                        aria-haspopup="true"
-                        whileHover={{ scale: 1.05 }}
-                        whileTap={{ scale: 0.95 }}
-                      >
-                        <span>{sectionName}</span>
-                        <motion.span
-                          className={`transition-transform ${dropdownOpen === sectionName ? 'rotate-180' : ''}`}
-                          animate={{ rotate: dropdownOpen === sectionName ? 180 : 0 }}
-                        >
-                          ▼
-                        </motion.span>
-                      </motion.button>
-
-                      <AnimatePresence>
-                        {dropdownOpen === sectionName && (
-                          <motion.div
-                            className="absolute top-full left-0 mt-2 w-72 bg-white rounded-2xl shadow-2xl border border-amber-200 py-3 z-50"
-                            initial={{ opacity: 0, y: -10, scale: 0.95 }}
-                            animate={{ opacity: 1, y: 0, scale: 1 }}
-                            exit={{ opacity: 0, y: -10, scale: 0.95 }}
-                            transition={{ duration: 0.2 }}
-                          >
-                            {items.map((item) => (
-                              <motion.div
-                                key={item.href}
-                                whileHover={{ x: 5 }}
-                                transition={{ duration: 0.2 }}
-                              >
-                                <Link
-                                  href={item.href}
-                                  className={`flex items-start gap-3 px-4 py-3 hover:bg-gradient-to-r hover:from-amber-50 hover:to-orange-50 transition-all duration-200 ${
-                                    isActivePage(item.href)
-                                      ? 'bg-gradient-to-r from-amber-100 to-orange-100 text-amber-900 border-r-4 border-amber-500'
-                                      : 'text-amber-700'
-                                  }`}
-                                  onClick={() => setDropdownOpen(null)}
-                                >
-                                  <span className="text-xl mt-0.5">{item.icon}</span>
-                                  <div className="flex-1">
-                                    <div className="font-semibold">{item.label}</div>
-                                    <div className="text-xs text-amber-600 mt-1">
-                                      {item.description}
-                                    </div>
-                                  </div>
-                                </Link>
-                              </motion.div>
-                            ))}
-                          </motion.div>
-                        )}
-                      </AnimatePresence>
+        <div className="flex items-center justify-between h-16 px-4 border-b luxury-border-gold">
+          <Link href="/admin" className="flex items-center space-x-2">
+            <Gem className="h-8 w-8 text-amber-600" />
+            <span className="text-xl font-bold text-amber-900 luxury-font-serif">Shankarmala</span>
+          </Link>
+          <button 
+            className="lg:hidden"
+            onClick={() => setSidebarOpen(false)}
+          >
+            <X className="h-6 w-6" />
+          </button>
+        </div>
+        
+        {/* Admin Search Bar */}
+        <div className="px-4 py-3 border-b">
+          <form onSubmit={handleSearch}>
+            <div className="relative">
+              <input
+                type="text"
+                value={searchQuery}
+                onChange={(e) => setSearchQuery(e.target.value)}
+                placeholder="Search admin..."
+                className="w-full pl-10 pr-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-amber-500 focus:border-transparent text-sm"
+                onFocus={() => setIsSearchFocused(true)}
+                onBlur={() => setIsSearchFocused(false)}
+              />
+              <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 w-4 h-4" />
+            </div>
+          </form>
+        </div>
+        
+        {/* Navigation Menu */}
+        <nav className="mt-2 px-2 overflow-y-auto h-[calc(100vh-8rem)]">
+          {filteredNavItems.map((item) => (
+            <div key={item.title}>
+              {item.subItems ? (
+                <div className="space-y-1">
+                  <div className={`flex items-center px-2 py-3 text-sm font-medium rounded-md hover:bg-gray-100 luxury-nav-link cursor-pointer ${
+                    router.pathname.startsWith(item.href === '#' ? '' : item.href) 
+                      ? 'bg-amber-100 text-amber-900' 
+                      : 'text-gray-600'
+                  }`}>
+                    <item.icon className="mr-3 h-5 w-5 text-gray-400" />
+                    <div className="flex-1">
+                      <div className="font-medium">{item.title}</div>
+                      <div className="text-xs text-gray-500">{item.description}</div>
                     </div>
-                  ))}
-                </nav>
-              </div>
-
-              {/* Right Side Actions */}
-              <div className="flex items-center space-x-4">
-                <motion.div whileHover={{ scale: 1.05 }} whileTap={{ scale: 0.95 }}>
-                  <Link
-                    href="/"
-                    className="hidden sm:flex items-center gap-2 text-amber-700 hover:text-amber-900 transition text-sm font-medium px-4 py-2 rounded-xl hover:bg-amber-50 hover:shadow-md"
-                  >
-                    <span>👁️</span>
-                    <span>View Site</span>
-                  </Link>
-                </motion.div>
-
-                <motion.button
-                  onClick={handleLogout}
-                  className="bg-gradient-to-r from-red-500 to-red-600 text-white px-4 py-2 rounded-xl font-medium hover:from-red-600 hover:to-red-700 transition-all duration-200 text-sm flex items-center gap-2 shadow-lg hover:shadow-xl"
-                  whileHover={{ scale: 1.05 }}
-                  whileTap={{ scale: 0.95 }}
-                >
-                  <span>🚪</span>
-                  <span className="hidden sm:inline">Logout</span>
-                </motion.button>
-
-                {/* Mobile Menu Button */}
-                <motion.button
-                  onClick={() => setMobileMenuOpen(!mobileMenuOpen)}
-                  className="lg:hidden p-2 rounded-xl text-amber-700 hover:bg-amber-50 hover:shadow-md"
-                  aria-label="Toggle mobile menu"
-                  whileHover={{ scale: 1.1 }}
-                  whileTap={{ scale: 0.9 }}
-                >
-                  <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path
-                      strokeLinecap="round"
-                      strokeLinejoin="round"
-                      strokeWidth={2}
-                      d="M4 6h16M4 12h16M4 18h16"
-                    />
-                  </svg>
-                </motion.button>
-              </div>
-            </div>
-
-            {/* Mobile Navigation */}
-            <AnimatePresence>
-              {mobileMenuOpen && (
-                <motion.div
-                  className="lg:hidden mt-4 pb-4 border-t border-amber-200"
-                  initial={{ opacity: 0, height: 0 }}
-                  animate={{ opacity: 1, height: 'auto' }}
-                  exit={{ opacity: 0, height: 0 }}
-                  transition={{ duration: 0.3 }}
-                >
-                  <nav className="space-y-2 pt-4">
-                    {/* Dashboard */}
-                    <motion.div whileHover={{ x: 5 }} whileTap={{ scale: 0.95 }}>
+                    <ChevronDown className="h-4 w-4 text-gray-400" />
+                  </div>
+                  <div className="ml-8 space-y-1">
+                    {item.subItems.map((subItem) => (
                       <Link
-                        href="/admin"
-                        className={`block px-4 py-3 rounded-xl font-medium transition-all duration-200 ${
-                          isActivePage('/admin')
-                            ? 'bg-gradient-to-r from-amber-500 to-orange-500 text-white shadow-lg'
-                            : 'text-amber-700 hover:text-amber-900 hover:bg-amber-50 hover:shadow-md'
+                        key={subItem.title}
+                        href={subItem.href}
+                        className={`flex items-center px-2 py-2 text-sm rounded-md luxury-nav-link ${
+                          router.pathname === subItem.href
+                            ? 'bg-amber-100 text-amber-900'
+                            : 'text-gray-600 hover:bg-gray-100'
                         }`}
-                        onClick={() => setMobileMenuOpen(false)}
                       >
-                        📊 Dashboard
+                        <subItem.icon className="mr-3 h-4 w-4 text-gray-400" />
+                        <div className="flex-1">
+                          <div className="font-medium">{subItem.title}</div>
+                          <div className="text-xs text-gray-500">{subItem.description}</div>
+                        </div>
                       </Link>
-                    </motion.div>
-
-                    {/* Mobile Dropdowns */}
-                    {Object.entries(adminSections).map(([sectionName, items]) => (
-                      <div key={sectionName}>
-                        <motion.button
-                          onClick={() => toggleDropdown(sectionName)}
-                          className={`w-full text-left px-4 py-3 rounded-xl font-medium transition-all duration-200 flex items-center justify-between ${
-                            dropdownOpen === sectionName
-                              ? 'bg-gradient-to-r from-amber-500 to-orange-500 text-white shadow-lg'
-                              : 'text-amber-700 hover:text-amber-900 hover:bg-amber-50 hover:shadow-md'
-                          }`}
-                          aria-expanded={dropdownOpen === sectionName}
-                          whileHover={{ x: 5 }}
-                          whileTap={{ scale: 0.95 }}
-                        >
-                          <span>{sectionName}</span>
-                          <motion.span
-                            className={`transition-transform ${dropdownOpen === sectionName ? 'rotate-180' : ''}`}
-                            animate={{ rotate: dropdownOpen === sectionName ? 180 : 0 }}
-                          >
-                            ▼
-                          </motion.span>
-                        </motion.button>
-
-                        <AnimatePresence mode="wait">
-                          {dropdownOpen === sectionName && (
-                            <motion.div
-                              className="ml-4 mt-2 space-y-1"
-                              initial={{ opacity: 0, height: 0 }}
-                              animate={{ opacity: 1, height: 'auto' }}
-                              exit={{ opacity: 0, height: 0 }}
-                              transition={{ duration: 0.2 }}
-                            >
-                              {items.map((item) => (
-                                <motion.div
-                                  key={item.href}
-                                  whileHover={{ x: 5 }}
-                                  whileTap={{ scale: 0.95 }}
-                                >
-                                  <Link
-                                    href={item.href}
-                                    className={`flex items-center gap-3 px-4 py-2 rounded-lg transition-all duration-200 ${
-                                      isActivePage(item.href)
-                                        ? 'bg-gradient-to-r from-amber-100 to-orange-100 text-amber-900 border-l-4 border-amber-500'
-                                        : 'text-amber-600 hover:text-amber-900 hover:bg-amber-50'
-                                    }`}
-                                    onClick={() => {
-                                      setMobileMenuOpen(false);
-                                      setDropdownOpen(null);
-                                    }}
-                                  >
-                                    <span className="text-lg">{item.icon}</span>
-                                    <div>
-                                      <div className="font-medium">{item.label}</div>
-                                      <div className="text-xs text-amber-600">
-                                        {item.description}
-                                      </div>
-                                    </div>
-                                  </Link>
-                                </motion.div>
-                              ))}
-                            </motion.div>
-                          )}
-                        </AnimatePresence>
-                      </div>
                     ))}
-
-                    {/* Mobile View Site Link */}
-                    <motion.div whileHover={{ x: 5 }} whileTap={{ scale: 0.95 }}>
-                      <Link
-                        href="/"
-                        className="block px-4 py-3 text-amber-700 hover:text-amber-900 transition-all duration-200 text-sm font-medium hover:bg-amber-50 hover:shadow-md rounded-xl"
-                        onClick={() => setMobileMenuOpen(false)}
-                      >
-                        👁️ View Site
-                      </Link>
-                    </motion.div>
-                  </nav>
-                </motion.div>
+                  </div>
+                </div>
+              ) : (
+                <Link
+                  href={item.href}
+                  className={`flex items-center px-2 py-3 text-sm font-medium rounded-md luxury-nav-link ${
+                    router.pathname === item.href
+                      ? 'bg-amber-100 text-amber-900'
+                      : 'text-gray-600 hover:bg-gray-100'
+                  }`}
+                >
+                  <item.icon className="mr-3 h-5 w-5 text-gray-400" />
+                  <div className="flex-1">
+                    <div className="font-medium">{item.title}</div>
+                    <div className="text-xs text-gray-500">{item.description}</div>
+                  </div>
+                </Link>
               )}
-            </AnimatePresence>
-          </div>
-        </motion.header>
-
-        <main className="pt-4">
-          {/* Page Header with Back Button */}
-          {showBackButton && (
-            <motion.div
-              className="max-w-7xl mx-auto px-4 mb-6"
-              initial={{ opacity: 0, y: -20 }}
-              animate={{ opacity: 1, y: 0 }}
-              transition={{ duration: 0.5 }}
-            >
-              <motion.button
-                onClick={() => router.push(backUrl)}
-                className="flex items-center gap-2 text-amber-700 hover:text-amber-900 transition-all duration-200 font-medium px-4 py-2 rounded-xl hover:bg-amber-50 hover:shadow-md"
-                whileHover={{ x: -5 }}
-                whileTap={{ scale: 0.95 }}
-              >
-                <span>←</span>
-                <span>Back to Dashboard</span>
-              </motion.button>
-            </motion.div>
-          )}
-
-          {children}
-        </main>
-
-        {/* Admin Footer */}
-        <motion.footer
-          className="bg-white/90 backdrop-blur-lg border-t border-amber-200 py-6 mt-12"
-          initial={{ opacity: 0 }}
-          animate={{ opacity: 1 }}
-          transition={{ duration: 0.5, delay: 0.2 }}
-        >
-          <div className="max-w-7xl mx-auto px-4">
-            <div className="text-center">
-              <p className="text-amber-700 text-sm">
-                © {currentYear} Shankarmala Gemstones Admin Panel. All rights reserved.
-              </p>
             </div>
-          </div>
-        </motion.footer>
+          ))}
+        </nav>
       </div>
 
-      {/* Click outside to close dropdowns */}
-      {dropdownOpen && (
-        <motion.div
-          className="fixed inset-0 z-40"
-          onClick={() => setDropdownOpen(null)}
-          aria-hidden="true"
-          initial={{ opacity: 0 }}
-          animate={{ opacity: 1 }}
-          exit={{ opacity: 0 }}
-        />
-      )}
-    </>
+      {/* Main content */}
+      <div className="flex-1 flex flex-col overflow-hidden">
+        {/* Header */}
+        <header className="bg-white shadow luxury-border-gold">
+          <div className="flex items-center justify-between h-16 px-4">
+            <button
+              className="lg:hidden"
+              onClick={() => setSidebarOpen(true)}
+            >
+              <Menu className="h-6 w-6" />
+            </button>
+            <div className="flex items-center space-x-4">
+              <div className="flex items-center space-x-2">
+                <UserCircle className="h-8 w-8 text-gray-400" />
+                <div>
+                  <p className="text-sm font-medium text-gray-900 luxury-font-serif">
+                    {user?.name || 'Admin User'}
+                  </p>
+                  <p className="text-xs text-gray-500 luxury-font-sans">{user?.email}</p>
+                </div>
+              </div>
+              <button
+                onClick={handleLogout}
+                className="flex items-center space-x-1 text-sm text-gray-600 hover:text-gray-900 luxury-nav-link luxury-font-sans"
+              >
+                <LogOut className="h-4 w-4" />
+                <span>Logout</span>
+              </button>
+            </div>
+          </div>
+        </header>
+
+        {/* Page content */}
+        <main className="flex-1 overflow-y-auto p-4 bg-gray-50">
+          {children}
+        </main>
+      </div>
+    </div>
   );
 };
 

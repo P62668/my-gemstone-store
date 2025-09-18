@@ -2,6 +2,7 @@ import { NextApiRequest, NextApiResponse } from 'next';
 import { prisma } from '../../../../lib/prisma';
 import { withAdminAuth } from '../../../../utils/authMiddleware';
 import { logger } from '../../../../utils/logger';
+import { invalidateCategoryCache } from '../../../../utils/cache';
 
 async function handler(req: NextApiRequest, res: NextApiResponse) {
   try {
@@ -29,6 +30,9 @@ async function handler(req: NextApiRequest, res: NextApiResponse) {
             active: active !== undefined ? active : true,
           },
         });
+        
+        // Invalidate category cache after update
+        invalidateCategoryCache();
 
         res.status(200).json(updatedCategory);
       } catch (error) {
@@ -38,6 +42,10 @@ async function handler(req: NextApiRequest, res: NextApiResponse) {
     } else if (req.method === 'DELETE') {
       try {
         await prisma.category.delete({ where: { id: categoryId } });
+        
+        // Invalidate category cache after delete
+        invalidateCategoryCache();
+        
         res.status(200).json({ success: true });
       } catch (error) {
         console.error('Error deleting category:', error);

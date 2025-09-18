@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import Head from 'next/head';
 import Link from 'next/link';
 import Layout from '../components/Layout';
@@ -64,48 +64,183 @@ const SignupPage: React.FC = () => {
     e.preventDefault();
     setError('');
     setSuccess('');
-    // Validate before submit
+    
+    // Enhanced validation with more detailed feedback
     const errors: { firstName?: string; lastName?: string; email?: string; password?: string; terms?: string } = {};
-    if (form.firstName.trim().length < 1) errors.firstName = 'Enter your first name.';
-    if (form.lastName.trim().length < 1) errors.lastName = 'Enter your last name.';
-    if (!/^\S+@\S+\.\S+$/.test(form.email)) errors.email = 'Enter a valid email.';
-    if (form.password.length < 6) errors.password = 'Password must be at least 6 characters.';
-    if (!agreed) errors.terms = 'You must agree to the terms and privacy policy.';
+    
+    // Name validation
+    if (form.firstName.trim().length < 1) {
+      errors.firstName = 'Enter your first name.';
+    } else if (form.firstName.trim().length > 50) {
+      errors.firstName = 'First name is too long (maximum 50 characters).';
+    }
+    
+    if (form.lastName.trim().length < 1) {
+      errors.lastName = 'Enter your last name.';
+    } else if (form.lastName.trim().length > 50) {
+      errors.lastName = 'Last name is too long (maximum 50 characters).';
+    }
+    
+    // Email validation with better pattern
+    if (!form.email) {
+      errors.email = 'Email is required.';
+    } else if (!/^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}$/.test(form.email)) {
+      errors.email = 'Please enter a valid email address.';
+    }
+    
+    // Password validation with strength feedback
+    if (!form.password) {
+      errors.password = 'Password is required.';
+    } else if (form.password.length < 6) {
+      errors.password = 'Password must be at least 6 characters.';
+    } else if (passwordStrength < 2) {
+      errors.password = 'Please use a stronger password with numbers or special characters.';
+    }
+    
+    // Terms agreement
+    if (!agreed) {
+      errors.terms = 'You must agree to the terms and privacy policy.';
+    }
+    
     setFormErrors(errors);
     if (Object.keys(errors).length > 0) return;
+    
     setLoading(true);
     try {
+      // If reCAPTCHA site key is configured, request a token before submit
+      let recaptchaToken: string | undefined;
+      const siteKey = process.env.NEXT_PUBLIC_RECAPTCHA_SITE_KEY;
+      if (siteKey && (window as any).grecaptcha && typeof (window as any).grecaptcha.execute === 'function') {
+        try {
+          recaptchaToken = await (window as any).grecaptcha.execute(siteKey, { action: 'signup' });
+        } catch (recErr) {
+          // fail-open: continue without token but log client-side
+          console.warn('reCAPTCHA token fetch failed', recErr);
+        }
+      }
+
+      // Show loading feedback to user
+      setSuccess('Creating your account...');
+      
       const res = await fetch('/api/users/signup', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
-          firstName: form.firstName,
-          lastName: form.lastName,
-          email: form.email,
+          firstName: form.firstName.trim(),
+          lastName: form.lastName.trim(),
+          email: form.email.trim().toLowerCase(),
           password: form.password,
+          recaptchaToken,
         }),
       });
-      const data = await res.json();
-      if (!res.ok) {
-        if (data.error && data.error.toLowerCase().includes('email')) {
-          setFormErrors((f) => ({ ...f, email: data.error }));
+      
+      // Handle different response status codes with specific messages
+      let data;
+      try {
+        data = await res.json();
+      } catch (parseError) {
+        console.error('Error parsing response:', parseError);
+        // If we can't parse the response, fall back to status-based errors
+        if (res.status === 429) {
+          const retryAfter = res.headers.get('Retry-After');
+          if (retryAfter) {
+            const seconds = parseInt(retryAfter, 10);
+            throw new Error(`Too many attempts. Please try again in ${seconds} seconds.`);
+          } else {
+            throw new Error('Too many attempts. Please try again later.');
+          }
+        } else if (res.status === 400) {
+          throw new Error('Invalid information provided. Please check your details.');
+        } else if (res.status === 500) {
+          throw new Error('Server error. Please try again later or contact support.');
+        } else if (!res.ok) {
+          throw new Error(`Registration failed (${res.status}). Please try again.`);
         }
-        throw new Error(data.error || 'Signup failed');
+        throw new Error('Unexpected error during signup. Please try again.');
       }
-      setSuccess('Account created! You can now log in.');
-      setForm({ firstName: '', lastName: '', email: '', password: '' });
-      setAgreed(false);
-      setPasswordStrength(0);
+      
+      // Handle error responses
+      if (!res.ok) {
+        console.warn('Signup error response:', { status: res.status, data });
+        
+        // Handle specific error types
+        if (res.status === 429) {
+          const retryAfter = res.headers.get('Retry-After');
+          if (retryAfter) {
+            const seconds = parseInt(retryAfter, 10);
+            throw new Error(`Too many attempts. Please try again in ${seconds} seconds.`);
+          } else {
+            throw new Error('Too many attempts. Please try again later.');
+          }
+        } else if (res.status === 409 && data.error?.toLowerCase().includes('email')) {
+          // Email already exists - set specific field error
+          setFormErrors((f) => ({ ...f, email: 'This email is already registered. Please use a different email or try logging in.' }));
+          throw new Error('This email is already registered.');
+        } else if (res.status === 400) {
+          // Handle validation errors
+          if (data.error?.toLowerCase().includes('email')) {
+            setFormErrors((f) => ({ ...f, email: data.error }));
+          } else if (data.error?.toLowerCase().includes('password')) {
+            setFormErrors((f) => ({ ...f, password: data.error }));
+          }
+          throw new Error(data.error || 'Invalid information provided. Please check your details.');
+        } else if (res.status === 500) {
+          throw new Error('Server error. Please try again later or contact support.');
+        } else {
+          throw new Error(data.error || `Registration failed (${res.status}). Please try again.`);
+        }
+      }
+      
+      // Handle successful registration
+      if (res.status === 201 && data) {
+        setSuccess('Account created successfully! You can now log in.');
+        setForm({ firstName: '', lastName: '', email: '', password: '' });
+        setAgreed(false);
+        setPasswordStrength(0);
+      } else {
+        throw new Error('Registration completed but received unexpected response. Please try logging in.');
+      }
     } catch (err: unknown) {
+      // Clear any success message
+      setSuccess('');
+      
+      // Log the error for debugging
+      console.error('Signup error:', err);
+      
+      // Provide user-friendly error message
       if (err instanceof Error) {
         setError(err.message);
+      } else if (typeof err === 'object' && err !== null && 'message' in err) {
+        setError((err as {message: string}).message);
+      } else if (typeof err === 'string') {
+        setError(err);
       } else {
-        setError('Unknown error');
+        setError('An unexpected error occurred. Please try again later.');
+      }
+      
+      // If we have a network error, provide a specific message
+      if (err instanceof TypeError && err.message.includes('fetch')) {
+        setError('Network error. Please check your internet connection and try again.');
       }
     } finally {
       setLoading(false);
     }
   };
+
+  // Dynamically load reCAPTCHA script if NEXT_PUBLIC_RECAPTCHA_SITE_KEY is set
+  useEffect(() => {
+    const siteKey = process.env.NEXT_PUBLIC_RECAPTCHA_SITE_KEY;
+    if (!siteKey) return;
+    if (typeof window === 'undefined') return;
+    if ((window as any).grecaptcha) return; // already loaded
+
+    const script = document.createElement('script');
+    script.src = `https://www.google.com/recaptcha/api.js?render=${siteKey}`;
+    script.async = true;
+    script.defer = true;
+    document.head.appendChild(script);
+    return () => { script.remove(); };
+  }, []);
 
   return (
     <>
@@ -335,23 +470,13 @@ const SignupPage: React.FC = () => {
                   aria-describedby={formErrors.terms ? 'signup-terms-error' : undefined}
                 />
                 I agree to the{' '}
-                <a
-                  href="/terms"
-                  className="underline hover:text-amber-700"
-                  target="_blank"
-                  rel="noopener"
-                >
+                <Link href="/terms" className="underline hover:text-amber-700">
                   Terms
-                </a>{' '}
+                </Link>{' '}
                 and{' '}
-                <a
-                  href="/privacy"
-                  className="underline hover:text-amber-700"
-                  target="_blank"
-                  rel="noopener"
-                >
+                <Link href="/privacy" className="underline hover:text-amber-700">
                   Privacy Policy
-                </a>
+                </Link>
                 .
               </label>
               {formErrors.terms && (
@@ -369,8 +494,10 @@ const SignupPage: React.FC = () => {
                 {loading ? 'Signing Up...' : 'Sign Up'}
               </button>
               {error && (
-                <div className="text-red-600 text-sm mt-2" role="alert">
-                  {error}
+                <div className="max-w-md mx-auto mt-4 mb-2">
+                  <div className="bg-red-100 border border-red-300 text-red-800 px-6 py-4 rounded-xl text-center font-semibold shadow" role="alert">
+                    {error}
+                  </div>
                 </div>
               )}
               {success && (

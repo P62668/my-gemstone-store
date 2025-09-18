@@ -1,6 +1,7 @@
 import { NextApiRequest, NextApiResponse } from 'next';
 import { withAdminAuth } from '../../../../utils/authMiddleware';
 import { prisma } from '../../../../lib/prisma';
+import { forceInvalidateAllCache } from '../../../../utils/cache';
 
 async function handler(req: NextApiRequest, res: NextApiResponse) {
   try {
@@ -31,22 +32,7 @@ async function handler(req: NextApiRequest, res: NextApiResponse) {
           },
         });
       }
-
-      // Convert the stored data to the expected frontend format
-      const content = section.content as any;
-      const heroData = {
-        title: content.title || 'Timeless Elegance',
-        subtitle:
-          content.subtitle ||
-          "Discover the finest gemstones from Kolkata's heritage jewelry district",
-        primaryCTA: content.primaryCTA || 'Explore Collection',
-        secondaryCTA: content.secondaryCTA || 'Learn Our Story',
-        backgroundImage: content.backgroundImage || '/images/hero-gemstones.jpg',
-        primaryCTALink: content.primaryCTALink || '/shop',
-        secondaryCTALink: content.secondaryCTALink || '/about',
-      };
-
-      res.status(200).json(heroData);
+      res.status(200).json(section.content);
     } catch (error) {
       console.error('Error fetching hero settings:', error);
       res.status(500).json({ error: 'Failed to fetch hero settings' });
@@ -68,6 +54,10 @@ async function handler(req: NextApiRequest, res: NextApiResponse) {
             content: heroData,
           },
         });
+        
+        // Force invalidate all cache after update to ensure immediate consistency
+        forceInvalidateAllCache();
+        
         res
           .status(200)
           .json({ message: 'Hero settings updated successfully', updatedAt: updated.updatedAt });
@@ -81,6 +71,10 @@ async function handler(req: NextApiRequest, res: NextApiResponse) {
             active: true,
           },
         });
+        
+        // Force invalidate all cache after creation to ensure immediate consistency
+        forceInvalidateAllCache();
+        
         res
           .status(200)
           .json({ message: 'Hero settings created successfully', updatedAt: created.updatedAt });

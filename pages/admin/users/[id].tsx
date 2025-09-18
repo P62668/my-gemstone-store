@@ -20,6 +20,8 @@ import {
 } from 'lucide-react';
 import { toast } from 'react-hot-toast';
 import AdminLayout from '../../../components/AdminLayout';
+import getSessionOrRedirect from '../../../utils/withServerAuth';
+import type { GetServerSideProps } from 'next';
 
 interface AdminUser {
   id: number;
@@ -443,3 +445,9 @@ const UserDetailPage: React.FC = () => {
 };
 
 export default UserDetailPage;
+
+export const getServerSideProps: GetServerSideProps = async (ctx) => {
+  const res = await getSessionOrRedirect(ctx, { requireAdmin: true });
+  if ('redirect' in res) return res;
+  return { props: {} };
+};

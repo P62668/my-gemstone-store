@@ -1,7 +1,8 @@
 import { NextApiRequest, NextApiResponse } from 'next';
 import { generateToken, generateRefreshToken, authenticateUser } from '../../../utils/auth';
-import { prisma } from '../../../lib/prisma';
+import { rateLimit } from '../../../utils/rateLimit';
 import { logger } from '../../../utils/logger';
+import { maskIdentifier, getRequestIp } from '../../../utils/logHelpers';
 import { validateEmail } from '../../../utils/validation';
 import { setSecureCookie } from '../../../utils/cookieParser';
 
@@ -30,15 +31,10 @@ interface ApiResponse<T> {
   };
 }
 
-const loginSchema = {
-  email: { required: true, type: 'string', pattern: /^[^\s@]+@[^\s@]+\.[^\s@]+$/ },
-  password: { required: true, type: 'string', minLength: 8 },
-};
-
 async function loginHandler(
   req: NextApiRequest,
   res: NextApiResponse<ApiResponse<LoginResponse>>
-): Promise<void> {
+) {
   if (req.method !== 'POST') {
     res.status(405).json({
       success: false,
@@ -47,9 +43,20 @@ async function loginHandler(
     return;
   }
 
+  // Lightweight trace log for debugging
+  logger.info('[auth] Login handler invoked');
+
   try {
-    // Lightweight trace log for debugging
-    console.info('[auth] Login handler invoked');
+    // Rate limit login attempts per IP (async, supports Redis when configured)
+    const bodyEmail = (req.body && (req.body as any).email) ? String((req.body as any).email).toLowerCase() : undefined;
+    const rl = await rateLimit({ max: 10, windowMs: 60_000, key: 'login', identifier: bodyEmail, lock: { lockMs: 10 * 60 * 1000 } })(req, res);
+    if (!rl.success) {
+      if (rl.locked && rl.lockUntil) {
+        const retryAfter = Math.max(0, Math.ceil((rl.lockUntil - Date.now()) / 1000));
+        res.setHeader('Retry-After', String(retryAfter));
+      }
+      return res.status(429).json({ success: false, error: { message: 'Too many requests', code: 'RATE_LIMIT_EXCEEDED' } });
+    }
 
     // Validate request body
     const { email, password } = req.body as LoginRequest;
@@ -71,12 +78,17 @@ async function loginHandler(
     }
 
     // Trace the email attempting login (avoid logging password)
-    console.info('[auth] Attempting login for:', email.toLowerCase());
+    logger.info('[auth] Attempting login for', { email: maskIdentifier(email.toLowerCase()) });
 
     // Authenticate user
     const user = await authenticateUser(email, password);
 
-    console.info('[auth] authenticateUser returned for:', user.email, 'id:', user.id);
+    if (!user) {
+      logger.warn('[auth] Authentication failed for', { email: maskIdentifier(email) });
+      return res.status(401).json({ success: false, error: { message: 'Invalid credentials', code: 'INVALID_CREDENTIALS' } });
+    }
+
+    logger.info('[auth] authenticateUser returned for user', { email: maskIdentifier(user.email), id: user.id });
 
     // Generate tokens
     const token = generateToken(user);
@@ -84,15 +96,27 @@ async function loginHandler(
 
     // Set secure cookies using the new utility
     setSecureCookie(res, 'token', token, {
-      maxAge: 7 * 24 * 60 * 60 * 1000, // 7 days
-    });
-    
-    setSecureCookie(res, 'refreshToken', refreshToken, {
-      maxAge: 30 * 24 * 60 * 60 * 1000, // 30 days
+      maxAge: 60 * 60, // 1 hour
+      httpOnly: true,
+      secure: process.env.NODE_ENV === 'production',
+      sameSite: 'strict',
+      path: '/'
     });
 
-    // Log successful login
-    logger.info(`User logged in: ${user.email}`, req);
+    setSecureCookie(res, 'refreshToken', refreshToken, {
+      maxAge: 30 * 24 * 60 * 60, // 30 days
+      httpOnly: true,
+      secure: process.env.NODE_ENV === 'production',
+      sameSite: 'strict',
+      path: '/'
+    });
+
+    // Log successful login with masked identifier and IP
+    try {
+      logger.info('User logged in', { identifier: maskIdentifier(user.email), id: user.id, ip: getRequestIp(req) });
+    } catch (e) {
+      logger.info('User logged in (fallback)', { id: user.id });
+    }
 
     res.status(200).json({
       success: true,
@@ -107,13 +131,18 @@ async function loginHandler(
         },
       },
     });
-  } catch (error) {
-    logger.error('Login failed', req, error as Error);
-    console.error('[auth] Login failed error:', (error as Error).message);
-    
-    res.status(401).json({
+  } catch (error: any) {
+    logger.error('[auth] Login failed', error, { url: req.url, ip: getRequestIp(req) });
+    // More specific error handling
+    if (error.message === 'Invalid credentials' || error.message === 'Account is deactivated') {
+      return res.status(401).json({
+        success: false,
+        error: { message: error.message, code: 'INVALID_CREDENTIALS' },
+      });
+    }
+    res.status(500).json({
       success: false,
-      error: { message: 'Invalid credentials', code: 'INVALID_CREDENTIALS' },
+      error: { message: 'Internal server error', code: 'INTERNAL_ERROR' },
     });
   }
 }

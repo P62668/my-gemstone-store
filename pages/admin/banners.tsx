@@ -1,7 +1,10 @@
 import React, { useEffect, useState } from 'react';
 import { useRouter } from 'next/router';
+import Image from 'next/image';
 import AdminLayout from '../../components/AdminLayout';
 import ImageUploadWithEdit from '../../components/ui/ImageUploadWithEdit';
+import getSessionOrRedirect from '../../utils/withServerAuth';
+import type { GetServerSideProps } from 'next';
 
 interface Banner {
   id: number;
@@ -30,6 +33,10 @@ const AdminBannersPage: React.FC = () => {
   const [form, setForm] = useState(emptyBanner);
   const [editingId, setEditingId] = useState<number | null>(null);
   const [formLoading, setFormLoading] = useState(false);
+  const [formError, setFormError] = useState('');
+  const [formSuccess, setFormSuccess] = useState('');
+  const [deleteError, setDeleteError] = useState('');
+  const [deleteSuccess, setDeleteSuccess] = useState('');
 
   useEffect(() => {
     checkAuthAndFetch();
@@ -68,6 +75,8 @@ const AdminBannersPage: React.FC = () => {
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setFormLoading(true);
+    setFormError('');
+    setFormSuccess('');
     try {
       if (editingId) {
         // Update existing banner
@@ -81,6 +90,7 @@ const AdminBannersPage: React.FC = () => {
         setBanners((prev) =>
           prev.map((banner) => (banner.id === editingId ? updatedBanner : banner)),
         );
+        setFormSuccess('Banner updated successfully!');
       } else {
         // Add new banner
         const res = await fetch('/api/admin/banners', {
@@ -91,13 +101,13 @@ const AdminBannersPage: React.FC = () => {
         if (!res.ok) throw new Error('Failed to create banner');
         const newBanner = await res.json();
         setBanners((prev) => [...prev, newBanner]);
+        setFormSuccess('Banner added successfully!');
       }
 
       setForm(emptyBanner);
       setEditingId(null);
-      alert(editingId ? 'Banner updated successfully!' : 'Banner added successfully!');
     } catch (err: any) {
-      alert(err.message);
+      setFormError(err.message || 'An error occurred.');
     } finally {
       setFormLoading(false);
     }
@@ -111,6 +121,8 @@ const AdminBannersPage: React.FC = () => {
   const handleDelete = async (id: number) => {
     if (!window.confirm('Delete this banner?')) return;
     setFormLoading(true);
+    setDeleteError('');
+    setDeleteSuccess('');
     try {
       const res = await fetch(`/api/admin/banners/${id}`, {
         method: 'DELETE',
@@ -120,9 +132,9 @@ const AdminBannersPage: React.FC = () => {
         throw new Error(errorData.error || 'Failed to delete banner');
       }
       setBanners((prev) => prev.filter((banner) => banner.id !== id));
-      alert('Banner deleted successfully!');
+      setDeleteSuccess('Banner deleted successfully!');
     } catch (err: any) {
-      alert(err.message);
+      setDeleteError(err.message || 'An error occurred.');
     } finally {
       setFormLoading(false);
     }
@@ -151,7 +163,15 @@ const AdminBannersPage: React.FC = () => {
           </button>
         </div>
 
-        {error && (
+
+        {/* Form feedback banner */}
+        {(formError || formSuccess) && (
+          <div className={`rounded-xl p-4 mb-6 font-semibold text-center shadow border ${formError ? 'bg-red-100 border-red-300 text-red-800' : 'bg-green-100 border-green-300 text-green-800'}`}>
+            {formError || formSuccess}
+          </div>
+        )}
+        {/* Fetch error banner */}
+        {error && !formError && !formSuccess && (
           <div className="bg-red-50 border border-red-200 rounded-xl p-4 mb-6">
             <div className="text-red-800">{error}</div>
           </div>
@@ -250,6 +270,13 @@ const AdminBannersPage: React.FC = () => {
           </div>
         </form>
 
+        {/* Delete feedback banner */}
+        {(deleteError || deleteSuccess) && (
+          <div className={`rounded-xl p-4 mb-6 font-semibold text-center shadow border ${deleteError ? 'bg-red-100 border-red-300 text-red-800' : 'bg-green-100 border-green-300 text-green-800'}`}>
+            {deleteError || deleteSuccess}
+          </div>
+        )}
+
         <div className="bg-white/80 rounded-3xl shadow-xl border border-amber-100 p-8">
           <h2 className="text-2xl font-semibold text-amber-900 mb-6">All Banners</h2>
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8">
@@ -261,9 +288,11 @@ const AdminBannersPage: React.FC = () => {
                 <div className="font-bold text-lg text-amber-900">{banner.title}</div>
                 <div className="text-sm text-gray-500">{banner.subtitle}</div>
                 {banner.image && (
-                  <img
+                  <Image
                     src={banner.image}
                     alt={banner.title}
+                    width={200}
+                    height={100}
                     className="w-full h-32 object-cover rounded-xl border border-amber-200"
                   />
                 )}
@@ -304,3 +333,9 @@ const AdminBannersPage: React.FC = () => {
 };
 
 export default AdminBannersPage;
+
+export const getServerSideProps: GetServerSideProps = async (ctx) => {
+  const res = await getSessionOrRedirect(ctx, { requireAdmin: true });
+  if ('redirect' in res) return res;
+  return { props: {} };
+};

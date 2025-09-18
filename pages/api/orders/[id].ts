@@ -1,8 +1,10 @@
 import { NextApiResponse } from 'next';
 import { withAuth, AuthenticatedRequest } from '../../../utils/authMiddleware';
 import { prisma } from '../../../lib/prisma';
+import { logger } from '../../../utils/logger';
+import { NotificationService } from '../../../services/notificationService';
 
-export default withAuth(async function handler(req: AuthenticatedRequest, res: NextApiResponse): Promise<void> {
+export default withAuth(async function handler(req: AuthenticatedRequest, res: NextApiResponse) {
   if (req.method !== 'GET' && req.method !== 'PATCH') {
     res.setHeader('Allow', ['GET', 'PATCH']);
     res.status(405).end(`Method ${req.method} Not Allowed`);
@@ -81,6 +83,14 @@ export default withAuth(async function handler(req: AuthenticatedRequest, res: N
         },
       });
 
+      // Create notification for order cancellation
+      try {
+        await NotificationService.createOrderNotification(user.id, orderId, 'cancelled');
+      } catch (notificationError) {
+        logger.error('[API/orders/[id]] Failed to create notification', notificationError);
+        // Don't fail the request if notification creation fails
+      }
+
       // Parse gemstone images
       const parsedOrder = {
         ...updatedOrder,
@@ -103,7 +113,7 @@ export default withAuth(async function handler(req: AuthenticatedRequest, res: N
       res.status(200).json(parsedOrder);
       return;
     } catch (error) {
-      console.error('[API/orders/[id]] PATCH error:', error);
+      logger.error('[API/orders/[id]] PATCH error', error, { orderId });
       res.status(500).json({ error: 'Failed to update order' });
       return;
     }
@@ -163,15 +173,7 @@ export default withAuth(async function handler(req: AuthenticatedRequest, res: N
     }
     res.status(200).json(parsedOrder);
   } catch (error) {
-    console.error('[API/orders/[id]] 500 error:', {
-      error,
-      orderId,
-      user,
-      query: req.query,
-      stack: (error as any)?.stack,
-    });
-    res
-      .status(500)
-      .json({ error: 'Failed to fetch order', details: (error as any)?.message || error });
+    logger.error('[API/orders/[id]] 500 error', error, { orderId, user, query: req.query });
+    res.status(500).json({ error: 'Failed to fetch order', details: (error as any)?.message || error });
   }
 });

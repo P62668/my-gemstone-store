@@ -54,9 +54,13 @@ async function main() {
     }
   }
   const hashed = await bcrypt.hash(adminPassword, 10);
+  console.log('Seeding admin user with password:', adminPassword);
+  console.log('Hashed password:', hashed);
   const admin = await prisma.user.upsert({
     where: { email: adminEmail },
-    update: {},
+    update: {
+      password: hashed,
+    },
     create: {
       firstName: 'Admin',
       lastName: 'User',
@@ -65,6 +69,7 @@ async function main() {
       role: 'admin',
     },
   });
+  console.log('Admin user upsert result:', admin);
   console.log('Admin user seeded:', { email: adminEmail });
 
   // Seed sample users
@@ -266,6 +271,7 @@ async function main() {
   }
 
   console.log('Database seeding completed successfully!');
+  await prisma.$disconnect();
 }
 
 main()

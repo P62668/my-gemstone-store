@@ -3,6 +3,7 @@ import React, { useEffect, useState } from 'react';
 import Layout from '../../components/Layout';
 import OrderTracking from '../../components/OrderTracking';
 import toast from 'react-hot-toast';
+import Image from 'next/image';
 
 const OrderDetailsPage: React.FC = () => {
   const router = useRouter();
@@ -37,8 +38,15 @@ const OrderDetailsPage: React.FC = () => {
     fetchOrder();
   }, [id, router.query.emailWarning]);
 
+
   if (loading) return <div className="text-center py-12 text-lg">Loading order details...</div>;
-  if (error) return <div className="text-center py-12 text-red-600">{error}</div>;
+  if (error) return (
+    <div className="max-w-3xl mx-auto mt-6 mb-4">
+      <div className="bg-red-100 border border-red-300 text-red-800 px-6 py-4 rounded-xl text-center font-semibold shadow">
+        {error}
+      </div>
+    </div>
+  );
   if (!order) return null;
 
   // Progress bar steps
@@ -138,7 +146,7 @@ const OrderDetailsPage: React.FC = () => {
           <ul className="divide-y divide-amber-100 mb-8 overflow-x-auto flex-nowrap">
             {order.items.map((item: any) => (
               <li key={item.id} className="flex items-center gap-4 py-4 sm:gap-2 sm:py-2">
-                <img
+                <Image
                   src={(() => {
                     let imgs = item.gemstone.images;
                     if (typeof imgs === 'string') {
@@ -152,6 +160,8 @@ const OrderDetailsPage: React.FC = () => {
                     return imgs[0] || '/images/placeholder-gemstone.jpg';
                   })()}
                   alt={item.gemstone.name}
+                  width={64}
+                  height={64}
                   onError={(e) => {
                     e.currentTarget.src = '/images/placeholder-gemstone.jpg';
                   }}

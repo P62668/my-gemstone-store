@@ -1,5 +1,6 @@
 import type { NextApiRequest, NextApiResponse } from 'next';
 import { getUserFromRequest } from '../../utils/getUser';
+import { logger } from '../../utils/logger';
 
 import { prisma } from '../../lib/prisma';
 
@@ -35,7 +36,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
         }
       });
     } catch (error) {
-      console.error('Returns fetch error:', error);
+      logger.error('Returns fetch error', error, { url: req.url });
       res.status(500).json({ error: 'Failed to fetch returns' });
     }
   } else if (req.method === 'POST') {
@@ -88,7 +89,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
 
       res.status(201).json(returnRequest);
     } catch (error) {
-      console.error('Return creation error:', error);
+      logger.error('Return creation error', error, { body: req.body });
       res.status(500).json({ error: 'Failed to create return request' });
     }
   } else {

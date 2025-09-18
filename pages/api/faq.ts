@@ -1,5 +1,5 @@
 import type { NextApiRequest, NextApiResponse } from 'next';
-import { prisma } from '../../lib/prisma';
+import prisma from '../../lib/prisma';
 
 export default async function handler(req: NextApiRequest, res: NextApiResponse) {
   if (req.method !== 'GET') {
@@ -10,8 +10,8 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
       where: { active: true },
       orderBy: { order: 'asc' },
     });
-    res.status(200).json(faqs);
+    return res.status(200).json(faqs);
   } catch {
-    res.status(500).json({ error: 'Failed to fetch FAQs' });
+    return res.status(500).json({ error: 'Failed to fetch FAQs' });
   }
 }

@@ -1,463 +1,444 @@
-import React, { useState } from 'react';
-import Link from 'next/link';
-import Image from 'next/image';
-import { useRouter } from 'next/router';
-import { apiClient } from '../../utils/apiClient';
-import Layout from '../../components/Layout';
+import React, { useState, useMemo, useEffect } from 'react';
 import { GetServerSideProps } from 'next';
+import Head from 'next/head';
+import Layout from '../../components/Layout';
+import PageRenderer from '../../components/PageRenderer';
 import { prisma } from '../../lib/prisma';
-import { parseImages, getFirstImage } from '../../utils/imageUtils';
+import Image from 'next/image';
+import { Star, Heart, Share2, Truck, Shield, RotateCcw, Gem, MapPin, FileText, Eye, Ruler, Scale } from 'lucide-react';
+import { useCart } from '../../components/context/CartContext';
+import { useWishlist } from '../../components/context/WishlistContext';
+import { toast } from 'react-hot-toast';
+import Breadcrumb from '../../components/ui/Breadcrumb';
+import Link from 'next/link';
+import LuxuryButton from '../../components/ui/LuxuryButton';
+import LuxuryCard from '../../components/ui/LuxuryCard';
 
-interface Category {
-  id: number;
-  name: string;
-  description?: string;
-}
-
-interface Gemstone {
-  id: number;
-  name: string;
-  description: string;
-  price: number;
-  salePrice?: number;
-  categoryId: number;
-  images: string[];
-  weight?: number;
-  dimensions?: string;
-  clarity?: string;
-  color?: string;
-  cut?: string;
-  origin?: string;
-  certificate?: string;
-  stockCount: number;
-  stockQuantity: number;
-  lowStockThreshold: number;
-  featured: boolean;
-  active: boolean;
-  createdAt: string;
-  updatedAt: string;
-  category?: Category;
-}
-
-interface ProductDetailProps {
-  gemstone: Gemstone | null;
-  relatedProducts: Gemstone[];
-}
-
-export const getServerSideProps: GetServerSideProps<ProductDetailProps> = async (context) => {
-  const { id } = context.params!;
-  
-  try {
-    const numericId = Number(id);
-    if (!numericId || Number.isNaN(numericId)) {
-      return { notFound: true };
-    }
-
-    const gemstoneRaw = await prisma.gemstone.findUnique({
-      where: { id: numericId },
-      include: { category: true },
-    });
-
-    if (!gemstoneRaw || !gemstoneRaw.active) {
-      return { notFound: true };
-    }
-
-    // Normalize images and dates for JSON serialization
-    let images: string[] = [];
-    if (Array.isArray((gemstoneRaw as any).images)) {
-      images = (gemstoneRaw as any).images as string[];
-    } else if (typeof (gemstoneRaw as any).images === 'string') {
-      try {
-        const parsed = JSON.parse((gemstoneRaw as any).images as unknown as string);
-        images = Array.isArray(parsed) ? parsed : [];
-      } catch {
-        images = [];
-      }
-    }
-
-    const gemstone: Gemstone = {
-      id: gemstoneRaw.id,
-      name: gemstoneRaw.name,
-      description: gemstoneRaw.description || '',
-      price: Number(gemstoneRaw.price || 0),
-      salePrice: gemstoneRaw.salePrice ? Number(gemstoneRaw.salePrice) : null,
-      categoryId: gemstoneRaw.categoryId,
-      images,
-      weight: gemstoneRaw.weight ?? null,
-      dimensions: gemstoneRaw.dimensions ?? null,
-      clarity: gemstoneRaw.clarity ?? null,
-      color: gemstoneRaw.color ?? null,
-      cut: gemstoneRaw.cut ?? null,
-      origin: gemstoneRaw.origin ?? null,
-      certificate: gemstoneRaw.certificate ?? null,
-      stockCount: gemstoneRaw.stockCount ?? 0,
-      stockQuantity: gemstoneRaw.stockQuantity ?? 0,
-      lowStockThreshold: gemstoneRaw.lowStockThreshold ?? 0,
-      featured: Boolean(gemstoneRaw.featured),
-      active: Boolean(gemstoneRaw.active),
-      createdAt: (gemstoneRaw.createdAt as any)?.toISOString?.() ?? String(gemstoneRaw.createdAt),
-      updatedAt: (gemstoneRaw.updatedAt as any)?.toISOString?.() ?? String(gemstoneRaw.updatedAt),
-      category: gemstoneRaw.category
-        ? { id: gemstoneRaw.category.id, name: gemstoneRaw.category.name }
-        : null,
-    } as Gemstone;
-
-    const relatedRaw = await prisma.gemstone.findMany({
-      where: {
-        active: true,
-        id: { not: numericId },
-        categoryId: gemstoneRaw.categoryId,
-      },
-      orderBy: { createdAt: 'desc' },
-      take: 4,
-    });
-
-    const relatedProducts: Gemstone[] = relatedRaw.map((g: any) => {
-      let imgs: string[] = [];
-      if (Array.isArray(g.images)) imgs = g.images;
-      else if (typeof g.images === 'string') {
-        try {
-          const parsed = JSON.parse(g.images);
-          imgs = Array.isArray(parsed) ? parsed : [];
-        } catch {
-          imgs = [];
-        }
-      }
-      return {
-        id: g.id,
-        name: g.name,
-        description: g.description || '',
-        price: Number(g.price || 0),
-        salePrice: g.salePrice ? Number(g.salePrice) : null,
-        categoryId: g.categoryId,
-        images: imgs,
-        stockCount: g.stockCount ?? 0,
-        stockQuantity: g.stockQuantity ?? 0,
-        lowStockThreshold: g.lowStockThreshold ?? 0,
-        featured: Boolean(g.featured),
-        active: Boolean(g.active),
-        createdAt: g.createdAt?.toISOString?.() ?? String(g.createdAt),
-        updatedAt: g.updatedAt?.toISOString?.() ?? String(g.updatedAt),
-        category: gemstone.category,
-      } as Gemstone;
-    });
-
-    return {
-      props: {
-        gemstone,
-        relatedProducts,
-      },
+interface ProductPageProps {
+  product: {
+    id: number;
+    name: string;
+    description: string;
+    price: number;
+    salePrice?: number;
+    images: string[];
+    weight?: number;
+    dimensions?: string;
+    clarity?: string;
+    color?: string;
+    cut?: string;
+    origin?: string;
+    certificate?: string;
+    stockCount: number;
+    featured?: boolean;
+    dynamicContent?: any[];
+    category?: {
+      id: number;
+      name: string;
     };
-    } catch (error) {
-    console.error('Error fetching product data:', error);
-    return { notFound: true };
-  }
-};
+  } | null;
+  relatedProducts: any[];
+  error?: string;
+}
 
-const ProductDetail: React.FC<ProductDetailProps> = ({ gemstone, relatedProducts }) => {
-  const router = useRouter();
+const ProductPage: React.FC<ProductPageProps> = ({ product, relatedProducts, error }) => {
   const [selectedImage, setSelectedImage] = useState(0);
   const [quantity, setQuantity] = useState(1);
-  const [adding, setAdding] = useState(false);
+  const { addToCart } = useCart();
+  const { addToWishlist, isInWishlist } = useWishlist();
+  const [isWishlisted, setIsWishlisted] = useState(false);
 
-  if (!gemstone) {
+  useEffect(() => {
+    if (product) {
+      setIsWishlisted(isInWishlist(product.id));
+    }
+  }, [product, isInWishlist]);
+
+  if (error) {
     return (
       <Layout>
-        <div className="max-w-7xl mx-auto py-12 px-4">
-          <div className="text-center">
-          <h1 className="text-2xl font-bold text-gray-900 mb-4">Product Not Found</h1>
-            <p className="text-gray-600 mb-6">The product you&apos;re looking for doesn&apos;t exist.</p>
-            <Link
-              href="/shop"
-              className="px-6 py-3 bg-amber-600 text-white rounded-lg hover:bg-amber-700 transition-colors"
-            >
-              Continue Shopping
-          </Link>
+        <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-amber-50 to-white">
+          <div className="text-center luxury-card p-12 rounded-3xl shadow-xl">
+            <h1 className="text-2xl font-bold text-gray-800 mb-4 luxury-font-serif">Product Not Found</h1>
+            <p className="text-gray-600 luxury-font-sans">{error}</p>
+            <Link href="/shop" className="mt-6 inline-block">
+              <LuxuryButton variant="primary" size="md">
+                Back to Shop
+              </LuxuryButton>
+            </Link>
           </div>
         </div>
       </Layout>
     );
   }
 
-  const processedImages = parseImages(gemstone.images);
+  if (!product) {
+    return (
+      <Layout>
+        <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-amber-50 to-white">
+          <div className="text-center luxury-card p-12 rounded-3xl shadow-xl">
+            <h1 className="text-2xl font-bold text-gray-800 mb-4 luxury-font-serif">Product Not Found</h1>
+            <p className="text-gray-600 luxury-font-sans">The product you are looking for does not exist.</p>
+            <Link href="/shop" className="mt-6 inline-block">
+              <LuxuryButton variant="primary" size="md">
+                Back to Shop
+              </LuxuryButton>
+            </Link>
+          </div>
+        </div>
+      </Layout>
+    );
+  }
+
+  // Parse dynamic content if it exists
+  let dynamicContent = product.dynamicContent;
+  if (dynamicContent && typeof dynamicContent === 'string') {
+    try {
+      dynamicContent = JSON.parse(dynamicContent);
+    } catch (e) {
+      dynamicContent = [];
+    }
+  }
+
+  const handleAddToCart = () => {
+    addToCart({
+      id: product.id,
+      price: product.salePrice || product.price,
+    }, quantity);
+    toast.success('Added to cart!');
+  };
+
+  const handleAddToWishlist = () => {
+    addToWishlist(product.id);
+    setIsWishlisted(true);
+    toast.success('Added to wishlist!');
+  };
+
+  const handleShare = () => {
+    if (navigator.share) {
+      navigator.share({
+        title: product.name,
+        text: product.description,
+        url: window.location.href,
+      }).catch(console.error);
+    } else {
+      navigator.clipboard.writeText(window.location.href);
+      toast.success('Link copied to clipboard!');
+    }
+  };
+
+  const isInStock = product.stockCount > 0;
+  const isLowStock = product.stockCount <= 5 && product.stockCount > 0;
+  const hasDiscount = product.salePrice && product.salePrice < product.price;
+  const discountPercentage = hasDiscount ? Math.round(((product.price - product.salePrice!) / product.price) * 100) : 0;
 
   return (
-    <Layout
-      title={`${gemstone.name} | Shankarmala`}
-      description={gemstone.description}
-    >
-      <div className="max-w-7xl mx-auto py-12 px-4">
-        <div className="grid grid-cols-1 lg:grid-cols-2 gap-12">
+    <Layout>
+      <Head>
+        <title>{product.name} - Shankarmala Gemstones</title>
+        <meta name="description" content={product.description} />
+      </Head>
+
+      <div className="max-w-7xl mx-auto px-4 py-8">
+        {/* Breadcrumb Navigation */}
+        <Breadcrumb 
+          items={[
+            { label: 'Home', href: '/' },
+            { label: 'Shop', href: '/shop' },
+            { label: product.category?.name || 'Category', href: product.category ? `/categories/${product.category.id}` : '/shop' },
+            { label: product.name }
+          ]} 
+          className="mb-6"
+        />
+        
+        <div className="grid grid-cols-1 lg:grid-cols-2 gap-12 mb-16">
           {/* Product Images */}
-          <div className="space-y-6">
-            {/* Main Image */}
-            <div className="aspect-square bg-gray-100 rounded-3xl overflow-hidden">
-              <Image
-                src={processedImages[selectedImage] || '/images/placeholder-gemstone.jpg'}
-                alt={gemstone.name}
-                width={600}
-                height={600}
-                className="w-full h-full object-cover"
+          <div>
+            <div className="relative aspect-square bg-gradient-to-br from-white to-stone-50 rounded-3xl overflow-hidden shadow-xl mb-4 border border-stone-100">
+              <Image 
+                src={product.images[selectedImage]} 
+                alt={product.name} 
+                layout="fill" 
+                objectFit="cover" 
+                className="transition-transform duration-700 hover:scale-105"
               />
-            </div>
-            
-            {/* Thumbnail Images */}
-            {processedImages.length > 1 && (
-              <div className="grid grid-cols-4 gap-4">
-                {processedImages.map((image, index) => (
-                <button
-                    key={index}
-                    onClick={() => setSelectedImage(index)}
-                    className={`aspect-square bg-gray-100 rounded-xl overflow-hidden border-2 transition-colors ${
-                      selectedImage === index ? 'border-amber-500' : 'border-transparent'
-                  }`}
-                >
-                  <Image
-                      src={image}
-                      alt={`${gemstone.name} - Image ${index + 1}`}
-                      width={150}
-                      height={150}
-                    className="w-full h-full object-cover"
-                  />
-                </button>
-              ))}
-            </div>
-            )}
-          </div>
-
-          {/* Product Details */}
-          <div className="space-y-8">
-            {/* Breadcrumb */}
-            <nav className="flex items-center space-x-2 text-sm text-gray-500">
-              <Link href="/" className="hover:text-amber-600">Home</Link>
-              <span>/</span>
-              <Link href="/shop" className="hover:text-amber-600">Shop</Link>
-              <span>/</span>
-              <span className="text-gray-900">{gemstone.name}</span>
-            </nav>
-
-          {/* Product Info */}
-            <div className="space-y-4">
-              <div className="flex items-center space-x-2">
-                {gemstone.featured && (
-                  <span className="bg-amber-500 text-white px-3 py-1 rounded-full text-sm font-medium">
+              {/* Badges */}
+              <div className="absolute top-6 left-6 flex flex-col gap-2">
+                {product.featured && (
+                  <span className="bg-gradient-to-r from-amber-500 to-orange-500 text-white text-xs font-bold px-3 py-1.5 rounded-full shadow-lg">
                     Featured
                   </span>
                 )}
-                {gemstone.category && (
-                  <span className="bg-gray-100 text-gray-700 px-3 py-1 rounded-full text-sm">
-                    {gemstone.category.name}
+                {isLowStock && isInStock && (
+                  <span className="bg-gradient-to-r from-amber-500 to-orange-500 text-white text-xs font-bold px-3 py-1.5 rounded-full shadow-lg">
+                    Low Stock
                   </span>
                 )}
+                {hasDiscount && (
+                  <span className="bg-gradient-to-r from-red-500 to-rose-600 text-white text-xs font-bold px-3 py-1.5 rounded-full shadow-lg">
+                    {discountPercentage}% OFF
+                  </span>
+                )}
+              </div>
+            </div>
+            <div className="grid grid-cols-4 gap-4">
+              {product.images.map((image, index) => (
+                <button
+                  key={index}
+                  onClick={() => setSelectedImage(index)}
+                  className={`relative aspect-square bg-gradient-to-br from-white to-stone-50 rounded-xl overflow-hidden border-2 transition-all duration-300 ${
+                    selectedImage === index ? 'border-amber-500 shadow-lg' : 'border-stone-200 hover:border-amber-300'
+                  }`}
+                >
+                  <Image src={image} alt={`${product.name} ${index + 1}`} layout="fill" objectFit="cover" />
+                </button>
+              ))}
+            </div>
+          </div>
+
+          {/* Product Details */}
+          <div>
+            <h1 className="text-4xl font-bold text-amber-900 mb-4 luxury-font-serif">{product.name}</h1>
+            
+            <div className="flex items-center gap-2 mb-6">
+              <div className="flex">
+                {[...Array(5)].map((_, i) => (
+                  <Star key={i} className="w-5 h-5 text-amber-400 fill-current" />
+                ))}
+              </div>
+              <span className="text-gray-600 luxury-font-sans">(24 reviews)</span>
             </div>
 
-              <h1 className="text-4xl font-bold text-gray-900">{gemstone.name}</h1>
-              
-              <div className="flex items-center space-x-4">
-              <span className="text-3xl font-bold text-amber-600">
-                  ${gemstone.price.toLocaleString()}
-              </span>
-                {gemstone.salePrice && (
-                  <span className="text-xl text-gray-500 line-through">
-                    ${gemstone.salePrice.toLocaleString()}
+            <div className="mb-8">
+              {hasDiscount ? (
+                <div className="flex items-baseline gap-4">
+                  <span className="text-4xl font-bold bg-gradient-to-r from-amber-600 to-orange-600 bg-clip-text text-transparent luxury-font-serif">
+                    ₹{product.salePrice!.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+                  </span>
+                  <span className="text-2xl text-gray-500 line-through luxury-font-sans">
+                    ₹{product.price.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+                  </span>
+                  <span className="bg-gradient-to-r from-red-100 to-rose-100 text-red-800 px-3 py-1 rounded-full text-sm font-semibold luxury-font-sans">
+                    Save {discountPercentage}%
+                  </span>
+                </div>
+              ) : (
+                <span className="text-4xl font-bold bg-gradient-to-r from-amber-600 to-orange-600 bg-clip-text text-transparent luxury-font-serif">
+                  ₹{product.price.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
                 </span>
               )}
             </div>
 
-              <p className="text-gray-600 leading-relaxed">{gemstone.description}</p>
-            </div>
+            <p className="text-gray-700 mb-8 luxury-font-sans text-lg leading-relaxed">
+              {product.description}
+            </p>
 
-            {/* Specifications */}
-            <div className="space-y-4">
-              <h3 className="text-lg font-semibold text-gray-900">Specifications</h3>
-              <div className="grid grid-cols-2 gap-4 text-sm">
-                {gemstone.weight && (
+            {/* Product Specifications */}
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mb-10">
+              {product.weight && (
+                <LuxuryCard className="p-5 flex items-center">
+                  <Scale className="text-amber-600 w-6 h-6 mr-3" />
                   <div>
-                    <span className="font-medium text-gray-700">Weight:</span>
-                    <span className="ml-2 text-gray-600">{gemstone.weight} carats</span>
+                    <span className="text-gray-500 text-sm luxury-font-sans">Weight</span>
+                    <span className="font-semibold block luxury-font-serif">{product.weight} carats</span>
                   </div>
-                )}
-                {gemstone.dimensions && (
-                  <div>
-                    <span className="font-medium text-gray-700">Dimensions:</span>
-                    <span className="ml-2 text-gray-600">{gemstone.dimensions}</span>
-                  </div>
-                )}
-                {gemstone.clarity && (
-                  <div>
-                    <span className="font-medium text-gray-700">Clarity:</span>
-                    <span className="ml-2 text-gray-600">{gemstone.clarity}</span>
-                  </div>
-                )}
-                {gemstone.color && (
-                  <div>
-                    <span className="font-medium text-gray-700">Color:</span>
-                    <span className="ml-2 text-gray-600">{gemstone.color}</span>
-                  </div>
-                )}
-                {gemstone.cut && (
-                  <div>
-                    <span className="font-medium text-gray-700">Cut:</span>
-                    <span className="ml-2 text-gray-600">{gemstone.cut}</span>
-                  </div>
-                )}
-                {gemstone.origin && (
-                  <div>
-                    <span className="font-medium text-gray-700">Origin:</span>
-                    <span className="ml-2 text-gray-600">{gemstone.origin}</span>
-                  </div>
-                )}
-                {gemstone.certificate && (
-                  <div>
-                    <span className="font-medium text-gray-700">Certificate:</span>
-                    <span className="ml-2 text-gray-600">{gemstone.certificate}</span>
-                </div>
+                </LuxuryCard>
               )}
-              </div>
+              {product.dimensions && (
+                <LuxuryCard className="p-5 flex items-center">
+                  <Ruler className="text-amber-600 w-6 h-6 mr-3" />
+                  <div>
+                    <span className="text-gray-500 text-sm luxury-font-sans">Dimensions</span>
+                    <span className="font-semibold block luxury-font-serif">{product.dimensions}</span>
+                  </div>
+                </LuxuryCard>
+              )}
+              {product.clarity && (
+                <LuxuryCard className="p-5 flex items-center">
+                  <Eye className="text-amber-600 w-6 h-6 mr-3" />
+                  <div>
+                    <span className="text-gray-500 text-sm luxury-font-sans">Clarity</span>
+                    <span className="font-semibold block luxury-font-serif">{product.clarity}</span>
+                  </div>
+                </LuxuryCard>
+              )}
+              {product.color && (
+                <LuxuryCard className="p-5 flex items-center">
+                  <Gem className="text-amber-600 w-6 h-6 mr-3" />
+                  <div>
+                    <span className="text-gray-500 text-sm luxury-font-sans">Color</span>
+                    <span className="font-semibold block luxury-font-serif">{product.color}</span>
+                  </div>
+                </LuxuryCard>
+              )}
+              {product.cut && (
+                <LuxuryCard className="p-5 flex items-center">
+                  <Star className="text-amber-600 w-6 h-6 mr-3" />
+                  <div>
+                    <span className="text-gray-500 text-sm luxury-font-sans">Cut</span>
+                    <span className="font-semibold block luxury-font-serif">{product.cut}</span>
+                  </div>
+                </LuxuryCard>
+              )}
+              {product.origin && (
+                <LuxuryCard className="p-5 flex items-center">
+                  <MapPin className="text-amber-600 w-6 h-6 mr-3" />
+                  <div>
+                    <span className="text-gray-500 text-sm luxury-font-sans">Origin</span>
+                    <span className="font-semibold block luxury-font-serif">{product.origin}</span>
+                  </div>
+                </LuxuryCard>
+              )}
+              {product.certificate && (
+                <LuxuryCard className="p-5 flex items-center">
+                  <FileText className="text-amber-600 w-6 h-6 mr-3" />
+                  <div>
+                    <span className="text-gray-500 text-sm luxury-font-sans">Certificate</span>
+                    <span className="font-semibold block luxury-font-serif">{product.certificate}</span>
+                  </div>
+                </LuxuryCard>
+              )}
             </div>
 
             {/* Stock Status */}
-            <div className="space-y-4">
-              <div className="flex items-center justify-between">
-                <span className="text-sm font-medium text-gray-700">Availability:</span>
-                {gemstone.stockCount > 0 ? (
-                  <span className="text-sm text-green-600 font-medium">
-                    In Stock ({gemstone.stockCount} available)
-                  </span>
-                ) : (
-                  <span className="text-sm text-red-600 font-medium">Out of Stock</span>
-                )}
-              </div>
+            <div className="mb-8">
+              {isInStock ? (
+                <div className="flex items-center text-green-600">
+                  <div className="w-3 h-3 rounded-full bg-green-500 mr-2"></div>
+                  <span className="font-semibold luxury-font-sans">In Stock</span>
+                  {isLowStock && (
+                    <span className="ml-2 text-amber-600 luxury-font-sans">Only {product.stockCount} left!</span>
+                  )}
+                </div>
+              ) : (
+                <div className="flex items-center text-red-600">
+                  <div className="w-3 h-3 rounded-full bg-red-500 mr-2"></div>
+                  <span className="font-semibold luxury-font-sans">Out of Stock</span>
+                </div>
+              )}
             </div>
 
-            {/* Add to Cart Section */}
-            <div className="space-y-4">
-              <div className="flex items-center space-x-4">
-              <label className="text-sm font-medium text-gray-700">Quantity:</label>
-                <select
-                  value={quantity}
-                  onChange={(e) => setQuantity(Number(e.target.value))}
-                  className="px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-amber-500 focus:border-transparent"
+            {/* Actions */}
+            {isInStock && (
+              <div className="flex flex-wrap gap-4 mb-10">
+                <div className="flex items-center border border-gray-300 rounded-lg">
+                  <button 
+                    onClick={() => setQuantity(Math.max(1, quantity - 1))}
+                    className="px-4 py-3 text-gray-600 hover:bg-gray-100 transition-colors luxury-font-sans"
+                    disabled={quantity <= 1}
+                  >
+                    -
+                  </button>
+                  <span className="px-4 py-3 luxury-font-sans">{quantity}</span>
+                  <button 
+                    onClick={() => setQuantity(quantity + 1)}
+                    className="px-4 py-3 text-gray-600 hover:bg-gray-100 transition-colors luxury-font-sans"
+                  >
+                    +
+                  </button>
+                </div>
+                
+                <LuxuryButton
+                  onClick={handleAddToCart}
+                  className="flex-1"
                 >
-                  {[...Array(Math.min(10, gemstone.stockCount))].map((_, i) => (
-                    <option key={i + 1} value={i + 1}>
-                      {i + 1}
-                    </option>
-                  ))}
-                </select>
-              </div>
-
-              <div className="flex space-x-4">
+                  Add to Cart
+                </LuxuryButton>
+                
                 <button
-                  className="flex-1 bg-amber-600 text-white py-3 px-6 rounded-lg hover:bg-amber-700 transition-colors font-semibold"
-                  disabled={gemstone.stockCount === 0 || adding}
-                  onClick={async () => {
-                    try {
-                      setAdding(true);
-                      const res = await apiClient.post('/api/cart/add', {
-                        productId: gemstone.id,
-                        quantity,
-                      });
-                      if (!res.ok) throw new Error('Failed to add to cart');
-                    } catch (e) {
-                      // no-op UI toast here to keep code minimal
-                    } finally {
-                      setAdding(false);
-                    }
-                  }}
+                  onClick={handleAddToWishlist}
+                  className={`p-3 rounded-lg border transition-all duration-300 ${
+                    isWishlisted 
+                      ? 'bg-red-50 border-red-200 text-red-600 hover:bg-red-100' 
+                      : 'border-gray-300 hover:bg-gray-50 hover:border-amber-300'
+                  }`}
+                  aria-label={isWishlisted ? "Remove from wishlist" : "Add to wishlist"}
                 >
-                  {adding ? 'Adding...' : 'Add to Cart'}
+                  <Heart className={`${isWishlisted ? 'fill-current' : ''}`} />
                 </button>
+                
                 <button
-                  className="flex-1 bg-green-600 text-white py-3 px-6 rounded-lg hover:bg-green-700 transition-colors font-semibold"
-                  disabled={gemstone.stockCount === 0 || adding}
-                  onClick={async () => {
-                    try {
-                      setAdding(true);
-                      const res = await apiClient.post('/api/cart/add', {
-                        productId: gemstone.id,
-                        quantity,
-                      });
-                      if (!res.ok) throw new Error('Failed');
-                      window.location.href = '/cart';
-                    } finally {
-                      setAdding(false);
-                    }
-                  }}
+                  onClick={handleShare}
+                  className="p-3 rounded-lg border border-gray-300 hover:bg-gray-50 hover:border-amber-300 transition-all duration-300"
+                  aria-label="Share product"
                 >
-                  Buy Now
-                </button>
-                <button className="p-3 border border-gray-300 rounded-lg hover:bg-gray-50 transition-colors">
-                  <svg className="w-6 h-6 text-gray-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4.318 6.318a4.5 4.5 0 000 6.364L12 20.364l7.682-7.682a4.5 4.5 0 00-6.364-6.364L12 7.636l-1.318-1.318a4.5 4.5 0 00-6.364 0z" />
-                  </svg>
+                  <Share2 />
                 </button>
               </div>
-            </div>
+            )}
 
-            {/* Trust Indicators */}
-            <div className="border-t pt-6">
-              <div className="grid grid-cols-2 gap-4 text-sm">
-                <div className="flex items-center space-x-2">
-                  <svg className="w-5 h-5 text-green-500" fill="currentColor" viewBox="0 0 20 20">
-                    <path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" clipRule="evenodd" />
-                  </svg>
-                  <span className="text-gray-600">GIA Certified</span>
+            {/* Additional Info */}
+            <div className="border-t border-gray-200 pt-8">
+              <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+                <div className="flex items-center gap-3">
+                  <div className="bg-amber-100 p-3 rounded-full">
+                    <Truck className="text-amber-600 w-6 h-6" />
+                  </div>
+                  <div>
+                    <span className="font-semibold luxury-font-serif">Free Shipping</span>
+                    <span className="block text-gray-600 text-sm luxury-font-sans">on orders over ₹50,000</span>
+                  </div>
                 </div>
-                <div className="flex items-center space-x-2">
-                  <svg className="w-5 h-5 text-green-500" fill="currentColor" viewBox="0 0 20 20">
-                    <path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" clipRule="evenodd" />
-                  </svg>
-                  <span className="text-gray-600">Free Shipping</span>
+                <div className="flex items-center gap-3">
+                  <div className="bg-amber-100 p-3 rounded-full">
+                    <Shield className="text-amber-600 w-6 h-6" />
+                  </div>
+                  <div>
+                    <span className="font-semibold luxury-font-serif">GIA Certified</span>
+                    <span className="block text-gray-600 text-sm luxury-font-sans">Authenticity guaranteed</span>
+                  </div>
                 </div>
-                <div className="flex items-center space-x-2">
-                  <svg className="w-5 h-5 text-green-500" fill="currentColor" viewBox="0 0 20 20">
-                    <path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" clipRule="evenodd" />
-                  </svg>
-                  <span className="text-gray-600">30-Day Returns</span>
-                </div>
-                <div className="flex items-center space-x-2">
-                  <svg className="w-5 h-5 text-green-500" fill="currentColor" viewBox="0 0 20 20">
-                    <path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" clipRule="evenodd" />
-                  </svg>
-                  <span className="text-gray-600">Secure Payment</span>
+                <div className="flex items-center gap-3">
+                  <div className="bg-amber-100 p-3 rounded-full">
+                    <RotateCcw className="text-amber-600 w-6 h-6" />
+                  </div>
+                  <div>
+                    <span className="font-semibold luxury-font-serif">30-Day Returns</span>
+                    <span className="block text-gray-600 text-sm luxury-font-sans">Hassle-free returns</span>
+                  </div>
                 </div>
               </div>
             </div>
           </div>
         </div>
 
+        {/* Dynamic Content Section */}
+        {dynamicContent && dynamicContent.length > 0 && (
+          <div className="mb-16">
+            <h2 className="text-3xl font-bold text-amber-900 mb-8 luxury-font-serif">About This Gemstone</h2>
+            <LuxuryCard className="p-8">
+              <PageRenderer content={dynamicContent} />
+            </LuxuryCard>
+          </div>
+        )}
+
         {/* Related Products */}
         {relatedProducts.length > 0 && (
-          <div className="mt-16">
-            <h2 className="text-2xl font-bold text-gray-900 mb-8">You may also like</h2>
+          <div className="mb-16">
+            <h2 className="text-3xl font-bold text-amber-900 mb-8 luxury-font-serif">You May Also Like</h2>
             <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6">
-              {relatedProducts.map((product) => (
-                <Link
-                  key={product.id}
-                  href={`/product/${product.id}`}
-                  className="group block"
-                >
-                  <div className="bg-white rounded-2xl shadow-lg hover:shadow-xl transition-all duration-300 overflow-hidden">
-                    <div className="aspect-square overflow-hidden">
-                    <Image
-                        src={getFirstImage(product.images)}
-                        alt={product.name}
-                      width={300}
-                      height={300}
-                        className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300"
-                      />
-                    </div>
-                    <div className="p-4">
-                      <h3 className="font-semibold text-gray-900 mb-2 group-hover:text-amber-600 transition-colors">
-                        {product.name}
-                      </h3>
-                      <p className="text-2xl font-bold text-amber-600">
-                        ${product.price.toLocaleString()}
-                      </p>
-                    </div>
+              {relatedProducts.map((relatedProduct) => (
+                <LuxuryCard key={relatedProduct.id} className="overflow-hidden transition-all duration-500 hover:-translate-y-2">
+                  <div className="relative h-48">
+                    <Image 
+                      src={Array.isArray(relatedProduct.images) ? relatedProduct.images[0] : relatedProduct.images || '/images/placeholder-gemstone.jpg'} 
+                      alt={relatedProduct.name} 
+                      layout="fill" 
+                      objectFit="cover" 
+                    />
                   </div>
-                </Link>
+                  <div className="p-5">
+                    <h3 className="font-bold text-amber-900 mb-2 truncate luxury-font-serif">{relatedProduct.name}</h3>
+                    <p className="text-amber-600 font-bold luxury-font-serif">
+                      ₹{relatedProduct.price.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+                    </p>
+                    <Link href={`/product/${relatedProduct.id}`} className="mt-4 inline-block">
+                      <LuxuryButton variant="secondary" size="sm" className="w-full">
+                        View Details
+                      </LuxuryButton>
+                    </Link>
+                  </div>
+                </LuxuryCard>
               ))}
             </div>
           </div>
@@ -467,4 +448,103 @@ const ProductDetail: React.FC<ProductDetailProps> = ({ gemstone, relatedProducts
   );
 };
 
-export default ProductDetail;
+export const getServerSideProps: GetServerSideProps = async (context) => {
+  const { id } = context.params || {};
+
+  try {
+    if (typeof id !== 'string') {
+      return {
+        props: {
+          product: null,
+          relatedProducts: [],
+          error: 'Invalid product ID',
+        },
+      };
+    }
+
+    const productId = parseInt(id);
+
+    // Fetch product with category information
+    const product = await prisma.gemstone.findUnique({
+      where: {
+        id: productId,
+        active: true,
+      },
+      include: {
+        category: true,
+      },
+    });
+
+    if (!product) {
+      return {
+        props: {
+          product: null,
+          relatedProducts: [],
+          error: 'Product not found',
+        },
+      };
+    }
+
+    // Parse images
+    let images: string[] = [];
+    if (typeof product.images === 'string') {
+      try {
+        images = JSON.parse(product.images);
+      } catch (e) {
+        images = [product.images];
+      }
+    } else if (Array.isArray(product.images)) {
+      images = product.images;
+    } else {
+      images = ['/images/placeholder-gemstone.jpg'];
+    }
+
+    // Fetch related products (from same category)
+    const relatedProducts = await prisma.gemstone.findMany({
+      where: {
+        categoryId: product.categoryId,
+        id: {
+          not: product.id,
+        },
+        active: true,
+      },
+      take: 4,
+      orderBy: {
+        createdAt: 'desc',
+      },
+    });
+
+    // Check for dynamic product page content
+    const dynamicPage = await prisma.page.findFirst({
+      where: {
+        slug: `product-${productId}`,
+        status: 'published',
+      },
+    });
+
+    return {
+      props: {
+        product: {
+          ...product,
+          images,
+          dynamicContent: dynamicPage ? (typeof dynamicPage.content === 'string' ? JSON.parse(dynamicPage.content) : dynamicPage.content) : null,
+        },
+        relatedProducts: relatedProducts.map(rp => ({
+          ...rp,
+          images: typeof rp.images === 'string' ? JSON.parse(rp.images) : rp.images,
+        })),
+      },
+    };
+  } catch (error) {
+    console.error('Error fetching product page:', error);
+    return {
+      props: {
+        product: null,
+        relatedProducts: [],
+        error: 'Failed to load product page',
+      },
+    };
+  }
+};
+
+export default ProductPage;

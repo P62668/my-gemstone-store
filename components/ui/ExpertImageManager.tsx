@@ -1,6 +1,7 @@
-import React, { useState, useRef, useCallback } from 'react';
-import { toast } from 'react-hot-toast';
+import React, { useState, useCallback, useRef } from 'react';
+import Image from 'next/image';
 import { Upload, X, Image as ImageIcon, Trash2, Eye } from 'lucide-react';
+import toast from 'react-hot-toast';
 
 interface ExpertImageManagerProps {
   images: string[];
@@ -162,9 +163,11 @@ const ExpertImageManager: React.FC<ExpertImageManagerProps> = ({
           {images.map((image, index) => (
             <div key={index} className="relative group">
               <div className="aspect-square rounded-lg overflow-hidden bg-gray-100">
-                <img
+                <Image
                   src={image}
                   alt={`Image ${index + 1}`}
+                  fill
+                  sizes="(max-width: 768px) 50vw, (max-width: 1024px) 33vw, 25vw"
                   className="w-full h-full object-cover"
                   onError={(e) => {
                     e.currentTarget.src = '/images/placeholder-gemstone.jpg';

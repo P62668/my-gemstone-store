@@ -1,163 +1,173 @@
 import { NextApiRequest, NextApiResponse } from 'next';
-import { withAuth, AuthenticatedRequest } from '../../utils/authMiddleware';
-import nodemailer from 'nodemailer';
+import { getServerSession } from 'next-auth/next';
+import { authOptions } from './auth/[...nextauth]';
+import { PrismaClient } from '@prisma/client';
+import { NotificationService } from '../../services/notificationService';
 
-import { prisma } from '../../lib/prisma';
+const prisma = new PrismaClient();
 
-export default withAuth(async function handler(req: AuthenticatedRequest, res: NextApiResponse) {
-  const user = req.user;
-  if (!user || !user.id) {
-    return res.status(401).json({ error: 'Authentication required' });
+export default async function handler(req: NextApiRequest, res: NextApiResponse) {
+  const session = await getServerSession(req, res, authOptions);
+
+  if (!session) {
+    return res.status(401).json({ error: 'Unauthorized' });
   }
-  const userId = user.id;
 
   if (req.method === 'GET') {
+    // Get user's orders
     try {
       const orders = await prisma.order.findMany({
-        where: { userId },
+        where: {
+          userId: parseInt(session.user.id, 10)
+        },
         include: {
           items: {
             include: {
-              gemstone: {
-                select: {
-                  name: true,
-                  certificate: true,
-                  images: true,
-                },
-              },
-            },
-          },
-        },
-        orderBy: { createdAt: 'desc' },
-      });
-      const parsedOrders = orders.map((order) => ({
-        ...order,
-        items: order.items.map((item) => {
-          let parsedImages = [];
-          try {
-            if (typeof item.gemstone.images === 'string' && item.gemstone.images.trim()) {
-              parsedImages = JSON.parse(item.gemstone.images);
-            } else if (Array.isArray(item.gemstone.images)) {
-              parsedImages = item.gemstone.images;
+              gemstone: true
             }
-          } catch (error) {
-            console.error('Error parsing images for gemstone:', item.gemstone.name, error);
-            parsedImages = [];
           }
-          
-          return {
-            ...item,
-            gemstone: {
-              ...item.gemstone,
-              images: parsedImages,
-            },
-          };
-        }),
-      }));
-      console.log(
-        '[API/orders] userId:',
-        userId,
-        'orders.length:',
-        parsedOrders.length,
-        'orders:',
-        parsedOrders,
-      );
-      res.status(200).json(parsedOrders);
+        },
+        orderBy: {
+          createdAt: 'desc'
+        }
+      });
+
+      return res.status(200).json(orders);
     } catch (error) {
-      console.error('[API/orders] Error fetching orders for user', userId, error);
-      res.status(500).json({ error: 'Failed to fetch orders' });
+      return res.status(500).json({ error: 'Failed to fetch orders' });
     }
   } else if (req.method === 'POST') {
+    // Create a new order
     try {
-      const { items, total, status = 'paid' } = req.body;
-      if (!Array.isArray(items) || items.length === 0) {
-        return res.status(400).json({ error: 'Order must have at least one item.' });
-      }
-      if (typeof total !== 'number' || total <= 0) {
-        return res.status(400).json({ error: 'Invalid total amount.' });
-      }
-      // Validate each item
-      for (const item of items) {
-        if (!item.gemstoneId || typeof item.quantity !== 'number' || item.quantity <= 0) {
-          return res.status(400).json({ error: 'Invalid order item.' });
-        }
-        // Check if gemstone exists
-        const gemstone = await prisma.gemstone.findUnique({
-          where: { id: Number(item.gemstoneId) },
-        });
-        if (!gemstone) {
-          return res
-            .status(400)
-            .json({ error: `Gemstone with id ${item.gemstoneId} does not exist.` });
-        }
-      }
-      // Generate unique order number
-      const timestamp = Date.now().toString();
-      const random = Math.random().toString(36).substring(2, 8).toUpperCase();
-      const orderNumber = `SM-${timestamp}-${random}`;
+      const { items, total, status, paymentStatus, paymentMethod, shippingAddress, couponId } = req.body;
 
-      // Create order and items
+      // Validate input
+      if (!items || !Array.isArray(items) || items.length === 0) {
+        return res.status(400).json({ error: 'Items are required' });
+      }
+
+      if (typeof total !== 'number' || total < 0) {
+        return res.status(400).json({ error: 'Valid total is required' });
+      }
+
+      // Generate unique order number
+      const orderNumber = `ORD-${Date.now()}-${Math.floor(Math.random() * 1000)}`;
+
+      // Create the order
       const order = await prisma.order.create({
         data: {
-          userId,
+          userId: parseInt(session.user.id, 10),
           orderNumber,
           total,
-          status,
-          shippingAddress: JSON.stringify({}), // Default empty address
-          items: {
-            create: items.map((item) => ({
-              gemstoneId: item.gemstoneId,
-              quantity: item.quantity,
-              price: item.price,
-            })),
-          },
-        },
-        include: {
-          items: true,
-        },
+          status: status || 'pending',
+          paymentStatus: paymentStatus || 'pending',
+          paymentMethod: paymentMethod || 'card',
+          shippingAddress: JSON.stringify(shippingAddress)
+        }
       });
 
-      // Fetch user info for email
-      let emailWarning = null;
-      try {
-        const userInfo = await prisma.user.findUnique({ where: { id: userId } });
-        // Send email notifications (Nodemailer, dev only)
-        if (userInfo && userInfo.email) {
-          const transporter = nodemailer.createTransport({
-            host: 'smtp.ethereal.email',
-            port: 587,
-            auth: {
-              user: process.env.ETHEREAL_USER,
-              pass: process.env.ETHEREAL_PASS,
+      // Create order items
+      const orderItems = await Promise.all(
+        items.map((item: any) => 
+          prisma.orderItem.create({
+            data: {
+              orderId: order.id,
+              gemstoneId: item.gemstoneId,
+              quantity: item.quantity,
+              price: item.price
+            }
+          })
+        )
+      );
+
+      // If a coupon was used, record its usage
+      if (couponId) {
+        await prisma.userCoupon.create({
+          data: {
+            userId: parseInt(session.user.id, 10),
+            couponId: couponId,
+            orderId: order.id
+          }
+        });
+
+        // Increment the coupon's used count
+        await prisma.coupon.update({
+          where: { id: couponId },
+          data: {
+            usedCount: {
+              increment: 1
+            }
+          }
+        });
+      }
+
+      // Add loyalty points for the purchase (1 point per dollar spent)
+      const pointsToAdd = Math.floor(total);
+      if (pointsToAdd > 0) {
+        try {
+          await prisma.loyalty.upsert({
+            where: { userId: parseInt(session.user.id, 10) },
+            update: {
+              points: { increment: pointsToAdd },
+            },
+            create: {
+              userId: parseInt(session.user.id, 10),
+              points: pointsToAdd,
+              tier: 'Bronze',
             },
           });
-          // User confirmation email
-          await transporter.sendMail({
-            from: 'no-reply@shankarmala.com',
-            to: userInfo.email,
-            subject: `Order Confirmation - Shankarmala Order #${order.id}`,
-            html: `<h2>Thank you for your order!</h2><p>Your order #${order.id} has been placed successfully.</p><p>Total: ₹${order.total.toLocaleString('en-IN')}</p>`,
+
+          // Check if user qualifies for a higher tier
+          const LOYALTY_TIERS = [
+            { name: 'Bronze', minPoints: 0 },
+            { name: 'Silver', minPoints: 500 },
+            { name: 'Gold', minPoints: 1500 },
+            { name: 'Platinum', minPoints: 3000 },
+          ];
+
+          const updatedLoyalty = await prisma.loyalty.findUnique({
+            where: { userId: parseInt(session.user.id, 10) },
           });
-          // Admin notification email
-          await transporter.sendMail({
-            from: 'no-reply@shankarmala.com',
-            to: 'admin@shankarmala.com',
-            subject: `New Order Placed - Order #${order.id}`,
-            html: `<h2>New order received</h2><p>Order #${order.id} by ${userInfo.email}</p><p>Total: ₹${order.total.toLocaleString('en-IN')}</p>`,
-          });
+
+          if (updatedLoyalty) {
+            const eligibleTiers = LOYALTY_TIERS.filter(tier => updatedLoyalty.points >= tier.minPoints);
+            const highestTier = eligibleTiers[eligibleTiers.length - 1];
+
+            if (highestTier && highestTier.name !== updatedLoyalty.tier) {
+              // User qualifies for a higher tier
+              await prisma.loyalty.update({
+                where: { userId: parseInt(session.user.id, 10) },
+                data: { tier: highestTier.name },
+              });
+            }
+          }
+        } catch (loyaltyError) {
+          console.error('Error updating loyalty points:', loyaltyError);
+          // Don't fail the order if loyalty update fails
         }
-      } catch (emailErr) {
-        emailWarning = 'Order placed, but failed to send confirmation email.';
-        console.warn('[API/orders] Email warning:', emailErr);
       }
-      console.log('[API/orders] Created order:', order);
-      res.status(201).json({ ...order, emailWarning });
+
+      // Create notification for new order
+      try {
+        await NotificationService.createOrderNotification(parseInt(session.user.id, 10), order.id, order.status);
+      } catch (notificationError) {
+        console.error('Error creating order notification:', notificationError);
+        // Don't fail the order if notification creation fails
+      }
+
+      // Return the created order
+      const fullOrder = {
+        ...order,
+        items: orderItems
+      };
+
+      return res.status(201).json(fullOrder);
     } catch (error) {
-      console.error('[API/orders] Error creating order for user', userId, error);
-      res.status(500).json({ error: 'Failed to create order' });
+      console.error('Error creating order:', error);
+      return res.status(500).json({ error: 'Failed to create order' });
     }
   } else {
     res.setHeader('Allow', ['GET', 'POST']);
-    res.status(405).end(`Method ${req.method} Not Allowed`);
+    return res.status(405).json({ error: `Method ${req.method} not allowed` });
   }
-});
+}

@@ -559,3 +559,173 @@ export const monitoringUtils = {
     }) as T;
   },
 };
+
+// Performance monitoring and metrics collection
+import { performance } from 'perf_hooks';
+
+// Metrics storage
+interface Metrics {
+  [key: string]: {
+    count: number;
+    totalTime: number;
+    avgTime: number;
+    minTime: number;
+    maxTime: number;
+  };
+}
+
+class PerformanceMonitor {
+  private metrics: Metrics = {};
+  private isEnabled: boolean;
+
+  constructor() {
+    this.isEnabled = process.env.NODE_ENV === 'production' || process.env.ENABLE_MONITORING === 'true';
+  }
+
+  // Start timing an operation
+  startTimer(operation: string): number {
+    if (!this.isEnabled) return 0;
+    return performance.now();
+  }
+
+  // End timing and record metrics
+  endTimer(operation: string, startTime: number): void {
+    if (!this.isEnabled || !startTime) return;
+    
+    const endTime = performance.now();
+    const duration = endTime - startTime;
+    
+    if (!this.metrics[operation]) {
+      this.metrics[operation] = {
+        count: 0,
+        totalTime: 0,
+        avgTime: 0,
+        minTime: Infinity,
+        maxTime: 0
+      };
+    }
+    
+    const metric = this.metrics[operation];
+    metric.count++;
+    metric.totalTime += duration;
+    metric.avgTime = metric.totalTime / metric.count;
+    metric.minTime = Math.min(metric.minTime, duration);
+    metric.maxTime = Math.max(metric.maxTime, duration);
+  }
+
+  // Record a custom metric
+  recordMetric(operation: string, duration: number): void {
+    if (!this.isEnabled) return;
+    
+    if (!this.metrics[operation]) {
+      this.metrics[operation] = {
+        count: 0,
+        totalTime: 0,
+        avgTime: 0,
+        minTime: Infinity,
+        maxTime: 0
+      };
+    }
+    
+    const metric = this.metrics[operation];
+    metric.count++;
+    metric.totalTime += duration;
+    metric.avgTime = metric.totalTime / metric.count;
+    metric.minTime = Math.min(metric.minTime, duration);
+    metric.maxTime = Math.max(metric.maxTime, duration);
+  }
+
+  // Get all metrics
+  getMetrics(): Metrics {
+    return this.metrics;
+  }
+
+  // Get specific metric
+  getMetric(operation: string): Metrics[string] | null {
+    return this.metrics[operation] || null;
+  }
+
+  // Reset metrics
+  resetMetrics(): void {
+    this.metrics = {};
+  }
+
+  // Get formatted metrics report
+  getReport(): string {
+    if (!this.isEnabled) {
+      return 'Performance monitoring is disabled';
+    }
+    
+    let report = '=== Performance Metrics Report ===\n';
+    
+    for (const [operation, metric] of Object.entries(this.metrics)) {
+      report += `\n${operation}:\n`;
+      report += `  Count: ${metric.count}\n`;
+      report += `  Total Time: ${metric.totalTime.toFixed(2)}ms\n`;
+      report += `  Average Time: ${metric.avgTime.toFixed(2)}ms\n`;
+      report += `  Min Time: ${metric.minTime.toFixed(2)}ms\n`;
+      report += `  Max Time: ${metric.maxTime.toFixed(2)}ms\n`;
+    }
+    
+    return report;
+  }
+
+  // Log metrics to console
+  logMetrics(): void {
+    if (!this.isEnabled) return;
+    console.log(this.getReport());
+  }
+}
+
+// Create global performance monitor instance
+export const performanceMonitor = new PerformanceMonitor();
+
+// Decorator for monitoring function performance
+export function monitorPerformance(operationName: string) {
+  return function(target: any, propertyKey: string, descriptor: PropertyDescriptor) {
+    const originalMethod = descriptor.value;
+    
+    descriptor.value = function(...args: any[]) {
+      const startTime = performanceMonitor.startTimer(operationName);
+      const result = originalMethod.apply(this, args);
+      performanceMonitor.endTimer(operationName, startTime);
+      return result;
+    };
+    
+    return descriptor;
+  };
+}
+
+// Async decorator for monitoring async function performance
+export function monitorAsyncPerformance(operationName: string) {
+  return function(target: any, propertyKey: string, descriptor: PropertyDescriptor) {
+    const originalMethod = descriptor.value;
+    
+    descriptor.value = async function(...args: any[]) {
+      const startTime = performanceMonitor.startTimer(operationName);
+      const result = await originalMethod.apply(this, args);
+      performanceMonitor.endTimer(operationName, startTime);
+      return result;
+    };
+    
+    return descriptor;
+  };
+}
+
+// Middleware for API route performance monitoring
+export function performanceMiddleware(handler: Function) {
+  return async function(req: any, res: any) {
+    const startTime = performanceMonitor.startTimer(`${req.method} ${req.url}`);
+    
+    // Add timing header to response
+    const originalEnd = res.end;
+    res.end = function(...args: any[]) {
+      performanceMonitor.endTimer(`${req.method} ${req.url}`, startTime);
+      return originalEnd.apply(this, args);
+    };
+    
+    return handler(req, res);
+  };
+}
+
+export default PerformanceMonitor;

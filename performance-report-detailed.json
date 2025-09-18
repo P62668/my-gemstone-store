@@ -1,0 +1,157 @@
+{
+  "timestamp": "2025-09-13T09:47:39.830Z",
+  "summary": {
+    "totalBundleSize": "109.96 KB",
+    "totalCSSSize": "29.77 KB",
+    "totalImageSize": "6.71 MB",
+    "imageOptimizationRatio": 0.8982035928143712,
+    "recommendationsCount": 2
+  },
+  "bundleAnalysis": {
+    "bundles": {
+      "polyfills.js": {
+        "size": 112594,
+        "sizeFormatted": "109.96 KB"
+      }
+    },
+    "totalSize": 112594,
+    "totalSizeFormatted": "109.96 KB"
+  },
+  "performanceMetrics": {},
+  "recommendations": [
+    {
+      "priority": "medium",
+      "category": "Image Optimization",
+      "message": "Found 17 large images. Consider resizing or compressing.",
+      "impact": "Medium"
+    },
+    {
+      "priority": "low",
+      "category": "Image Format",
+      "message": "Less than 50% of images use WebP format. Consider converting more images.",
+      "impact": "Low"
+    }
+  ],
+  "cssAnalysis": {
+    "files": {
+      "globals.css": {
+        "size": 4887,
+        "sizeFormatted": "4.77 KB"
+      },
+      "luxury-theme.css": {
+        "size": 13078,
+        "sizeFormatted": "12.77 KB"
+      },
+      "globals.min.css": {
+        "size": 1646,
+        "sizeFormatted": "1.61 KB"
+      },
+      "luxury-theme.min.css": {
+        "size": 8414,
+        "sizeFormatted": "8.22 KB"
+      },
+      "critical.min.css": {
+        "size": 2461,
+        "sizeFormatted": "2.4 KB"
+      }
+    },
+    "totalSize": 30486,
+    "totalSizeFormatted": "29.77 KB"
+  },
+  "imageAnalysis": {
+    "total": 167,
+    "totalSize": 7039265,
+    "optimized": 150,
+    "webp": 79,
+    "avif": 0,
+    "largeImages": [
+      {
+        "name": "file-1755703323654-98271497.png",
+        "size": 794329,
+        "sizeFormatted": "775.71 KB"
+      },
+      {
+        "name": "file-1754242169690-83962085.jpg",
+        "size": 446168,
+        "sizeFormatted": "435.71 KB"
+      },
+      {
+        "name": "file-1754238577811-479797814.jpg",
+        "size": 435348,
+        "sizeFormatted": "425.14 KB"
+      },
+      {
+        "name": "file-1754238672178-928649391.jpg",
+        "size": 435348,
+        "sizeFormatted": "425.14 KB"
+      },
+      {
+        "name": "file-1755417988198-296544670.png",
+        "size": 253356,
+        "sizeFormatted": "247.42 KB"
+      },
+      {
+        "name": "file-1754160530411-896378491.jpg",
+        "size": 217512,
+        "sizeFormatted": "212.41 KB"
+      },
+      {
+        "name": "file-1754242115908-745044362.jpg",
+        "size": 217512,
+        "sizeFormatted": "212.41 KB"
+      },
+      {
+        "name": "file-1754293456414-802985948.png",
+        "size": 212620,
+        "sizeFormatted": "207.64 KB"
+      },
+      {
+        "name": "file-1754242151497-288884797.jpg",
+        "size": 181787,
+        "sizeFormatted": "177.53 KB"
+      },
+      {
+        "name": "file-1754238577811-479797814.webp",
+        "size": 171222,
+        "sizeFormatted": "167.21 KB"
+      },
+      {
+        "name": "file-1754238672178-928649391.webp",
+        "size": 171222,
+        "sizeFormatted": "167.21 KB"
+      },
+      {
+        "name": "file-1754242169690-83962085.webp",
+        "size": 171008,
+        "sizeFormatted": "167 KB"
+      },
+      {
+        "name": "file-1754293456414-802985948.webp",
+        "size": 171008,
+        "sizeFormatted": "167 KB"
+      },
+      {
+        "name": "file-1754242217501-284428067.jpg",
+        "size": 168583,
+        "sizeFormatted": "164.63 KB"
+      },
+      {
+        "name": "file-1755703323654-98271497.webp",
+        "size": 121992,
+        "sizeFormatted": "119.13 KB"
+      },
+      {
+        "name": "logo-shankar.png",
+        "size": 119538,
+        "sizeFormatted": "116.74 KB"
+      },
+      {
+        "name": "logo-shankar.webp",
+        "size": 110124,
+        "sizeFormatted": "107.54 KB"
+      }
+    ],
+    "totalSizeFormatted": "6.71 MB",
+    "optimizationRatio": 0.8982035928143712
+  }
+}

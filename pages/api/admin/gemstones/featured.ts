@@ -1,12 +1,14 @@
 import { NextApiRequest, NextApiResponse } from 'next';
-import { requireAdmin } from '../../../../utils/auth';
+import { requireAdminAuth } from '../../../../utils/adminSecurity';
 import { prisma } from '../../../../lib/prisma';
+import { invalidateGemstoneCache, forceInvalidateAllCache } from '../../../../utils/cache';
 
 export default async function handler(req: NextApiRequest, res: NextApiResponse) {
-  try {
-    requireAdmin(req);
-  } catch (err: any) {
-    return res.status(err.message.includes('Forbidden') ? 403 : 401).json({ error: err.message });
+  // Use admin-specific authentication
+  const user = await requireAdminAuth(req, res);
+  if (!user) {
+    // requireAdminAuth already sent the response
+    return;
   }
 
   if (req.method === 'PUT') {
@@ -23,35 +25,86 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
           return res.status(404).json({ error: 'Product not found' });
         }
 
-        await prisma.gemstone.update({
+        const updatedProduct = await prisma.gemstone.update({
           where: { id: productId },
           data: { featured: !product.featured },
         });
+        
+        // Force invalidate all cache after update to ensure immediate consistency
+        forceInvalidateAllCache();
 
         return res.status(200).json({
-          message: `Product ${product.featured ? 'unfeatured' : 'featured'} successfully`,
-          featured: !product.featured,
+          message: `Product ${updatedProduct.featured ? 'featured' : 'unfeatured'} successfully`,
+          featured: updatedProduct.featured,
+          productId: updatedProduct.id
         });
       }
 
-      // Handle bulk update (existing functionality)
-      if (Array.isArray(featuredIds)) {
-        // Set featured=false for all products first
+      // Handle reordering of featured products
+      if (action === 'reorder' && Array.isArray(featuredIds)) {
+        // First, set all products to not featured
         await prisma.gemstone.updateMany({
+          where: { featured: true },
           data: { featured: false },
         });
 
-        // Set featured=true for selected products
+        // Then set selected products to featured in the specified order
+        if (featuredIds.length > 0) {
+          // Update each product individually to maintain order
+          for (let i = 0; i < featuredIds.length; i++) {
+            const id = featuredIds[i];
+            await prisma.gemstone.update({
+              where: { id: id },
+              data: { featured: true },
+            });
+          }
+        }
+        
+        // Force invalidate all cache after reorder to ensure immediate consistency
+        forceInvalidateAllCache();
+
+        // Fetch updated featured products
+        const updatedFeatured = await prisma.gemstone.findMany({
+          where: { featured: true },
+          select: { id: true, name: true, featured: true }
+        });
+
+        return res.status(200).json({
+          message: 'Featured products reordered successfully',
+          updatedCount: updatedFeatured.length,
+          featuredProducts: updatedFeatured
+        });
+      }
+
+      // Handle bulk update (backward compatibility)
+      if (!action && Array.isArray(featuredIds)) {
+        // First, set all products to not featured
+        await prisma.gemstone.updateMany({
+          where: { featured: true },
+          data: { featured: false },
+        });
+
+        // Then set selected products to featured
         if (featuredIds.length > 0) {
           await prisma.gemstone.updateMany({
             where: { id: { in: featuredIds } },
             data: { featured: true },
           });
         }
+        
+        // Force invalidate all cache after bulk update to ensure immediate consistency
+        forceInvalidateAllCache();
+
+        // Fetch updated featured products
+        const updatedFeatured = await prisma.gemstone.findMany({
+          where: { featured: true },
+          select: { id: true, name: true, featured: true }
+        });
 
         return res.status(200).json({
           message: 'Featured products updated successfully',
-          updatedCount: featuredIds.length,
+          updatedCount: updatedFeatured.length,
+          featuredProducts: updatedFeatured
         });
       }
 
@@ -63,8 +116,21 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
   } else if (req.method === 'GET') {
     try {
       const featuredProducts = await prisma.gemstone.findMany({
-        where: { featured: true },
-        select: { id: true, name: true, featured: true },
+        where: { 
+          featured: true,
+          active: true 
+        },
+        select: { 
+          id: true, 
+          name: true, 
+          featured: true,
+          price: true,
+          images: true,
+          description: true
+        },
+        orderBy: {
+          createdAt: 'desc'
+        }
       });
 
       return res.status(200).json(featuredProducts);

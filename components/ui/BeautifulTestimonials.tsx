@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { Star, Quote, ChevronLeft, ChevronRight, Heart, Award, Users } from 'lucide-react';
+import Image from 'next/image';
 
 interface Testimonial {
   id: number;
@@ -254,9 +255,11 @@ const BeautifulTestimonials: React.FC<BeautifulTestimonialsProps> = ({
                     <div className="flex items-center justify-between">
                       <div className="flex items-center space-x-4">
                         <div className="relative">
-                          <img
+                          <Image
                             src={displayTestimonials[currentIndex]?.avatar || ''}
                             alt={displayTestimonials[currentIndex]?.name || ''}
+                            width={64}
+                            height={64}
                             className="w-16 h-16 rounded-full object-cover border-4 border-amber-100"
                           />
                           <div className="absolute -bottom-1 -right-1 w-6 h-6 bg-green-500 rounded-full border-2 border-white flex items-center justify-center">

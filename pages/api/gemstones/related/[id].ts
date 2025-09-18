@@ -1,6 +1,7 @@
 import type { NextApiRequest, NextApiResponse } from 'next';
 // Use singleton pattern for Prisma client
 import { prisma } from '../../../../lib/prisma';
+import { logger } from '../../../../utils/logger';
 
 
 
@@ -77,7 +78,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
 
     res.status(200).json(processedGemstones);
   } catch (error) {
-    console.error('Error fetching related gemstones:', error);
+    logger.error('Error fetching related gemstones', error, { id });
     res.status(500).json({ error: 'Failed to fetch related gemstones' });
   }
 }

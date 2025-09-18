@@ -1,5 +1,10 @@
 import type { NextApiRequest, NextApiResponse } from 'next';
 import { prisma } from '../../lib/prisma';
+import os from 'os';
+import fs from 'fs';
+import path from 'path';
+import Stripe from 'stripe';
+import { logger } from '../../utils/logger';
 
 export default async function handler(req: NextApiRequest, res: NextApiResponse) {
   if (req.method !== 'GET') {
@@ -16,6 +21,8 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
       database: 'unknown',
       memory: 'unknown',
       disk: 'unknown',
+      stripe: 'unknown',
+      email: 'unknown'
     },
     details: {} as any,
   };
@@ -36,6 +43,54 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
         error: dbError instanceof Error ? dbError.message : 'Unknown database error',
         timestamp: new Date().toISOString(),
       };
+      logger.error('Health check - Database connection failed', dbError);
+    }
+
+    // Check Stripe API connection
+    if (process.env.STRIPE_SECRET_KEY && 
+        process.env.STRIPE_SECRET_KEY !== 'sk_test_your_stripe_secret_key') {
+      try {
+        const stripe = new Stripe(process.env.STRIPE_SECRET_KEY, {
+          apiVersion: '2023-10-16',
+        });
+        // Make a simple API call to verify connection
+        await stripe.balance.retrieve();
+        healthCheck.checks.stripe = 'healthy';
+        healthCheck.details.stripe = {
+          status: 'connected',
+          timestamp: new Date().toISOString(),
+        };
+      } catch (error) {
+        healthCheck.checks.stripe = 'unhealthy';
+        healthCheck.details.stripe = {
+          status: 'disconnected',
+          error: error instanceof Error ? error.message : 'Unknown Stripe error',
+          timestamp: new Date().toISOString(),
+        };
+        logger.error('Health check - Stripe connection failed', error);
+      }
+    } else {
+      healthCheck.checks.stripe = 'not_configured';
+      healthCheck.details.stripe = {
+        status: 'not_configured',
+        timestamp: new Date().toISOString(),
+      };
+    }
+
+    // Email service check
+    if (process.env.EMAIL_HOST) {
+      healthCheck.checks.email = 'configured';
+      healthCheck.details.email = {
+        status: 'configured',
+        host: process.env.EMAIL_HOST,
+        timestamp: new Date().toISOString(),
+      };
+    } else {
+      healthCheck.checks.email = 'not_configured';
+      healthCheck.details.email = {
+        status: 'not_configured',
+        timestamp: new Date().toISOString(),
+      };
     }
 
     // Memory usage check
@@ -47,6 +102,13 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
       external: Math.round(memUsage.external / 1024 / 1024),
     };
 
+    // Add system memory info
+    const systemMemory = {
+      total: Math.round(os.totalmem() / 1024 / 1024),
+      free: Math.round(os.freemem() / 1024 / 1024),
+      used: Math.round((os.totalmem() - os.freemem()) / 1024 / 1024),
+    };
+
     // Consider memory healthy if heap used is less than 500MB
     if (memUsageMB.heapUsed < 500) {
       healthCheck.checks.memory = 'healthy';
@@ -56,20 +118,55 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
 
     healthCheck.details.memory = {
       usage: memUsageMB,
+      system: systemMemory,
       status: healthCheck.checks.memory,
       timestamp: new Date().toISOString(),
     };
 
-    // Disk space check (simplified - in production use fs.stat)
-    healthCheck.checks.disk = 'healthy'; // Assume healthy for now
-    healthCheck.details.disk = {
-      status: 'healthy',
-      timestamp: new Date().toISOString(),
-    };
+    // Disk space check (using fs.statfs)
+    try {
+      const rootDir = path.parse(process.cwd()).root;
+      const stats = fs.statfsSync(rootDir);
+      const total = stats.blocks * stats.bsize;
+      const free = stats.bfree * stats.bsize;
+      const used = total - free;
+
+      const diskGB = {
+        total: Math.round(total / 1024 / 1024 / 1024),
+        free: Math.round(free / 1024 / 1024 / 1024),
+        used: Math.round(used / 1024 / 1024 / 1024),
+      };
+
+      // Consider disk healthy if more than 10% free space
+      const freePercentage = (free / total) * 100;
+      if (freePercentage > 10) {
+        healthCheck.checks.disk = 'healthy';
+      } else if (freePercentage > 5) {
+        healthCheck.checks.disk = 'warning';
+      } else {
+        healthCheck.checks.disk = 'unhealthy';
+      }
+
+      healthCheck.details.disk = {
+        usage: diskGB,
+        freePercentage: Math.round(freePercentage),
+        status: healthCheck.checks.disk,
+        timestamp: new Date().toISOString(),
+      };
+    } catch (error) {
+      // Disk space check might fail in serverless environments
+      healthCheck.checks.disk = 'unknown';
+      healthCheck.details.disk = {
+        status: 'unknown',
+        error: 'Disk check not available in this environment',
+        timestamp: new Date().toISOString(),
+      };
+      logger.warn('Health check - Disk space check failed', error);
+    }
 
     // Overall health status
     const allChecks = Object.values(healthCheck.checks);
-    if (allChecks.every(check => check === 'healthy')) {
+    if (allChecks.every(check => check === 'healthy' || check === 'configured' || check === 'not_configured')) {
       healthCheck.status = 'healthy';
     } else if (allChecks.some(check => check === 'unhealthy')) {
       healthCheck.status = 'unhealthy';
@@ -117,6 +214,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
     healthCheck.status = 'unhealthy';
     healthCheck.details.error = error instanceof Error ? error.message : 'Unknown error';
     res.status(503).json(healthCheck);
+    logger.error('Health check - Critical failure', error);
   } finally {
     await prisma.$disconnect();
   }

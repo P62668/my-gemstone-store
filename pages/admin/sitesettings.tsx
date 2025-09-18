@@ -1,5 +1,7 @@
 import React, { useEffect, useState } from 'react';
 import AdminLayout from '../../components/AdminLayout';
+import getSessionOrRedirect from '../../utils/withServerAuth';
+import type { GetServerSideProps } from 'next';
 
 interface SiteSettings {
   about?: string;
@@ -62,6 +64,11 @@ const AdminSiteSettingsPage: React.FC = () => {
     <AdminLayout title="Admin Site Settings - Kolkata Gems">
       <div className="max-w-3xl mx-auto py-12 px-4">
         <h1 className="text-4xl font-bold text-amber-900 mb-8">Admin: Site Settings</h1>
+        {(error || success) && (
+          <div className={`rounded-xl p-4 mb-6 font-semibold text-center shadow border ${error ? 'bg-red-100 border-red-300 text-red-800' : 'bg-green-100 border-green-300 text-green-800'}`}>
+            {error || success}
+          </div>
+        )}
         <form
           className="bg-white/80 rounded-3xl shadow-xl border border-amber-100 p-8 flex flex-col gap-4"
           onSubmit={handleSubmit}
@@ -109,8 +116,7 @@ const AdminSiteSettingsPage: React.FC = () => {
           >
             {formLoading ? 'Saving...' : 'Save Settings'}
           </button>
-          {error && <div className="text-red-600 text-sm mt-2">{error}</div>}
-          {success && <div className="text-green-700 text-sm mt-2">{success}</div>}
+          {/* Success message now shown in the prominent banner above */}
         </form>
       </div>
     </AdminLayout>
@@ -118,3 +124,9 @@ const AdminSiteSettingsPage: React.FC = () => {
 };
 
 export default AdminSiteSettingsPage;
+
+export const getServerSideProps: GetServerSideProps = async (ctx) => {
+  const res = await getSessionOrRedirect(ctx, { requireAdmin: true });
+  if ('redirect' in res) return res;
+  return { props: {} };
+};

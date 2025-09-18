@@ -1,0 +1,3 @@
+-- AlterTable
+ALTER TABLE "SEO" ADD COLUMN "canonical" TEXT;
+ALTER TABLE "SEO" ADD COLUMN "metaTags" TEXT;

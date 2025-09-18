@@ -1,5 +1,9 @@
 import React from 'react';
 
+// Simple in-memory cache for image processing
+const imageCache = new Map();
+const CACHE_TTL = 60000; // 1 minute
+
 /**
  * Safely get image source with fallback
  * Prevents 500 errors when image URLs are invalid
@@ -62,14 +66,27 @@ export function isValidImageUrl(url: string): boolean {
  */
 
 export function parseImages(images: any): string[] {
+  // Create cache key
+  const cacheKey = typeof images === 'string' ? images : JSON.stringify(images);
+  
+  // Check cache first
+  const cached = imageCache.get(cacheKey);
+  if (cached && Date.now() - cached.timestamp < CACHE_TTL) {
+    return cached.data;
+  }
+  
   if (!images) {
-    return ['/images/placeholder-gemstone.jpg'];
+    const result = ['/images/placeholder-gemstone.jpg'];
+    imageCache.set(cacheKey, { data: result, timestamp: Date.now() });
+    return result;
   }
 
   // If it's already an array, filter out empty strings and return
   if (Array.isArray(images)) {
     const filteredImages = images.filter(img => img && typeof img === 'string' && img.trim() !== '');
-    return filteredImages.length > 0 ? filteredImages : ['/images/placeholder-gemstone.jpg'];
+    const result = filteredImages.length > 0 ? filteredImages : ['/images/placeholder-gemstone.jpg'];
+    imageCache.set(cacheKey, { data: result, timestamp: Date.now() });
+    return result;
   }
 
   // If it's a string, try to parse it as JSON
@@ -78,7 +95,9 @@ export function parseImages(images: any): string[] {
       const parsed = JSON.parse(images);
       if (Array.isArray(parsed)) {
         const filteredImages = parsed.filter(img => img && typeof img === 'string' && img.trim() !== '');
-        return filteredImages.length > 0 ? filteredImages : ['/images/placeholder-gemstone.jpg'];
+        const result = filteredImages.length > 0 ? filteredImages : ['/images/placeholder-gemstone.jpg'];
+        imageCache.set(cacheKey, { data: result, timestamp: Date.now() });
+        return result;
       }
     } catch (error) {
       console.warn('Failed to parse images JSON:', error);
@@ -86,12 +105,16 @@ export function parseImages(images: any): string[] {
     
     // If parsing fails or result is empty, treat as single image
     if (images.trim()) {
-      return [images];
+      const result = [images];
+      imageCache.set(cacheKey, { data: result, timestamp: Date.now() });
+      return result;
     }
   }
 
   // Default fallback
-  return ['/images/placeholder-gemstone.jpg'];
+  const result = ['/images/placeholder-gemstone.jpg'];
+  imageCache.set(cacheKey, { data: result, timestamp: Date.now() });
+  return result;
 }
 
 export function getFirstImage(images: any): string {
@@ -102,4 +125,84 @@ export function getFirstImage(images: any): string {
 export function getImageCount(images: any): number {
   const parsedImages = parseImages(images);
   return parsedImages.length;
+}
+
+// Function to optimize image URLs for faster loading
+export function optimizeImageUrl(url: string, width: number = 300, quality: number = 75): string {
+  // Don't optimize external images or already optimized images
+  if (!url || typeof url !== 'string') return '/images/placeholder-gemstone.jpg';
+  
+  // Return placeholder for empty URLs
+  if (url.trim() === '') return '/images/placeholder-gemstone.jpg';
+  
+  // Don't optimize external images or already optimized images
+  if (url.startsWith('http') || url.includes('?w=')) {
+    return url;
+  }
+  
+  // Add optimization parameters
+  return `${url}?w=${width}&q=${quality}`;
+}
+
+// Enhanced function to generate responsive image sources with multiple formats
+export function generateImageSrcSet(url: string): string {
+  if (!url || typeof url !== 'string') return '';
+  
+  // Don't generate srcset for external images
+  if (url.startsWith('http')) {
+    return '';
+  }
+  
+  // Generate srcset for different screen sizes and formats
+  const widths = [300, 600, 900, 1200];
+  return widths.map(width => `${optimizeImageUrl(url, width)} ${width}w`).join(', ');
+}
+
+// Enhanced function to get appropriate image sizes attribute
+export function getImageSizes(): string {
+  return '(max-width: 768px) 100vw, (max-width: 1200px) 50vw, 33vw';
+}
+
+// New function to preload critical images
+export function preloadImage(url: string): Promise<void> {
+  return new Promise((resolve, reject) => {
+    const img = new Image();
+    img.onload = () => resolve();
+    img.onerror = reject;
+    img.src = url;
+  });
+}
+
+// New function to batch preload images
+export async function preloadImages(urls: string[]): Promise<void> {
+  // Limit concurrent preloading to prevent overwhelming the browser
+  const concurrencyLimit = 4;
+  const results: Promise<void>[] = [];
+  
+  for (let i = 0; i < urls.length; i += concurrencyLimit) {
+    const batch = urls.slice(i, i + concurrencyLimit);
+    const batchPromises = batch.map(url => preloadImage(url));
+    results.push(...batchPromises);
+    // Wait for current batch to complete before starting next
+    await Promise.all(batchPromises);
+  }
+  
+  await Promise.all(results);
+}
+
+// New function to generate optimized image URLs with format selection
+export function getOptimizedImageUrl(url: string, width: number = 300, quality: number = 75): string {
+  // Don't optimize external images or already optimized images
+  if (!url || typeof url !== 'string') return '/images/placeholder-gemstone.jpg';
+  
+  // Return placeholder for empty URLs
+  if (url.trim() === '') return '/images/placeholder-gemstone.jpg';
+  
+  // Don't optimize external images
+  if (url.startsWith('http')) {
+    return url;
+  }
+  
+  // Add optimization parameters
+  return `${url}?w=${width}&q=${quality}`;
 }

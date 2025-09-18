@@ -1,0 +1,516 @@
+/* Luxury Theme Styles for Shankarmala Gemstore */
+
+/* Luxury Color Palette */
+:root {
+  /* Primary Luxury Colors */
+  --luxury-gold-light: #f5d042;
+  --luxury-gold: #d4af37;
+  --luxury-gold-dark: #b8860b;
+  --luxury-gold-darker: #8b6914;
+  
+  /* Secondary Luxury Colors */
+  --luxury-amber: #f59e0b;
+  --luxury-amber-dark: #d97706;
+  
+  /* Luxury Backgrounds */
+  --luxury-bg-gradient: linear-gradient(135deg, #fff9e6 0%, #fff5d9 100%);
+  --luxury-bg-gradient-dark: linear-gradient(135deg, #1a1a1a 0%, #2d2d2d 100%);
+  --luxury-bg-cream: #fff9e6;
+  --luxury-bg-ivory: #fffaee;
+  
+  /* Luxury Text Colors */
+  --luxury-text-primary: #2d2d2d;
+  --luxury-text-secondary: #5a5a5a;
+  --luxury-text-tertiary: #8a8a8a;
+  --luxury-text-light: #ffffff;
+  --luxury-text-gold: #d4af37;
+  
+  /* Luxury Borders */
+  --luxury-border-gold: 1px solid #d4af3740;
+  --luxury-border-gold-bold: 2px solid #d4af37;
+  --luxury-border-amber: 1px solid #f59e0b40;
+  
+  /* Luxury Shadows */
+  --luxury-shadow-gold: 0 10px 30px rgba(212, 175, 55, 0.15);
+  --luxury-shadow-amber: 0 10px 30px rgba(245, 158, 11, 0.15);
+  --luxury-shadow-deep: 0 20px 50px rgba(0, 0, 0, 0.1);
+  
+  /* Luxury Transitions */
+  --luxury-transition-fast: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
+  --luxury-transition-medium: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+  --luxury-transition-slow: all 0.5s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+/* Luxury Typography */
+.luxury-font-serif {
+  font-family: 'Playfair Display', 'Georgia', serif;
+}
+
+.luxury-font-sans {
+  font-family: 'Montserrat', 'Helvetica Neue', sans-serif;
+}
+
+/* Luxury Buttons */
+.luxury-button-primary {
+  background: linear-gradient(135deg, var(--luxury-gold) 0%, var(--luxury-gold-dark) 100%);
+  color: var(--luxury-text-light);
+  border: none;
+  border-radius: 50px;
+  padding: 12px 32px;
+  font-weight: 600;
+  font-size: 1rem;
+  transition: var(--luxury-transition-medium);
+  box-shadow: var(--luxury-shadow-gold);
+  position: relative;
+  overflow: hidden;
+}
+
+.luxury-button-primary:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 15px 35px rgba(212, 175, 55, 0.25);
+}
+
+.luxury-button-primary:active {
+  transform: translateY(0);
+}
+
+.luxury-button-primary::before {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: -100%;
+  width: 100%;
+  height: 100%;
+  background: linear-gradient(90deg, transparent, rgba(255, 255, 255, 0.2), transparent);
+  transition: var(--luxury-transition-slow);
+}
+
+.luxury-button-primary:hover::before {
+  left: 100%;
+}
+
+.luxury-button-secondary {
+  background: transparent;
+  color: var(--luxury-gold);
+  border: 2px solid var(--luxury-gold);
+  border-radius: 50px;
+  padding: 12px 32px;
+  font-weight: 600;
+  font-size: 1rem;
+  transition: var(--luxury-transition-medium);
+  position: relative;
+  overflow: hidden;
+}
+
+.luxury-button-secondary:hover {
+  background: linear-gradient(135deg, var(--luxury-gold) 0%, var(--luxury-gold-dark) 100%);
+  color: var(--luxury-text-light);
+  transform: translateY(-2px);
+  box-shadow: var(--luxury-shadow-gold);
+}
+
+/* Luxury Cards */
+.luxury-card {
+  background: var(--luxury-bg-ivory);
+  border-radius: 24px;
+  border: var(--luxury-border-gold);
+  box-shadow: var(--luxury-shadow-gold);
+  transition: var(--luxury-transition-medium);
+  position: relative;
+  overflow: hidden;
+}
+
+.luxury-card:hover {
+  transform: translateY(-5px);
+  box-shadow: var(--luxury-shadow-deep);
+}
+
+.luxury-card::before {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  height: 4px;
+  background: linear-gradient(90deg, var(--luxury-gold), var(--luxury-amber));
+  opacity: 0;
+  transition: var(--luxury-transition-medium);
+}
+
+.luxury-card:hover::before {
+  opacity: 1;
+}
+
+/* Luxury Section Headers */
+.luxury-section-header {
+  position: relative;
+  text-align: center;
+  margin-bottom: 3rem;
+}
+
+.luxury-section-header h2 {
+  font-family: 'Playfair Display', serif;
+  font-size: 2.5rem;
+  font-weight: 700;
+  color: var(--luxury-text-primary);
+  margin-bottom: 1rem;
+  position: relative;
+  display: inline-block;
+}
+
+.luxury-section-header h2::after {
+  content: '';
+  position: absolute;
+  bottom: -10px;
+  left: 50%;
+  transform: translateX(-50%);
+  width: 80px;
+  height: 3px;
+  background: linear-gradient(90deg, var(--luxury-gold), var(--luxury-amber));
+  border-radius: 3px;
+}
+
+.luxury-section-header p {
+  color: var(--luxury-text-secondary);
+  font-size: 1.1rem;
+  max-width: 600px;
+  margin: 1rem auto 0;
+}
+
+/* Luxury Animations */
+@keyframes luxury-fade-in {
+  from {
+    opacity: 0;
+    transform: translateY(20px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+@keyframes luxury-glow {
+  0% {
+    box-shadow: 0 0 5px rgba(212, 175, 55, 0.3);
+  }
+  50% {
+    box-shadow: 0 0 20px rgba(212, 175, 55, 0.6);
+  }
+  100% {
+    box-shadow: 0 0 5px rgba(212, 175, 55, 0.3);
+  }
+}
+
+.luxury-glow {
+  animation: luxury-glow 3s infinite;
+}
+
+/* Micro-interactions */
+
+/* Luxury Badges */
+.luxury-badge {
+  display: inline-flex;
+  align-items: center;
+  padding: 4px 12px;
+  border-radius: 50px;
+  font-size: 0.8rem;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+}
+
+.luxury-badge-gold {
+  background: linear-gradient(135deg, var(--luxury-gold) 0%, var(--luxury-gold-dark) 100%);
+  color: white;
+  box-shadow: 0 4px 10px rgba(212, 175, 55, 0.3);
+}
+
+.luxury-badge-amber {
+  background: linear-gradient(135deg, var(--luxury-amber) 0%, var(--luxury-amber-dark) 100%);
+  color: white;
+  box-shadow: 0 4px 10px rgba(245, 158, 11, 0.3);
+}
+
+/* Luxury Inputs */
+.luxury-input {
+  background: var(--luxury-bg-ivory);
+  border: var(--luxury-border-gold);
+  border-radius: 12px;
+  padding: 12px 16px;
+  font-size: 1rem;
+  color: var(--luxury-text-primary);
+  transition: var(--luxury-transition-fast);
+  width: 100%;
+}
+
+.luxury-input:focus {
+  outline: none;
+  border-color: var(--luxury-gold);
+  box-shadow: 0 0 0 3px rgba(212, 175, 55, 0.2);
+}
+
+/* Luxury Checkbox */
+.luxury-checkbox {
+  background: var(--luxury-bg-ivory);
+  border: var(--luxury-border-gold);
+  border-radius: 6px;
+  padding: 8px;
+  transition: var(--luxury-transition-fast);
+}
+
+.luxury-checkbox:focus {
+  outline: none;
+  border-color: var(--luxury-gold);
+  box-shadow: 0 0 0 3px rgba(212, 175, 55, 0.2);
+}
+
+.luxury-checkbox:checked {
+  background: var(--luxury-gold);
+  border-color: var(--luxury-gold);
+}
+
+/* Luxury Select */
+.luxury-select {
+  background: var(--luxury-bg-ivory);
+  border: var(--luxury-border-gold);
+  border-radius: 12px;
+  padding: 12px 16px;
+  font-size: 1rem;
+  color: var(--luxury-text-primary);
+  transition: var(--luxury-transition-fast);
+  width: 100%;
+  appearance: none;
+  background-image: url("data:image/svg+xml;charset=UTF-8,%3csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='%23d4af37' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3e%3cpolyline points='6 9 12 15 18 9'%3e%3c/polyline%3e%3c/svg%3e");
+  background-repeat: no-repeat;
+  background-position: right 1rem center;
+  background-size: 1rem;
+}
+
+.luxury-select:focus {
+  outline: none;
+  border-color: var(--luxury-gold);
+  box-shadow: 0 0 0 3px rgba(212, 175, 55, 0.2);
+}
+
+/* Luxury Navigation */
+.luxury-nav-link {
+  position: relative;
+  padding: 8px 16px;
+  color: var(--luxury-text-primary);
+  font-weight: 500;
+  transition: var(--luxury-transition-fast);
+  border-radius: 8px;
+}
+
+.luxury-nav-link:hover {
+  color: var(--luxury-gold);
+  background: rgba(212, 175, 55, 0.1);
+}
+
+.luxury-nav-link.active {
+  color: var(--luxury-gold);
+  background: rgba(212, 175, 55, 0.15);
+}
+
+.luxury-nav-link.active::after {
+  content: '';
+  position: absolute;
+  bottom: 0;
+  left: 50%;
+  transform: translateX(-50%);
+  width: 40%;
+  height: 2px;
+  background: var(--luxury-gold);
+  border-radius: 2px;
+}
+
+/* Luxury Divider */
+.luxury-divider {
+  height: 1px;
+  background: linear-gradient(90deg, transparent, var(--luxury-gold), transparent);
+  margin: 2rem 0;
+}
+
+/* Luxury Icons */
+.luxury-icon-gold {
+  color: var(--luxury-gold);
+  transition: var(--luxury-transition-fast);
+}
+
+.luxury-icon-gold:hover {
+  color: var(--luxury-gold-dark);
+  transform: scale(1.1);
+}
+
+/* Luxury Loading Spinner */
+
+@keyframes spin {
+  0% { transform: rotate(0deg); }
+  100% { transform: rotate(360deg); }
+}
+
+/* Luxury Toast */
+.luxury-toast {
+  background: var(--luxury-bg-ivory);
+  border: var(--luxury-border-gold);
+  border-radius: 12px;
+  box-shadow: var(--luxury-shadow-gold);
+  padding: 16px 24px;
+  font-weight: 500;
+  color: var(--luxury-text-primary);
+}
+
+/* Luxury Modal */
+.luxury-modal-overlay {
+  background: rgba(0, 0, 0, 0.7);
+  backdrop-filter: blur(10px);
+}
+
+.luxury-modal-content {
+  background: var(--luxury-bg-ivory);
+  border: var(--luxury-border-gold);
+  border-radius: 24px;
+  box-shadow: var(--luxury-shadow-deep);
+}
+
+/* Luxury Table */
+.luxury-table {
+  background: var(--luxury-bg-ivory);
+  border-collapse: separate;
+  border-spacing: 0;
+  border: var(--luxury-border-gold);
+  border-radius: 16px;
+  overflow: hidden;
+  box-shadow: var(--luxury-shadow-gold);
+}
+
+.luxury-table th {
+  background: rgba(212, 175, 55, 0.1);
+  color: var(--luxury-gold-dark);
+  font-weight: 600;
+  padding: 16px;
+  text-align: left;
+}
+
+.luxury-table td {
+  padding: 16px;
+  border-bottom: var(--luxury-border-gold);
+  color: var(--luxury-text-primary);
+}
+
+.luxury-table tr:last-child td {
+  border-bottom: none;
+}
+
+.luxury-table tr:hover {
+  background: rgba(212, 175, 55, 0.05);
+}
+
+/* Luxury Pagination */
+
+/* Luxury Rating */
+.luxury-rating {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+}
+
+.luxury-rating-star {
+  color: #e5e7eb;
+  transition: var(--luxury-transition-fast);
+}
+
+.luxury-rating-star.filled {
+  color: var(--luxury-gold);
+}
+
+.luxury-rating-star:hover {
+  color: var(--luxury-gold);
+  transform: scale(1.1);
+}
+
+/* Enhanced Micro-interactions */
+.luxury-ripple {
+  position: relative;
+  overflow: hidden;
+}
+
+.luxury-ripple::after {
+  content: '';
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  width: 0;
+  height: 0;
+  border-radius: 50%;
+  background: rgba(212, 175, 55, 0.3);
+  transform: translate(-50%, -50%);
+  opacity: 0;
+  transition: width 0.6s, height 0.6s, opacity 0.6s;
+}
+
+.luxury-ripple:active::after {
+  width: 200px;
+  height: 200px;
+  opacity: 1;
+  transition: 0s;
+}
+
+/* Luxury Hover Effects */
+.luxury-hover-glow {
+  transition: var(--luxury-transition-medium);
+}
+
+.luxury-hover-glow:hover {
+  box-shadow: var(--luxury-shadow-gold);
+  transform: translateY(-3px);
+}
+
+/* Luxury Focus States */
+
+/* Luxury Transitions */
+
+/* Luxury Animations for Product Cards */
+@keyframes luxury-card-enter {
+  from {
+    opacity: 0;
+    transform: translateY(20px) scale(0.95);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0) scale(1);
+  }
+}
+
+.luxury-card-enter {
+  animation: luxury-card-enter 0.4s cubic-bezier(0.4, 0, 0.2, 1) both;
+}
+
+/* Luxury Loading States */
+
+@keyframes luxury-skeleton-loading {
+  0% {
+    background-position: 200% 0;
+  }
+  100% {
+    background-position: -200% 0;
+  }
+}
+
+/* Luxury Notification Badge */
+.luxury-notification-badge {
+  position: absolute;
+  top: -5px;
+  right: -5px;
+  background: linear-gradient(135deg, var(--luxury-gold) 0%, var(--luxury-gold-dark) 100%);
+  color: white;
+  border-radius: 50%;
+  width: 20px;
+  height: 20px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 0.7rem;
+  font-weight: bold;
+  box-shadow: 0 2px 5px rgba(0, 0, 0, 0.2);
+}

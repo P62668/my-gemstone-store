@@ -1,6 +1,7 @@
 import { NextApiRequest, NextApiResponse } from 'next';
 import { withAdminAuth } from '../../../../utils/authMiddleware';
 import { prisma } from '../../../../lib/prisma';
+import { forceInvalidateAllCache } from '../../../../utils/cache';
 
 // Default sections to create if none exist
 const defaultSections = [
@@ -48,17 +49,9 @@ const defaultSections = [
     key: 'faq',
     title: 'Frequently Asked Questions',
     subtitle: 'Everything you need to know about our gemstones',
-    content: 'Common questions about our products and services',
+    content: 'Answers to common questions about our products and services',
     active: true,
     order: 6,
-  },
-  {
-    key: 'cta',
-    title: 'Ready to Find Your Perfect Gemstone?',
-    subtitle: 'Start your journey with Shankarmala today',
-    content: 'Explore our collection and find the gemstone that speaks to you',
-    active: true,
-    order: 7,
   },
 ];
 
@@ -72,43 +65,28 @@ async function handler(req: NextApiRequest, res: NextApiResponse) {
 
   if (req.method === 'GET') {
     try {
-      const sections = await prisma.homepageSection.findMany({ orderBy: { order: 'asc' } });
+      let sections = await prisma.homepageSection.findMany({
+        where: { key: { not: 'hero' } },
+        orderBy: { order: 'asc' },
+      });
 
-      // If no sections exist, create default sections
+      // Create default sections if none exist
       if (sections.length === 0) {
-        console.log('No sections found, creating default sections...');
-        for (const section of defaultSections) {
-          await prisma.homepageSection.create({
-            data: {
-              key: section.key,
-              content: section,
-              order: section.order,
-              active: section.active,
-            },
-          });
-        }
-        console.log('Default sections created successfully');
-
-        // Fetch the newly created sections
-        const newSections = await prisma.homepageSection.findMany({ orderBy: { order: 'asc' } });
-        res.status(200).json(
-          newSections.map((s) => ({
-            key: s.key,
-            ...(s.content as any),
-            order: s.order,
-            active: s.active,
-          })),
-        );
-      } else {
-        res.status(200).json(
-          sections.map((s) => ({
-            key: s.key,
-            ...(s.content as any),
-            order: s.order,
-            active: s.active,
-          })),
+        sections = await Promise.all(
+          defaultSections.map((section) =>
+            prisma.homepageSection.create({
+              data: {
+                key: section.key,
+                content: section,
+                order: section.order,
+                active: section.active,
+              },
+            })
+          )
         );
       }
+
+      res.status(200).json(sections.map((s) => s.content));
     } catch (error) {
       console.error('Error fetching sections settings:', error);
       res.status(500).json({ error: 'Failed to fetch sections settings' });
@@ -138,6 +116,10 @@ async function handler(req: NextApiRequest, res: NextApiResponse) {
           },
         });
       }
+      
+      // Force invalidate all cache after update to ensure immediate consistency
+      forceInvalidateAllCache();
+      
       res.status(200).json({ message: 'Sections settings updated successfully' });
     } catch (error) {
       console.error('Error updating sections settings:', error);

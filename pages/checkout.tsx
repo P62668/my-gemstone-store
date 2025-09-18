@@ -5,6 +5,7 @@ import { useRouter } from 'next/router';
 import Link from 'next/link';
 import Layout from '../components/Layout';
 import { useCart } from '../components/context/CartContext';
+import { useCoupon } from '../components/context/CouponContext';
 import { motion, AnimatePresence } from 'framer-motion';
 import {
   CreditCard,
@@ -19,8 +20,24 @@ import {
   Phone,
   Mail,
   Home,
+  DollarSign,
+  ShieldCheck,
+  Clock,
+  Award,
+  Info,
 } from 'lucide-react';
 import toast from 'react-hot-toast';
+import LuxuryButton from '../components/ui/LuxuryButton';
+import LuxuryCard from '../components/ui/LuxuryCard';
+
+// Define the BuyNowItem interface
+interface BuyNowItem {
+  id: number;
+  name: string;
+  price: number;
+  quantity: number;
+  images: string[];
+}
 
 interface CheckoutForm {
   fullName: string;
@@ -45,7 +62,8 @@ interface Address {
 }
 
 const CheckoutPage: React.FC = () => {
-  const { items: cart, clearCart } = useCart();
+  const { items: cart, clearCart, getCartSubtotal } = useCart();
+  const { appliedCoupon, applyCoupon, removeCoupon, loading: couponLoading } = useCoupon();
   const router = useRouter();
   const [loading, setLoading] = useState(false);
   const [showConfirm, setShowConfirm] = useState(false);
@@ -80,8 +98,24 @@ const CheckoutPage: React.FC = () => {
   const [useShippingForBilling, setUseShippingForBilling] = useState(true);
   const [formErrors, setFormErrors] = useState<{ [key: string]: string }>({});
   const [billingFormErrors, setBillingFormErrors] = useState<{ [key: string]: string }>({});
-
-  const total = cart.reduce((sum, item) => sum + item.price * item.quantity, 0);
+  const [paymentMethod, setPaymentMethod] = useState<'card' | 'cod'>('card');
+  
+  // State for buy now item
+  const [buyNowItem, setBuyNowItem] = useState<BuyNowItem | null>(null);
+  
+  // Add state for coupon code
+  const [couponCode, setCouponCode] = useState('');
+  
+  // Determine which items to show (cart items or buy now item)
+  const checkoutItems = buyNowItem ? [buyNowItem] : cart;
+  const subtotal = getCartSubtotal();
+  const discount = appliedCoupon ? appliedCoupon.discountAmount : 0;
+  const total = subtotal - discount;
+  
+  // Check if all items support COD
+  const allItemsSupportCOD = checkoutItems.every(item => 
+    'cashOnDelivery' in item ? item.cashOnDelivery : true
+  );
 
   useEffect(() => {
     if (router.query.success === '1') {
@@ -90,6 +124,19 @@ const CheckoutPage: React.FC = () => {
     }
     if (router.query.canceled === '1') {
       setError('Payment was canceled. Please try again.');
+    }
+    
+    // Check for buy now item in session storage
+    const buyNowItemStr = sessionStorage.getItem('buyNowItem');
+    if (buyNowItemStr) {
+      try {
+        const item = JSON.parse(buyNowItemStr);
+        setBuyNowItem(item);
+        // Clear the session storage after retrieving the item
+        sessionStorage.removeItem('buyNowItem');
+      } catch (e) {
+        console.error('Error parsing buy now item:', e);
+      }
     }
   }, [router.query.success, router.query.canceled, clearCart]);
 
@@ -252,14 +299,96 @@ const CheckoutPage: React.FC = () => {
     setShowConfirm(true);
   };
 
-  // Final order placement via Stripe checkout session
+  // Final order placement via Stripe checkout session or COD
   const handlePlaceOrder = async () => {
     setLoading(true);
     setError('');
     setSuccess('');
     try {
-      // Create Stripe checkout session through server
-      const orderItems = cart.map((item) => ({
+      // Handle COD payment
+      if (paymentMethod === 'cod' && allItemsSupportCOD) {
+        // Create order directly without Stripe
+        const orderItems = checkoutItems.map((item) => ({
+          gemstoneId: Number(item.id),
+          quantity: item.quantity,
+          price: item.price,
+          name: item.name,
+        }));
+        
+        const res = await fetch('/api/orders', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          credentials: 'include',
+          body: JSON.stringify({ 
+            items: orderItems,
+            total: total,
+            status: 'pending',
+            paymentStatus: 'pending',
+            paymentMethod: 'cod',
+            shippingAddress: {
+              fullName: form.fullName,
+              address: form.address,
+              city: form.city,
+              state: form.state,
+              postalCode: form.postalCode,
+              phone: form.phone
+            }
+          }),
+        });
+        
+        const data = await res.json();
+        if (!res.ok) {
+          throw new Error(data.error || 'Failed to place COD order.');
+        }
+
+        // Save new shipping address if requested
+        if (selectedAddressId === 'new' && saveToAddressBook) {
+          await fetch('/api/addresses', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            credentials: 'include',
+            body: JSON.stringify({
+              type: 'shipping',
+              name: form.fullName,
+              address: form.address,
+              city: form.city,
+              state: form.state,
+              zipCode: form.postalCode,
+              phone: form.phone,
+              isDefault: false,
+            }),
+          });
+        }
+        if (
+          !useShippingForBilling &&
+          selectedBillingAddressId === 'new' &&
+          saveBillingToAddressBook
+        ) {
+          await fetch('/api/addresses', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            credentials: 'include',
+            body: JSON.stringify({
+              type: 'billing',
+              name: billingForm.fullName,
+              address: billingForm.address,
+              city: billingForm.city,
+              state: billingForm.state,
+              zipCode: billingForm.postalCode,
+              phone: billingForm.phone,
+              isDefault: false,
+            }),
+          });
+        }
+        
+        // Clear cart and redirect to success page
+        clearCart();
+        router.push('/order-confirmation?orderId=' + data.id);
+        return;
+      }
+      
+      // Handle card payment (existing Stripe flow)
+      const orderItems = checkoutItems.map((item) => ({
         gemstoneId: Number(item.id),
         quantity: item.quantity,
         price: item.price,
@@ -272,8 +401,60 @@ const CheckoutPage: React.FC = () => {
         body: JSON.stringify({ items: orderItems }),
       });
       const data = await res.json();
-      if (!res.ok || !data.url) {
+      if (!res.ok || (!data.url && !data.testMode)) {
+        // Provide more specific error messages
+        if (res.status === 503) {
+          throw new Error('Payment service is currently unavailable. Please try again later or contact support.');
+        }
         throw new Error(data.error || 'Failed to start payment session.');
+      }
+
+      // Handle mock checkout for testing
+      if (data.testMode && data.orderId) {
+        // Save new shipping address if requested (best-effort before redirect)
+        if (selectedAddressId === 'new' && saveToAddressBook) {
+          await fetch('/api/addresses', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            credentials: 'include',
+            body: JSON.stringify({
+              type: 'shipping',
+              name: form.fullName,
+              address: form.address,
+              city: form.city,
+              state: form.state,
+              zipCode: form.postalCode,
+              phone: form.phone,
+              isDefault: false,
+            }),
+          });
+        }
+        if (
+          !useShippingForBilling &&
+          selectedBillingAddressId === 'new' &&
+          saveBillingToAddressBook
+        ) {
+          await fetch('/api/addresses', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            credentials: 'include',
+            body: JSON.stringify({
+              type: 'billing',
+              name: billingForm.fullName,
+              address: billingForm.address,
+              city: billingForm.city,
+              state: billingForm.state,
+              zipCode: billingForm.postalCode,
+              phone: billingForm.phone,
+              isDefault: false,
+            }),
+          });
+        }
+        
+        // Clear cart and redirect to success page for test mode
+        clearCart();
+        router.push(`/order-confirmation?orderId=${data.orderId}&test=true`);
+        return;
       }
 
       // Save new shipping address if requested (best-effort before redirect)
@@ -323,6 +504,7 @@ const CheckoutPage: React.FC = () => {
           ? err.message
           : 'Failed to place order. Please try again.';
       setError(errorMsg);
+      console.error('Order placement error:', err); // Debug log
       toast.error(errorMsg);
     } finally {
       setLoading(false);
@@ -330,15 +512,26 @@ const CheckoutPage: React.FC = () => {
     }
   };
 
+  // Add function to handle coupon application
+  const handleApplyCoupon = async () => {
+    if (!couponCode.trim()) {
+      toast.error('Please enter a coupon code');
+      return;
+    }
+    
+    const result = await applyCoupon(couponCode, subtotal);
+    if (result) {
+      toast.success(`Coupon applied! You save ₹${result.discountAmount.toFixed(2)}`);
+    }
+  };
+
   // SEO structured data (JSON-LD)
   const seoJsonLd = {
-    '@context': 'https://schema.org/',
+    '@context': 'https://schema.org',
     '@type': 'CheckoutPage',
     name: 'Checkout - Shankarmala Gemstore',
-    description:
-      'Secure checkout for certified gemstones at Shankarmala Gemstore. 100% authentic, luxury, and accessible.',
-    url: 'https://shankarmala.com/checkout',
-    order: cart.map((item, idx) => ({
+    description: 'Secure checkout for certified gemstones at Shankarmala Gemstore. 100% authentic, luxury, and accessible.',
+    order: checkoutItems.map((item, idx) => ({
       '@type': 'Product',
       position: idx + 1,
       name: item.name,
@@ -353,7 +546,7 @@ const CheckoutPage: React.FC = () => {
     })),
   };
 
-  if (cart.length === 0) {
+  if (checkoutItems.length === 0) {
     return (
       <Layout title="Checkout - Kolkata Gems">
         <Head>
@@ -412,7 +605,7 @@ const CheckoutPage: React.FC = () => {
         />
         <meta
           property="og:image"
-          content={cart[0]?.images?.[0] || '/images/placeholder-gemstone.jpg'}
+          content={checkoutItems[0]?.images?.[0] || '/images/placeholder-gemstone.jpg'}
         />
         <meta property="og:type" content="website" />
         <meta property="og:url" content="https://shankarmala.com/checkout" />
@@ -424,7 +617,7 @@ const CheckoutPage: React.FC = () => {
         />
         <meta
           name="twitter:image"
-          content={cart[0]?.images?.[0] || '/images/placeholder-gemstone.jpg'}
+          content={checkoutItems[0]?.images?.[0] || '/images/placeholder-gemstone.jpg'}
         />
         <script
           type="application/ld+json"
@@ -518,7 +711,7 @@ const CheckoutPage: React.FC = () => {
             >
               <div className="flex items-center space-x-3">
                 <div className="w-10 h-10 bg-green-100 rounded-full flex items-center justify-center">
-                  <CheckCircle className="w-5 h-5 text-green-600" />
+                  <CheckCircle className="w-5 h-5" />
                 </div>
                 <div className="text-green-800 font-medium">{success}</div>
               </div>
@@ -579,30 +772,26 @@ const CheckoutPage: React.FC = () => {
         {/* Premium Confirmation Modal */}
         <AnimatePresence>
           {showConfirm && (
-            <motion.div
-              initial={{ opacity: 0 }}
-              animate={{ opacity: 1 }}
-              exit={{ opacity: 0 }}
-              className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm"
+            <motion.div className="fixed inset-0 bg-black/50 z-50 flex items-center justify-center p-4"
             >
               <motion.div
                 initial={{ scale: 0.8, opacity: 0 }}
                 animate={{ scale: 1, opacity: 1 }}
                 exit={{ scale: 0.8, opacity: 0 }}
-                className="bg-white rounded-3xl shadow-2xl p-8 max-w-lg w-full border border-amber-100 mx-4"
+                className="bg-white rounded-xl md:rounded-2xl p-4 md:p-6 max-w-md w-full mx-auto shadow-xl"
               >
                 <div className="text-center mb-6">
                   <div className="w-16 h-16 bg-gradient-to-br from-amber-500 to-orange-500 rounded-full flex items-center justify-center mx-auto mb-4">
                     <Sparkles className="w-8 h-8 text-white" />
                   </div>
-                  <h2 className="text-2xl font-bold text-gray-900 mb-2">Confirm Your Order</h2>
-                  <p className="text-gray-600">
-                    Please review your order details before proceeding
-                  </p>
+                  <h3 className="text-lg md:text-xl font-semibold text-gray-900 mb-1">Confirm Order</h3>
+                  <p className="text-sm md:text-base text-gray-600">
+              Please review your order details before proceeding
+            </p>
                 </div>
 
-                <div className="space-y-4 mb-6">
-                  <div className="bg-amber-50 rounded-xl p-4">
+                <div className="space-y-3 md:space-y-4 mb-4 md:mb-6">
+                  <div className="bg-amber-50 rounded-lg md:rounded-xl p-3 md:p-4">
                     <div className="flex items-center space-x-2 mb-2">
                       <MapPin className="w-4 h-4 text-amber-600" />
                       <div className="font-semibold text-amber-800">Shipping Address</div>
@@ -613,7 +802,7 @@ const CheckoutPage: React.FC = () => {
                     </div>
                   </div>
 
-                  <div className="bg-blue-50 rounded-xl p-4">
+                  <div className="bg-blue-50 rounded-lg md:rounded-xl p-3 md:p-4">
                     <div className="flex items-center space-x-2 mb-2">
                       <CreditCard className="w-4 h-4 text-blue-600" />
                       <div className="font-semibold text-blue-800">Billing Address</div>
@@ -625,10 +814,20 @@ const CheckoutPage: React.FC = () => {
                     </div>
                   </div>
 
-                  <div className="bg-green-50 rounded-xl p-4">
+                  <div className="bg-green-50 rounded-lg md:rounded-xl p-3 md:p-4">
                     <div className="flex items-center space-x-2 mb-2">
-                      <Truck className="w-4 h-4 text-green-600" />
-                      <div className="font-semibold text-green-800">Order Total</div>
+                      <DollarSign className="w-4 h-4 text-green-600" />
+                      <div className="font-semibold text-green-800">Payment Method</div>
+                    </div>
+                    <div className="text-gray-700 text-sm">
+                      {paymentMethod === 'cod' ? 'Cash on Delivery' : 'Credit/Debit Card'}
+                    </div>
+                  </div>
+
+                  <div className="bg-purple-50 rounded-lg md:rounded-xl p-3 md:p-4">
+                    <div className="flex items-center space-x-2 mb-2">
+                      <Truck className="w-4 h-4 text-purple-600" />
+                      <div className="font-semibold text-purple-800">Order Total</div>
                     </div>
                     <div className="text-2xl font-bold text-gray-900">
                       ₹{total.toLocaleString('en-IN')}
@@ -636,19 +835,19 @@ const CheckoutPage: React.FC = () => {
                   </div>
                 </div>
 
-                <div className="flex gap-4">
+                <div className="flex gap-3 md:gap-4">
                   <button
                     onClick={() => setShowConfirm(false)}
-                    className="flex-1 bg-gray-100 text-gray-700 px-6 py-3 rounded-xl font-semibold hover:bg-gray-200 transition-colors"
+                    className="flex-1 bg-gray-100 text-gray-700 px-4 md:px-6 py-2 md:py-3 rounded-lg md:rounded-xl text-sm md:text-base font-semibold hover:bg-gray-200 transition-colors"
                   >
                     Cancel
                   </button>
                   <button
                     onClick={handlePlaceOrder}
-                    className="flex-1 bg-gradient-to-r from-amber-600 to-orange-600 text-white px-6 py-3 rounded-xl font-bold hover:shadow-lg transition-all duration-200 flex items-center justify-center space-x-2"
+                    className="flex-1 bg-gradient-to-r from-amber-600 to-orange-600 text-white px-4 md:px-6 py-2 md:py-3 rounded-lg md:rounded-xl text-sm md:text-base font-bold hover:shadow-lg transition-all duration-200 flex items-center justify-center space-x-2"
                   >
                     <span>Confirm & Place Order</span>
-                    <ArrowRight className="w-4 h-4" />
+                    <ArrowRight className="w-3 h-3 md:w-4 md:h-4" />
                   </button>
                 </div>
               </motion.div>
@@ -656,11 +855,11 @@ const CheckoutPage: React.FC = () => {
           )}
         </AnimatePresence>
 
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-12">
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-6 md:gap-12">
           {/* Shipping & Payment Form */}
           <form
             ref={formRef}
-            className="bg-white/90 rounded-3xl shadow-2xl border border-amber-100 p-8 flex flex-col gap-8"
+            className="bg-white/90 rounded-xl md:rounded-3xl shadow-xl md:shadow-2xl border border-amber-100 p-4 md:p-8 flex flex-col gap-4 md:gap-8"
             onSubmit={handleSubmit}
             aria-labelledby="checkout-form-legend"
             role="form"
@@ -669,9 +868,9 @@ const CheckoutPage: React.FC = () => {
             <legend id="checkout-form-legend" className="sr-only">
               Checkout Form: Shipping, Billing, and Payment Details
             </legend>
-            <div className="mb-4 pb-4 border-b border-amber-100">
+            <div className="mb-3 md:mb-4 pb-3 md:pb-4 border-b border-amber-100">
               <h2
-                className="text-2xl font-semibold text-amber-900 mb-2 font-serif tracking-tight"
+                className="text-xl md:text-2xl font-semibold text-amber-900 mb-2 font-serif tracking-tight"
                 id="shipping-heading"
               >
                 Shipping Details
@@ -686,7 +885,7 @@ const CheckoutPage: React.FC = () => {
                   </label>
                   <select
                     id="shipping-address-select"
-                    className="rounded-xl border border-amber-200 px-4 py-3 focus:ring-amber-500 w-full"
+                    className="rounded-lg md:rounded-xl border border-amber-200 px-3 md:px-4 py-2 md:py-3 focus:ring-amber-500 w-full text-sm md:text-base"
                     value={selectedAddressId}
                     onChange={(e) =>
                       setSelectedAddressId(
@@ -716,7 +915,7 @@ const CheckoutPage: React.FC = () => {
                 onChange={handleFormChange}
                 placeholder="Full Name"
                 required
-                className="rounded-xl border border-amber-200 px-4 py-3 focus:ring-amber-500"
+                className="rounded-lg md:rounded-xl border border-amber-200 px-3 md:px-4 py-2 md:py-3 focus:ring-amber-500 text-sm md:text-base mb-2 md:mb-3 w-full"
                 aria-required="true"
                 aria-label="Full Name"
               />
@@ -1041,195 +1240,336 @@ const CheckoutPage: React.FC = () => {
             </div>
 
             <div className="mb-4 pb-4 border-b border-amber-100">
-              <h2 className="text-2xl font-semibold text-amber-900 mb-2 font-serif tracking-tight">
-                Payment
+              <h2 className="text-2xl font-bold text-amber-900 mb-4 font-serif tracking-tight">
+                Payment Method
               </h2>
-              <div className="bg-amber-50 rounded-xl p-4 mb-4 border border-amber-100 flex flex-col gap-2">
-                <p className="text-amber-800 text-sm font-medium">
-                  For demo purposes, this checkout simulates a successful order. In production, this
-                  would integrate with a secure payment processor.
-                </p>
-                <div className="flex items-center gap-3 mt-2" aria-label="Accepted payment methods">
-                  <Image
-                    src={
-                      typeof '/images/payment-visa.svg' === 'string' &&
-                      '/images/payment-visa.svg'.startsWith('/')
-                        ? '/images/payment-visa.svg'
-                        : '/images/placeholder-gemstone.jpg'
-                    }
-                    alt="Visa"
-                    width={40}
-                    height={24}
-                    className="h-6 w-auto"
-                    style={{ width: 'auto', height: '24px' }}
+              <div className="space-y-4">
+                <div className="flex items-center p-4 bg-gradient-to-r from-gray-50 to-amber-50 rounded-xl border border-amber-200">
+                  <input
+                    type="radio"
+                    id="payment-card"
+                    name="payment-method"
+                    checked={paymentMethod === 'card'}
+                    onChange={() => setPaymentMethod('card')}
+                    className="h-5 w-5 text-amber-600 focus:ring-amber-500"
                   />
-                  <Image
-                    src={
-                      typeof '/images/payment-mastercard.svg' === 'string' &&
-                      '/images/payment-mastercard.svg'.startsWith('/')
-                        ? '/images/payment-mastercard.svg'
-                        : '/images/placeholder-gemstone.jpg'
-                    }
-                    alt="Mastercard"
-                    width={40}
-                    height={24}
-                    className="h-6 w-auto"
-                    style={{ width: 'auto', height: '24px' }}
-                  />
-                  <Image
-                    src={
-                      typeof '/images/payment-amex.svg' === 'string' &&
-                      '/images/payment-amex.svg'.startsWith('/')
-                        ? '/images/payment-amex.svg'
-                        : '/images/placeholder-gemstone.jpg'
-                    }
-                    alt="American Express"
-                    width={40}
-                    height={24}
-                    className="h-6 w-auto"
-                    style={{ width: 'auto', height: '24px' }}
-                  />
-                  <Image
-                    src={
-                      typeof '/images/payment-upi.svg' === 'string' &&
-                      '/images/payment-upi.svg'.startsWith('/')
-                        ? '/images/payment-upi.svg'
-                        : '/images/placeholder-gemstone.jpg'
-                    }
-                    alt="UPI"
-                    width={40}
-                    height={24}
-                    className="h-6 w-auto"
-                    style={{ width: 'auto', height: '24px' }}
-                  />
-                  <Image
-                    src={
-                      typeof '/images/payment-ruPay.svg' === 'string' &&
-                      '/images/payment-ruPay.svg'.startsWith('/')
-                        ? '/images/payment-ruPay.svg'
-                        : '/images/placeholder-gemstone.jpg'
-                    }
-                    alt="RuPay"
-                    width={40}
-                    height={24}
-                    className="h-6 w-auto"
-                    style={{ width: 'auto', height: '24px' }}
-                  />
+                  <label htmlFor="payment-card" className="ml-4 block text-base font-medium text-gray-900 flex items-center">
+                    <CreditCard className="w-5 h-5 mr-2 text-blue-600" />
+                    Credit/Debit Card
+                  </label>
                 </div>
-                <div className="text-xs text-gray-500 mt-2" aria-live="polite">
-                  <span className="inline-flex items-center gap-1">
-                    <svg
-                      className="w-4 h-4 text-green-600 inline"
-                      fill="none"
-                      stroke="currentColor"
-                      strokeWidth="2"
-                      viewBox="0 0 24 24"
-                    >
-                      <path strokeLinecap="round" strokeLinejoin="round" d="M5 13l4 4L19 7" />
-                    </svg>
-                    100% Secure SSL Checkout
-                  </span>
-                  <span className="ml-4 inline-flex items-center gap-1">
-                    <svg
-                      className="w-4 h-4 text-blue-600 inline"
-                      fill="none"
-                      stroke="currentColor"
-                      strokeWidth="2"
-                      viewBox="0 0 24 24"
-                    >
-                      <circle cx="12" cy="12" r="10" />
-                      <path strokeLinecap="round" strokeLinejoin="round" d="M12 8v4l3 3" />
-                    </svg>
-                    Fast Delivery
-                  </span>
-                  <span className="ml-4 inline-flex items-center gap-1">
-                    <svg
-                      className="w-4 h-4 text-amber-600 inline"
-                      fill="none"
-                      stroke="currentColor"
-                      strokeWidth="2"
-                      viewBox="0 0 24 24"
-                    >
-                      <path strokeLinecap="round" strokeLinejoin="round" d="M12 8v4l3 3" />
-                    </svg>
-                    GIA/IGI Certified
-                  </span>
-                </div>
+                
+                {allItemsSupportCOD && (
+                  <div className="flex items-center p-4 bg-gradient-to-r from-gray-50 to-amber-50 rounded-xl border border-amber-200">
+                    <input
+                      type="radio"
+                      id="payment-cod"
+                      name="payment-method"
+                      checked={paymentMethod === 'cod'}
+                      onChange={() => setPaymentMethod('cod')}
+                      className="h-5 w-5 text-amber-600 focus:ring-amber-500"
+                    />
+                    <label htmlFor="payment-cod" className="ml-4 block text-base font-medium text-gray-900 flex items-center">
+                      <DollarSign className="w-5 h-5 mr-2 text-green-600" />
+                      Cash on Delivery
+                      <span className="ml-3 inline-flex items-center px-3 py-1 bg-gradient-to-r from-green-500 to-emerald-600 text-white rounded-full text-xs font-bold">
+                        Available for this order
+                      </span>
+                    </label>
+                  </div>
+                )}
+                
+                {!allItemsSupportCOD && (
+                  <div className="flex items-center p-4 bg-gray-100 rounded-xl border border-gray-300">
+                    <DollarSign className="w-5 h-5 text-gray-400 mr-3" />
+                    <div>
+                      <p className="text-base font-medium text-gray-700">Cash on Delivery</p>
+                      <p className="text-sm text-gray-500">Not available for all items in your cart</p>
+                    </div>
+                  </div>
+                )}
               </div>
-            </div>
-            <div className="mt-6 flex gap-4">
-              <Link
-                href="/cart"
-                className="flex-1 bg-gray-600 text-white px-8 py-4 rounded-2xl font-bold text-lg shadow-lg hover:bg-gray-700 transition-all focus:outline-none focus:ring-2 focus:ring-gray-500 font-serif tracking-wide text-center"
-              >
-                Back to Cart
-              </Link>
-              <button
-                type="submit"
-                className="flex-1 bg-amber-600 text-white px-8 py-4 rounded-2xl font-bold text-lg shadow-lg hover:bg-amber-700 transition-all focus:outline-none focus:ring-2 focus:ring-amber-500 disabled:opacity-50 disabled:cursor-not-allowed font-serif tracking-wide"
-                disabled={loading}
-                aria-busy={loading}
-                aria-label="Place Order"
-              >
-                {loading ? 'Processing Order...' : 'Place Order'}
-              </button>
-            </div>
-            <div className="text-xs text-gray-500 mt-2 text-center" aria-live="polite">
-              <span className="inline-flex items-center gap-1">
-                <svg
-                  className="w-4 h-4 text-green-600 inline"
-                  fill="none"
-                  stroke="currentColor"
-                  strokeWidth="2"
-                  viewBox="0 0 24 24"
+              
+              {paymentMethod === 'card' && (
+                <div className="bg-gradient-to-r from-amber-50 to-orange-50 rounded-2xl p-6 mb-6 border-2 border-amber-200 mt-6">
+                  <div className="flex items-start">
+                    <div className="flex-shrink-0 w-12 h-12 bg-amber-100 rounded-full flex items-center justify-center mr-4">
+                      <Lock className="w-6 h-6 text-amber-600" />
+                    </div>
+                    <div className="flex-1">
+                      <h3 className="text-amber-800 font-bold text-xl mb-2">
+                        Secure Payment
+                      </h3>
+                      <p className="text-amber-700 mb-4">
+                        For demo purposes, this checkout simulates a successful order. In production, this
+                        would integrate with a secure payment processor.
+                      </p>
+                      <div className="flex items-center gap-4 mb-4" aria-label="Accepted payment methods">
+                        <div className="relative w-12 h-8">
+                          <Image
+                            src={
+                              typeof '/images/payment-visa.svg' === 'string' &&
+                              '/images/payment-visa.svg'.startsWith('/')
+                                ? '/images/payment-visa.svg'
+                                : '/images/placeholder-gemstone.jpg'
+                            }
+                            alt="Visa"
+                            fill
+                            sizes="48px"
+                            className="object-contain"
+                          />
+                        </div>
+                        <div className="relative w-12 h-8">
+                          <Image
+                            src={
+                              typeof '/images/payment-mastercard.svg' === 'string' &&
+                              '/images/payment-mastercard.svg'.startsWith('/')
+                                ? '/images/payment-mastercard.svg'
+                                : '/images/placeholder-gemstone.jpg'
+                            }
+                            alt="Mastercard"
+                            fill
+                            sizes="48px"
+                            className="object-contain"
+                          />
+                        </div>
+                        <div className="relative w-12 h-8">
+                          <Image
+                            src={
+                              typeof '/images/payment-amex.svg' === 'string' &&
+                              '/images/payment-amex.svg'.startsWith('/')
+                                ? '/images/payment-amex.svg'
+                                : '/images/placeholder-gemstone.jpg'
+                            }
+                            alt="American Express"
+                            fill
+                            sizes="48px"
+                            className="object-contain"
+                          />
+                        </div>
+                        <div className="relative w-12 h-8">
+                          <Image
+                            src={
+                              typeof '/images/payment-upi.svg' === 'string' &&
+                              '/images/payment-upi.svg'.startsWith('/')
+                                ? '/images/payment-upi.svg'
+                                : '/images/placeholder-gemstone.jpg'
+                            }
+                            alt="UPI"
+                            fill
+                            sizes="48px"
+                            className="object-contain"
+                          />
+                        </div>
+                        <div className="relative w-12 h-8">
+                          <Image
+                            src={
+                              typeof '/images/payment-ruPay.svg' === 'string' &&
+                              '/images/payment-ruPay.svg'.startsWith('/')
+                                ? '/images/payment-ruPay.svg'
+                                : '/images/placeholder-gemstone.jpg'
+                            }
+                            alt="RuPay"
+                            fill
+                            sizes="48px"
+                            className="object-contain"
+                          />
+                        </div>
+                      </div>
+                      <div className="text-sm text-gray-600 flex flex-wrap gap-4">
+                        <span className="inline-flex items-center gap-1.5">
+                          <ShieldCheck className="w-4 h-4 text-green-600" />
+                          100% Secure SSL Checkout
+                        </span>
+                        <span className="inline-flex items-center gap-1.5">
+                          <Clock className="w-4 h-4 text-blue-600" />
+                          Fast Delivery
+                        </span>
+                        <span className="inline-flex items-center gap-1.5">
+                          <Award className="w-4 h-4 text-amber-600" />
+                          GIA/IGI Certified
+                        </span>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              )}
+              
+              {paymentMethod === 'cod' && (
+                <div className="bg-gradient-to-r from-green-50 to-emerald-50 rounded-2xl p-6 mb-6 border-2 border-green-200 mt-6">
+                  <div className="flex items-start">
+                    <div className="flex-shrink-0 w-12 h-12 bg-green-100 rounded-full flex items-center justify-center mr-4">
+                      <DollarSign className="w-6 h-6 text-green-600" />
+                    </div>
+                    <div className="flex-1">
+                      <h3 className="text-green-800 font-bold text-xl mb-3">
+                        Cash on Delivery
+                      </h3>
+                      <p className="text-green-700 mb-5">
+                        Pay with cash upon delivery. Please have exact change ready.
+                      </p>
+                      <div className="bg-white border-2 border-green-200 rounded-xl p-5 mb-5">
+                        <h4 className="font-bold text-green-800 text-lg mb-3 flex items-center">
+                          <Info className="w-5 h-5 mr-2" />
+                          Important Information
+                        </h4>
+                        <ul className="text-green-700 space-y-3">
+                          <li className="flex items-start">
+                            <CheckCircle className="w-5 h-5 mr-3 mt-0.5 flex-shrink-0 text-green-600" />
+                            <span>Available only for products that support COD</span>
+                          </li>
+                          <li className="flex items-start">
+                            <CheckCircle className="w-5 h-5 mr-3 mt-0.5 flex-shrink-0 text-green-600" />
+                            <span>Additional verification may be required for high-value orders</span>
+                          </li>
+                          <li className="flex items-start">
+                            <CheckCircle className="w-5 h-5 mr-3 mt-0.5 flex-shrink-0 text-green-600" />
+                            <span>Please ensure someone is available to receive the package</span>
+                          </li>
+                          <li className="flex items-start">
+                            <CheckCircle className="w-5 h-5 mr-3 mt-0.5 flex-shrink-0 text-green-600" />
+                            <span>Inspect the package before paying. Return policy applies after payment</span>
+                          </li>
+                          <li className="flex items-start">
+                            <CheckCircle className="w-5 h-5 mr-3 mt-0.5 flex-shrink-0 text-green-600" />
+                            <span>COD may not be available in all delivery areas</span>
+                          </li>
+                        </ul>
+                      </div>
+                      <div className="p-4 bg-gradient-to-r from-green-100 to-emerald-100 rounded-xl border-2 border-green-200">
+                        <p className="text-green-800 font-bold">
+                          <CheckCircle className="w-5 h-5 inline mr-2" />
+                          Your order will be processed once payment is received
+                        </p>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              )}
+              
+              {/* Add the missing submit button and form closing tags */}
+              <div className="mt-8">
+                <button
+                  type="submit"
+                  className="w-full bg-gradient-to-r from-amber-600 to-orange-600 text-white font-bold py-4 px-6 rounded-xl md:rounded-2xl text-lg md:text-xl hover:shadow-xl transition-all duration-300 flex items-center justify-center"
+                  disabled={loading}
                 >
-                  <path strokeLinecap="round" strokeLinejoin="round" d="M5 13l4 4L19 7" />
-                </svg>
-                100% Secure. GIA/IGI Certified. Trusted by collectors worldwide.
-              </span>
-              <span className="block mt-1 text-amber-700 font-semibold">
-                Your privacy is protected. We never share your data.
-              </span>
+                  {loading ? (
+                    <>
+                      <motion.div
+                        animate={{ rotate: 360 }}
+                        transition={{ duration: 1, repeat: Infinity, ease: 'linear' }}
+                        className="w-5 h-5 border-2 border-white border-t-transparent rounded-full mr-3"
+                      />
+                      Processing...
+                    </>
+                  ) : (
+                    <>
+                      Proceed to Payment
+                      <ArrowRight className="ml-3 w-5 h-5" />
+                    </>
+                  )}
+                </button>
+              </div>
             </div>
           </form>
 
-          {/* Cart Summary */}
-          <div className="bg-white/90 rounded-3xl shadow-2xl border border-amber-100 p-8 flex flex-col gap-6">
-            <h2 className="text-2xl font-semibold text-amber-900 mb-4 font-serif tracking-tight">
+          {/* Order Summary */}
+          <div className="bg-gradient-to-br from-amber-50 to-orange-50 rounded-xl md:rounded-3xl shadow-xl md:shadow-2xl border border-amber-200 p-4 md:p-8 h-fit sticky top-8">
+            <h2 className="text-xl md:text-2xl font-semibold text-amber-900 mb-6 font-serif tracking-tight">
               Order Summary
             </h2>
-            <ul className="divide-y divide-amber-100 mb-6">
-              {cart.map((item) => (
-                <li key={item.id} className="flex items-center gap-4 py-4">
-                  <Image
-                    src={
-                      typeof item.images?.[0] === 'string' &&
-                      (item.images[0].startsWith('/') || item.images[0].startsWith('http')) &&
-                      item.images[0].trim() !== ''
-                        ? item.images[0]
-                        : '/images/placeholder-gemstone.jpg'
-                    }
-                    alt={item.name || 'Product image'}
-                    width={64}
-                    height={64}
-                    className="w-16 h-16 rounded-xl object-cover border border-amber-200 shadow-sm"
-                  />
-                  <div className="flex-1 min-w-0">
-                    <div className="font-semibold text-lg text-amber-900 truncate font-serif">
-                      {item.name}
-                    </div>
-                    <div className="text-amber-700 font-bold">
-                      ₹{item.price.toLocaleString('en-IN')}
-                    </div>
+            
+            <div className="space-y-4 mb-6 max-h-96 overflow-y-auto pr-2">
+              {checkoutItems.map((item) => (
+                <div key={item.id} className="flex items-center space-x-4 bg-white rounded-xl p-4 border border-amber-100">
+                  <div className="relative w-16 h-16 rounded-lg overflow-hidden">
+                    <Image
+                      src={item.images?.[0] || '/images/placeholder-gemstone.jpg'}
+                      alt={item.name}
+                      fill
+                      sizes="64px"
+                      className="object-cover"
+                    />
                   </div>
-                  <div className="text-gray-700 font-medium">x{item.quantity}</div>
-                </li>
+                  <div className="flex-1">
+                    <h3 className="font-medium text-gray-900">{item.name}</h3>
+                    <p className="text-sm text-gray-600">Qty: {item.quantity}</p>
+                  </div>
+                  <div className="font-semibold text-gray-900">
+                    ₹{(item.price * item.quantity).toLocaleString('en-IN')}
+                  </div>
+                </div>
               ))}
-            </ul>
-            <div className="flex justify-between items-center mt-4 border-t border-amber-100 pt-4">
-              <div className="text-xl font-bold text-amber-900 font-serif">Total</div>
-              <div className="text-2xl font-bold text-amber-700 font-serif">
-                ₹{total.toLocaleString('en-IN')}
+            </div>
+            
+            <div className="space-y-3 mb-6">
+              <div className="flex justify-between">
+                <span className="text-gray-600">Subtotal</span>
+                <span className="font-medium">₹{subtotal.toLocaleString('en-IN')}</span>
+              </div>
+              
+              {appliedCoupon && (
+                <div className="flex justify-between text-green-600">
+                  <span className="flex items-center">
+                    Coupon ({appliedCoupon.coupon.code})
+                    <button 
+                      onClick={removeCoupon}
+                      className="ml-2 text-xs text-red-500 hover:text-red-700"
+                      aria-label="Remove coupon"
+                    >
+                      Remove
+                    </button>
+                  </span>
+                  <span className="font-medium">-₹{discount.toLocaleString('en-IN')}</span>
+                </div>
+              )}
+              
+              <div className="flex justify-between">
+                <span className="text-gray-600">Shipping</span>
+                <span className="font-medium text-green-600">Free</span>
+              </div>
+              
+              <div className="flex justify-between pt-3 border-t border-amber-200">
+                <span className="text-lg font-semibold text-gray-900">Total</span>
+                <span className="text-xl font-bold text-amber-700">
+                  ₹{total.toLocaleString('en-IN')}
+                </span>
+              </div>
+            </div>
+            
+            <div className="mb-6">
+              <div className="flex">
+                <input
+                  type="text"
+                  value={couponCode}
+                  onChange={(e) => setCouponCode(e.target.value)}
+                  placeholder="Enter coupon code"
+                  className="flex-1 rounded-l-xl border border-r-0 border-amber-200 px-4 py-3 focus:ring-amber-500 focus:border-amber-500 luxury-font-sans"
+                  disabled={couponLoading || !!appliedCoupon}
+                  aria-label="Coupon code"
+                />
+                <LuxuryButton
+                  onClick={handleApplyCoupon}
+                  disabled={couponLoading || !!appliedCoupon}
+                  variant="primary"
+                  size="md"
+                  className="rounded-l-none"
+                >
+                  {couponLoading ? 'Applying...' : appliedCoupon ? 'Applied' : 'Apply'}
+                </LuxuryButton>
+              </div>
+            </div>
+            
+            <div className="bg-white rounded-xl p-4 border border-amber-100">
+              <div className="flex items-start space-x-3">
+                <Shield className="w-5 h-5 text-amber-600 mt-0.5 flex-shrink-0" />
+                <div>
+                  <h4 className="font-semibold text-gray-900 text-sm">Secure Checkout Guarantee</h4>
+                  <p className="text-xs text-gray-600 mt-1">
+                    Your payment information is encrypted and secure. We never store your card details.
+                  </p>
+                </div>
               </div>
             </div>
           </div>

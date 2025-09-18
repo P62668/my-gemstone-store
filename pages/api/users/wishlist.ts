@@ -6,7 +6,7 @@ import { prisma } from '../../../lib/prisma';
 async function handler(req: AuthenticatedRequest, res: NextApiResponse) {
   const user = req.user;
   if (!user) {
-    return res.status(401).json({ error: 'Authentication required' });
+    return res.status(401).json({ error: 'Not authenticated, use /api/session-wishlist for guests' });
   }
 
   if (req.method === 'GET') {

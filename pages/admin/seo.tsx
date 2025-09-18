@@ -1,5 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import AdminLayout from '../../components/AdminLayout';
+import getSessionOrRedirect from '../../utils/withServerAuth';
+import type { GetServerSideProps } from 'next';
 
 interface SEOSettings {
   global: {
@@ -120,6 +122,28 @@ const SEOAdmin: React.FC = () => {
 
   const [activeTab, setActiveTab] = useState('global');
   const [saving, setSaving] = useState(false);
+  const [error, setError] = useState('');
+  const [success, setSuccess] = useState('');
+
+  // Load SEO settings when component mounts
+  useEffect(() => {
+    const fetchSeoSettings = async () => {
+      try {
+        const res = await fetch('/api/admin/seo-settings');
+        if (!res.ok) throw new Error('Failed to fetch SEO settings');
+        const data = await res.json();
+        setSeoSettings(prev => ({
+          ...prev,
+          ...data
+        }));
+      } catch (err: any) {
+        if (process.env.NODE_ENV !== 'production') console.error('Failed to fetch SEO settings:', err);
+        setError(err.message || 'Failed to fetch SEO settings');
+      }
+    };
+
+    fetchSeoSettings();
+  }, []);
 
   const handleGlobalChange = (field: keyof SEOSettings['global'], value: string) => {
     setSeoSettings((prev) => ({
@@ -202,16 +226,19 @@ const SEOAdmin: React.FC = () => {
 
   const handleSave = async () => {
     setSaving(true);
+    setError('');
+    setSuccess('');
     try {
-      await fetch('/api/admin/seo', {
+      const res = await fetch('/api/admin/seo-settings', {
         method: 'PUT',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(seoSettings),
       });
-      alert('SEO settings updated successfully!');
-    } catch (error) {
-      console.error('Failed to save SEO settings:', error);
-      alert('Failed to save SEO settings. Please try again.');
+      if (!res.ok) throw new Error('Failed to save SEO settings. Please try again.');
+      setSuccess('SEO settings saved successfully!');
+    } catch (err: any) {
+      if (process.env.NODE_ENV !== 'production') console.error('Failed to save SEO settings:', err);
+      setError(err.message || 'Failed to save SEO settings. Please try again.');
     } finally {
       setSaving(false);
     }
@@ -242,6 +269,12 @@ const SEOAdmin: React.FC = () => {
             Optimize your site for search engines and social media
           </p>
         </div>
+
+        {(error || success) && (
+          <div className={`rounded-xl p-4 mb-6 font-semibold text-center shadow border ${error ? 'bg-red-100 border-red-300 text-red-800' : 'bg-green-100 border-green-300 text-green-800'}`}>
+            {error || success}
+          </div>
+        )}
 
         {/* Tabs */}
         <div className="mb-8">
@@ -651,3 +684,9 @@ const SEOAdmin: React.FC = () => {
 };
 
 export default SEOAdmin;
+
+export const getServerSideProps: GetServerSideProps = async (ctx) => {
+  const res = await getSessionOrRedirect(ctx, { requireAdmin: true });
+  if ('redirect' in res) return res;
+  return { props: {} };
+};

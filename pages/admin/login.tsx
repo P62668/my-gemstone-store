@@ -8,28 +8,25 @@ const AdminLogin: React.FC = () => {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
   const [success, setSuccess] = useState('');
+  const [isClient, setIsClient] = useState(false);
   const router = useRouter();
 
-  // Check if already logged in
+  // Set isClient to true on mount (client-side only)
   useEffect(() => {
-    const checkAuth = async () => {
-      try {
-        const response = await fetch('/api/admin/auth', { credentials: 'include' });
-        if (response.ok) {
-          const authData = await response.json();
-          if (authData.user.role === 'admin') {
-            router.push('/admin');
-          }
-        }
-      } catch {
-        // Silent fail for auth check
-      }
-    };
-    checkAuth();
-  }, [router]);
+    setIsClient(true);
+  }, []);
+
+  // Check if already logged in
+  // Authentication redirect handled server-side via getServerSideProps
 
   const onSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
+    
+    // Prevent multiple submissions
+    if (loading) {
+      return;
+    }
+    
     setError('');
     setSuccess('');
     setLoading(true);
@@ -45,7 +42,7 @@ const AdminLogin: React.FC = () => {
       });
       
       const data = await res.json();
-      console.log('📡 Admin login response:', { status: res.status, success: data.success });
+      console.log('📡 Admin login response:', { status: res.status, success: data.success, data });
       
       if (!res.ok) {
         // Handle specific error cases
@@ -53,9 +50,16 @@ const AdminLogin: React.FC = () => {
           throw new Error('Invalid email or password. Please try again.');
         } else if (res.status === 403) {
           throw new Error('Access denied. Admin privileges required.');
+        } else if (res.status === 429) {
+          throw new Error('Too many login attempts. Please try again later.');
         } else {
-          throw new Error(data.error || 'Login failed. Please try again.');
+          throw new Error(data.error?.message || data.error || 'Login failed. Please try again.');
         }
+      }
+      
+      // Check if login was actually successful
+      if (!data.success) {
+        throw new Error(data.error?.message || data.error || 'Login failed. Please try again.');
       }
       
       // Show success message
@@ -65,9 +69,14 @@ const AdminLogin: React.FC = () => {
       // Wait a moment for the cookie to be set and show success message
       await new Promise(resolve => setTimeout(resolve, 1500));
       
-      // Use router.push instead of window.location.href to prevent auto-refresh
-      console.log('🔄 Redirecting to admin dashboard...');
-      router.push('/admin');
+      // Use Next.js router for client-side navigation instead of full page reload (client-side only)
+      if (isClient) {
+        console.log('🔄 Redirecting to admin dashboard...');
+        router.push('/admin').then(() => {
+          // Force a refresh to ensure the page loads with the new authentication state
+          window.location.reload();
+        });
+      }
       
     } catch (err: unknown) {
       console.error('❌ Admin login error:', err);
@@ -193,3 +202,6 @@ const AdminLogin: React.FC = () => {
 };
 
 export default AdminLogin;
+
+// Redirect authenticated admins away from login page
+import getSessionOrRedirect from '../../utils/withServerAuth';

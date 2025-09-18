@@ -7,21 +7,25 @@ import { prisma } from '../../../../lib/prisma';
 export default async function handler(req: NextApiRequest, res: NextApiResponse) {
   if (req.method !== 'GET') {
     res.setHeader('Allow', ['GET']);
-    return res.status(405).end(`Method ${req.method} Not Allowed`);
+    res.status(405).end(`Method ${req.method} Not Allowed`);
+    return;
   }
   const { id } = req.query;
   let user;
   try {
     user = await getUserFromRequest(req);
     if (!user) {
-      return res.status(401).json({ error: 'Not authenticated' });
+      res.status(401).json({ error: 'Not authenticated' });
+      return;
     }
   } catch (err) {
-    return res.status(401).json({ error: 'Not authenticated' });
+    res.status(401).json({ error: 'Not authenticated' });
+    return;
   }
   const orderId = Number(id);
   if (isNaN(orderId)) {
-    return res.status(400).json({ error: 'Invalid order ID' });
+    res.status(400).json({ error: 'Invalid order ID' });
+    return;
   }
   try {
     const order = await prisma.order.findUnique({
@@ -35,9 +39,13 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
         },
       },
     });
-    if (!order) return res.status(404).json({ error: 'Order not found' });
+    if (!order) {
+      res.status(404).json({ error: 'Order not found' });
+      return;
+    }
     if (order.userId !== user.id && user.role !== 'admin') {
-      return res.status(403).json({ error: 'Forbidden' });
+      res.status(403).json({ error: 'Forbidden' });
+      return;
     }
     // PDF generation
     res.setHeader('Content-Type', 'application/pdf');

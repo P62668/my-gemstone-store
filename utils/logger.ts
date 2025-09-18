@@ -70,6 +70,31 @@ const formatLog = (logEntry: any) => {
   }
 };
 
+// Optional integrations (lazy-init)
+let prismaClient: any = null;
+let integrationsInitialized = false;
+
+// Removed dynamic import to prevent middleware issues
+function initIntegrations() {
+  // Only initialize integrations on the server side
+  if (typeof window !== 'undefined' || integrationsInitialized) {
+    return;
+  }
+  
+  integrationsInitialized = true;
+  
+  // initialize Prisma client for security logs
+  try {
+    // Removed dynamic import to prevent middleware issues
+    // const { PrismaClient } = await import('@prisma/client');
+    // prismaClient = new PrismaClient();
+    prismaClient = null; // Disable Prisma integration in logger
+  } catch (err) {
+    console.warn('[logger] Prisma client init failed for security logs');
+    prismaClient = null;
+  }
+}
+
 // Logger class with complete error handling
 class Logger {
   private shouldLog(level: string): boolean {
@@ -83,6 +108,9 @@ class Logger {
   }
 
   info(message: string, context?: any) {
+    if (typeof window === 'undefined') {
+      initIntegrations();
+    }
     if (!this.shouldLog('info')) return;
     
     try {
@@ -94,6 +122,9 @@ class Logger {
   }
 
   warn(message: string, context?: any) {
+    if (typeof window === 'undefined') {
+      initIntegrations();
+    }
     if (!this.shouldLog('warn')) return;
     
     try {
@@ -105,6 +136,9 @@ class Logger {
   }
 
   error(message: string, error?: any, context?: any) {
+    if (typeof window === 'undefined') {
+      initIntegrations();
+    }
     if (!this.shouldLog('error')) return;
     
     try {
@@ -135,6 +169,35 @@ class Logger {
       console.debug(formatLog(logEntry));
     } catch (error) {
       console.debug(`[${new Date().toISOString()}] DEBUG: ${String(message)}`);
+    }
+  }
+  
+  // Log security events to database
+  async security(event: string, details: any = {}) {
+    // Only run on server side
+    if (typeof window !== 'undefined') return;
+    
+    try {
+      await initIntegrations();
+      if (!prismaClient) return;
+      
+      // Extract user ID if available
+      const userId = details.userId || (details.user?.id ? parseInt(details.user.id) : undefined);
+      
+      // Create security log entry
+      await prismaClient.securityLog.create({
+        data: {
+          event,
+          userId,
+          ip: details.ip || null,
+          userAgent: details.userAgent || null,
+          details: details.details ? JSON.stringify(details.details) : null,
+          timestamp: new Date()
+        }
+      });
+    } catch (error) {
+      // Don't let security logging failures break the application
+      console.error('Failed to log security event:', error);
     }
   }
 }

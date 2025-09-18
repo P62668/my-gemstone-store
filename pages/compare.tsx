@@ -3,6 +3,8 @@ import Head from 'next/head';
 import Link from 'next/link';
 import Image from 'next/image';
 import Layout from '../components/Layout';
+import LuxuryButton from '../components/ui/LuxuryButton';
+import LuxuryCard from '../components/ui/LuxuryCard';
 
 interface CompareItem {
   id: number;
@@ -46,7 +48,7 @@ export default function ComparePage() {
       <Layout title="Compare Products - Shankarmala Gemstore">
         <div className="min-h-screen bg-gradient-to-br from-white via-amber-50 to-amber-100">
           <div className="max-w-7xl mx-auto py-12 px-4">
-            <div className="text-center py-8 text-gray-500">Loading...</div>
+            <div className="text-center py-8 text-gray-500 luxury-font-sans">Loading...</div>
           </div>
         </div>
       </Layout>
@@ -62,38 +64,36 @@ export default function ComparePage() {
       <div className="min-h-screen bg-gradient-to-br from-white via-amber-50 to-amber-100">
         <div className="max-w-7xl mx-auto py-12 px-4">
           <div className="flex justify-between items-center mb-8">
-            <h1 className="text-3xl font-bold text-amber-900">Compare Products</h1>
-            <Link
-              href="/shop"
-              className="text-amber-700 hover:text-amber-900 font-semibold text-sm bg-amber-50 border border-amber-200 rounded-lg px-4 py-2 transition"
-            >
-              ← Back to Shop
+            <h1 className="text-3xl font-bold text-amber-900 luxury-font-serif">Compare Products</h1>
+            <Link href="/shop">
+              <LuxuryButton variant="secondary" size="md">
+                ← Back to Shop
+              </LuxuryButton>
             </Link>
           </div>
 
           {compareList.length === 0 ? (
             <div className="text-center py-12">
               <div className="text-6xl mb-4">🔍</div>
-              <h2 className="text-2xl font-semibold text-amber-900 mb-4">No Products to Compare</h2>
-              <p className="text-gray-600 mb-6">
+              <h2 className="text-2xl font-semibold text-amber-900 mb-4 luxury-font-serif">No Products to Compare</h2>
+              <p className="text-gray-600 mb-6 luxury-font-sans">
                 Add products to your comparison list to see them here.
               </p>
-              <Link
-                href="/shop"
-                className="inline-block bg-amber-600 text-white px-6 py-3 rounded-lg font-semibold hover:bg-amber-700 transition"
-              >
-                Browse Products
+              <Link href="/shop">
+                <LuxuryButton variant="primary" size="lg">
+                  Browse Products
+                </LuxuryButton>
               </Link>
             </div>
           ) : (
             <>
               <div className="flex justify-between items-center mb-6">
-                <p className="text-gray-600">
+                <p className="text-gray-600 luxury-font-sans">
                   Comparing {compareList.length} product{compareList.length !== 1 ? 's' : ''}
                 </p>
                 <button
                   onClick={clearCompare}
-                  className="text-red-600 hover:text-red-800 font-medium text-sm"
+                  className="text-red-600 hover:text-red-800 font-medium text-sm luxury-font-sans"
                 >
                   Clear All
                 </button>
@@ -101,10 +101,7 @@ export default function ComparePage() {
 
               <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
                 {compareList.map((item) => (
-                  <div
-                    key={item.id}
-                    className="bg-white/90 rounded-2xl shadow-xl border border-amber-100 p-6"
-                  >
+                  <LuxuryCard key={item.id} className="p-6">
                     <div className="relative mb-4">
                       <Image
                         src={item.image}
@@ -115,39 +112,38 @@ export default function ComparePage() {
                       />
                       <button
                         onClick={() => removeFromCompare(item.id)}
-                        className="absolute top-2 right-2 bg-red-500 text-white rounded-full w-6 h-6 flex items-center justify-center text-xs hover:bg-red-600 transition"
+                        className="absolute top-2 right-2 bg-red-500 text-white rounded-full w-6 h-6 flex items-center justify-center text-xs hover:bg-red-600 transition luxury-ripple"
                         aria-label="Remove from comparison"
                       >
                         ×
                       </button>
                     </div>
 
-                    <h3 className="text-lg font-semibold text-amber-900 mb-2">{item.name}</h3>
-                    <p className="text-sm text-gray-600 mb-2">Type: {item.type}</p>
-                    <p className="text-xl font-bold text-amber-600 mb-4">
+                    <h3 className="text-lg font-semibold text-amber-900 mb-2 luxury-font-serif">{item.name}</h3>
+                    <p className="text-sm text-gray-600 mb-2 luxury-font-sans">Type: {item.type}</p>
+                    <p className="text-xl font-bold text-amber-600 mb-4 luxury-font-serif">
                       ₹{item.price.toLocaleString()}
                     </p>
 
-                    <Link
-                      href={`/product/${item.id}`}
-                      className="block w-full text-center bg-amber-600 text-white py-2 rounded-lg font-semibold hover:bg-amber-700 transition"
-                    >
-                      View Details
+                    <Link href={`/product/${item.id}`}>
+                      <LuxuryButton variant="primary" size="md" className="w-full">
+                        View Details
+                      </LuxuryButton>
                     </Link>
-                  </div>
+                  </LuxuryCard>
                 ))}
               </div>
 
               {compareList.length >= 2 && (
-                <div className="mt-8 p-6 bg-white/90 rounded-2xl shadow-xl border border-amber-100">
-                  <h3 className="text-lg font-semibold text-amber-900 mb-4">Comparison Summary</h3>
+                <LuxuryCard className="mt-8 p-6">
+                  <h3 className="text-lg font-semibold text-amber-900 mb-4 luxury-font-serif">Comparison Summary</h3>
                   <div className="overflow-x-auto">
                     <table className="w-full text-sm">
                       <thead>
                         <tr className="border-b border-amber-200">
-                          <th className="text-left py-2 font-semibold">Feature</th>
+                          <th className="text-left py-2 font-semibold luxury-font-sans">Feature</th>
                           {compareList.map((item) => (
-                            <th key={item.id} className="text-center py-2 font-semibold">
+                            <th key={item.id} className="text-center py-2 font-semibold luxury-font-sans">
                               {item.name}
                             </th>
                           ))}
@@ -155,17 +151,17 @@ export default function ComparePage() {
                       </thead>
                       <tbody>
                         <tr className="border-b border-amber-100">
-                          <td className="py-2 font-medium">Price</td>
+                          <td className="py-2 font-medium luxury-font-sans">Price</td>
                           {compareList.map((item) => (
-                            <td key={item.id} className="text-center py-2">
+                            <td key={item.id} className="text-center py-2 luxury-font-sans">
                               ₹{item.price.toLocaleString()}
                             </td>
                           ))}
                         </tr>
                         <tr className="border-b border-amber-100">
-                          <td className="py-2 font-medium">Type</td>
+                          <td className="py-2 font-medium luxury-font-sans">Type</td>
                           {compareList.map((item) => (
-                            <td key={item.id} className="text-center py-2">
+                            <td key={item.id} className="text-center py-2 luxury-font-sans">
                               {item.type}
                             </td>
                           ))}
@@ -173,7 +169,7 @@ export default function ComparePage() {
                       </tbody>
                     </table>
                   </div>
-                </div>
+                </LuxuryCard>
               )}
             </>
           )}

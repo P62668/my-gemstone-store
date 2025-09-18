@@ -2,6 +2,7 @@ import { NextApiRequest, NextApiResponse } from 'next';
 import { prisma } from '../../../lib/prisma';
 import { withAdminAuth } from '../../../utils/authMiddleware';
 import { logger } from '../../../utils/logger';
+import { invalidateGemstoneCache } from '../../../utils/cache';
 
 async function handler(req: NextApiRequest, res: NextApiResponse) {
   try {
@@ -21,7 +22,7 @@ async function handler(req: NextApiRequest, res: NextApiResponse) {
         
         // Parse images for each gemstone
         const gemstonesWithParsedImages = gemstones.map(gemstone => {
-          let parsedImages = [];
+          let parsedImages: any[] = [];
           try {
             if (typeof gemstone.images === 'string' && gemstone.images.trim()) {
               parsedImages = JSON.parse(gemstone.images);
@@ -29,7 +30,7 @@ async function handler(req: NextApiRequest, res: NextApiResponse) {
               parsedImages = gemstone.images;
             }
           } catch (error) {
-            console.error('Error parsing images for gemstone:', gemstone.id, error);
+            logger.error('Error parsing images for gemstone', error, { gemstoneId: gemstone.id });
             parsedImages = [];
           }
           
@@ -141,6 +142,9 @@ async function handler(req: NextApiRequest, res: NextApiResponse) {
             category: true,
           },
         });
+        
+        // Invalidate gemstone cache after creation
+        invalidateGemstoneCache();
 
         logger.info('Gemstone created successfully', {
           message: 'Gemstone created',

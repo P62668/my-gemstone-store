@@ -1,6 +1,8 @@
 import React, { useState } from 'react';
+import Image from 'next/image';
 import { H1, H2, H3, BodyText, Button } from '../ui';
 import { useCart } from '../context/CartContext';
+import LuxuryCard from '../ui/LuxuryCard';
 
 const CartPage: React.FC = () => {
   const { items: cart, updateQuantity, removeFromCart } = useCart();
@@ -88,7 +90,7 @@ const CartPage: React.FC = () => {
           <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
             {/* Cart Items */}
             <div className="lg:col-span-2">
-              <div className="bg-white rounded-2xl shadow-lg p-6">
+              <LuxuryCard className="bg-white" padding="lg" rounded="2xl" shadow="lg">
                 <H2 className="text-2xl font-semibold mb-6">Cart Items ({cart.length})</H2>
                 <div className="space-y-6">
                   {cart.map((item) => (
@@ -100,9 +102,11 @@ const CartPage: React.FC = () => {
                     >
                       {/* Item Image */}
                       <div className="w-24 h-24 bg-gray-100 rounded-lg overflow-hidden flex-shrink-0">
-                        <img
+                        <Image
                           src={item.images?.[0] || '/images/placeholder-gemstone.jpg'}
                           alt={`Image of ${item.name}`}
+                          width={96}
+                          height={96}
                           className="w-full h-full object-cover"
                         />
                       </div>
@@ -174,11 +178,11 @@ const CartPage: React.FC = () => {
                     </div>
                   ))}
                 </div>
-              </div>
+              </LuxuryCard>
             </div>
             {/* Order Summary */}
             <div className="lg:col-span-1">
-              <div className="bg-white rounded-2xl shadow-lg p-6 sticky top-8">
+              <LuxuryCard className="bg-white sticky top-8" padding="lg" rounded="2xl" shadow="lg">
                 <H2 className="text-2xl font-semibold mb-6">Order Summary</H2>
                 {/* Promo Code */}
                 <div className="mb-6">
@@ -252,7 +256,7 @@ const CartPage: React.FC = () => {
                 <Button variant="primary" size="lg" className="w-full" onClick={handleCheckout}>
                   Proceed to Checkout
                 </Button>
-              </div>
+              </LuxuryCard>
             </div>
           </div>
         )}

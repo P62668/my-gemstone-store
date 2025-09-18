@@ -4,32 +4,49 @@ import { PrismaClient } from '@prisma/client';
 import { logger } from './logger';
 import { getUserFromRequest } from './getUser';
 import { setSecureCookie as setCookie } from './cookieParser';
+import { validatePassword as securityValidatePassword, sanitizeInput as securitySanitizeInput, logSecurityEvent, getClientIP, enhancedRateLimit, validateSecureToken } from './security';
 
 const prisma = new PrismaClient();
 
 // Rate limiting for login attempts
-const loginAttempts = new Map<string, { count: number; lastAttempt: number }>();
+const loginAttempts = new Map<string, { count: number; lastAttempt: number; lockedUntil?: number }>();
+
+// Export the loginAttempts map so it can be cleared externally
+export { loginAttempts };
 
 export const rateLimit = {
-  maxAttempts: 5,
+  maxAttempts: parseInt(process.env.ADMIN_RATE_LIMIT_MAX || '5', 10),
   windowMs: 15 * 60 * 1000, // 15 minutes
+  lockoutDuration: 30 * 60 * 1000, // 30 minutes lockout
 };
 
-export const checkLoginAttempts = (email: string): boolean => {
+export const checkLoginAttempts = (email: string): { allowed: boolean; lockedUntil?: number } => {
   const attempts = loginAttempts.get(email);
   const now = Date.now();
 
   if (!attempts) {
-    return true;
+    return { allowed: true };
+  }
+
+  // Check if account is locked
+  if (attempts.lockedUntil && now < attempts.lockedUntil) {
+    return { allowed: false, lockedUntil: attempts.lockedUntil };
   }
 
   // Reset if window has passed
   if (now - attempts.lastAttempt > rateLimit.windowMs) {
     loginAttempts.delete(email);
-    return true;
+    return { allowed: true };
   }
 
-  return attempts.count < rateLimit.maxAttempts;
+  // Check if max attempts exceeded
+  if (attempts.count >= rateLimit.maxAttempts) {
+    const lockedUntil = now + rateLimit.lockoutDuration;
+    loginAttempts.set(email, { ...attempts, lockedUntil });
+    return { allowed: false, lockedUntil };
+  }
+
+  return { allowed: true };
 };
 
 export const recordLoginAttempt = (email: string, success: boolean) => {
@@ -59,27 +76,54 @@ export const getTokenFromRequest = (req: NextApiRequest): string | null => {
   return null;
 };
 
-// Verify JWT token
+// Verify JWT token with enhanced security
 export const verifyToken = (token: string): any => {
   try {
-    const decoded = jwt.verify(token, process.env.JWT_SECRET!);
+    // Validate token format first
+    if (!validateSecureToken(token)) {
+      return null;
+    }
+    
+    const decoded = jwt.verify(token, process.env.JWT_SECRET!, { 
+      algorithms: ['HS256'],
+      clockTolerance: 30 // Allow 30 seconds clock skew
+    });
     return decoded;
   } catch (error) {
+    logger.error('Token verification failed', error);
     return null;
   }
 };
 
-// Require admin authentication
+// Require admin authentication with enhanced security
 export const requireAdminAuth = async (req: NextApiRequest, res: NextApiResponse) => {
   try {
+    // Log security event
+    const clientIP = getClientIP(req);
+    logSecurityEvent('Admin Auth Attempt', { ip: clientIP, url: req.url });
+    
+    // Apply rate limiting
+    const rateLimiter = enhancedRateLimit(parseInt(process.env.ADMIN_RATE_LIMIT_MAX || '200', 10));
+    const rateLimitResult = await rateLimiter(req, res);
+    if (!rateLimitResult.success) {
+      logSecurityEvent('Rate Limit Exceeded for Admin Auth', { ip: clientIP, url: req.url });
+      res.status(429).json({
+        success: false,
+        error: {
+          message: 'Too many requests',
+          code: 'RATE_LIMIT_EXCEEDED'
+        }
+      });
+      return null;
+    }
+    
     // Prefer centralized user resolution which checks NextAuth session, NextAuth JWT, then legacy token
     const resolved = await getUserFromRequest(req, res);
 
     if (!resolved) {
-      logger.warn('No authenticated user found', {
-        message: 'Authentication required',
-        ip: req.headers['x-forwarded-for'] || req.socket.remoteAddress,
-        userAgent: req.headers['user-agent']
+      logSecurityEvent('Admin Auth Failed: No User Found', {
+        ip: clientIP,
+        url: req.url
       });
       res.status(401).json({
         success: false,
@@ -105,11 +149,12 @@ export const requireAdminAuth = async (req: NextApiRequest, res: NextApiResponse
     });
 
     if (!user || user.role !== 'admin' || !user.active) {
-      logger.warn('Unauthorized access attempt', {
-        message: 'User not authorized for admin access',
+      logSecurityEvent('Admin Auth Failed: Access Denied', {
         userId: resolved.id,
-        ip: req.headers['x-forwarded-for'] || req.socket.remoteAddress,
-        userAgent: req.headers['user-agent']
+        userRole: user?.role,
+        active: user?.active,
+        ip: clientIP,
+        url: req.url
       });
       res.status(403).json({
         success: false,
@@ -125,8 +170,8 @@ export const requireAdminAuth = async (req: NextApiRequest, res: NextApiResponse
       message: 'Admin user authenticated',
       userId: user.id,
       userEmail: user.email,
-      ip: req.headers['x-forwarded-for'] || req.socket.remoteAddress,
-      userAgent: req.headers['user-agent']
+      ip: clientIP,
+      url: req.url
     });
 
     return user;
@@ -134,8 +179,8 @@ export const requireAdminAuth = async (req: NextApiRequest, res: NextApiResponse
   } catch (error) {
     logger.error('Authentication error', error, {
       message: 'Authentication process failed',
-      ip: req.headers['x-forwarded-for'] || req.socket.remoteAddress,
-      userAgent: req.headers['user-agent']
+      ip: getClientIP(req),
+      url: req.url
     });
     res.status(500).json({
       success: false,
@@ -148,23 +193,33 @@ export const requireAdminAuth = async (req: NextApiRequest, res: NextApiResponse
   }
 };
 
-// Generate admin token
+// Generate admin token with enhanced security
 export const generateAdminToken = (user: any): string => {
   const payload = {
     userId: user.id,
     email: user.email,
     role: user.role,
-    type: 'admin'
+    type: 'admin',
+    iat: Math.floor(Date.now() / 1000),
+    exp: Math.floor(Date.now() / 1000) + (24 * 60 * 60) // 24 hours
   };
 
   return jwt.sign(payload, process.env.JWT_SECRET!, {
+    algorithm: 'HS256',
     expiresIn: '24h'
   });
 };
 
 // Set secure cookie - delegate to central cookie helper
 export const setSecureCookie = (res: NextApiResponse, name: string, value: string, options: any = {}) => {
-  return setCookie(res, name, value, options);
+  return setCookie(res, name, value, {
+    httpOnly: true,
+    secure: process.env.NODE_ENV === 'production',
+    sameSite: 'strict',
+    path: '/',
+    maxAge: parseInt(process.env.ADMIN_SESSION_TIMEOUT || '3600', 10),
+    ...options
+  });
 };
 
 // Validate admin input
@@ -183,9 +238,9 @@ export const validateAdminInput = (data: any, requiredFields: string[]): { valid
   };
 };
 
-// Sanitize input
+// Sanitize input - use enhanced security function
 export const sanitizeInput = (input: string): string => {
-  return input.trim().replace(/[<>]/g, '');
+  return securitySanitizeInput(input);
 };
 
 // Validate email format
@@ -194,30 +249,9 @@ export const validateEmail = (email: string): boolean => {
   return emailRegex.test(email);
 };
 
-// Validate password strength
+// Validate password strength - use enhanced security function
 export const validatePassword = (password: string): { valid: boolean; errors: string[] } => {
-  const errors: string[] = [];
-
-  if (password.length < 8) {
-    errors.push('Password must be at least 8 characters long');
-  }
-
-  if (!/[A-Z]/.test(password)) {
-    errors.push('Password must contain at least one uppercase letter');
-  }
-
-  if (!/[a-z]/.test(password)) {
-    errors.push('Password must contain at least one lowercase letter');
-  }
-
-  if (!/\d/.test(password)) {
-    errors.push('Password must contain at least one number');
-  }
-
-  return {
-    valid: errors.length === 0,
-    errors
-  };
+  return securityValidatePassword(password);
 };
 
 // Permission system
@@ -254,4 +288,44 @@ export const hasAnyPermission = (user: any, permissions: string[]): boolean => {
 
 export const hasAllPermissions = (user: any, permissions: string[]): boolean => {
   return permissions.every(permission => hasPermission(user, permission));
+};
+
+// CSRF protection for admin actions
+export const generateCSRFToken = (): string => {
+  return require('crypto').randomBytes(32).toString('hex');
+};
+
+export const validateCSRFToken = (token: string, expected: string): boolean => {
+  if (!token || !expected) return false;
+  
+  // Use timing-safe comparison to prevent timing attacks
+  if (token.length !== expected.length) return false;
+  
+  let result = 0;
+  for (let i = 0; i < token.length; i++) {
+    result |= token.charCodeAt(i) ^ expected.charCodeAt(i);
+  }
+  return result === 0;
+};
+
+// Session validation for admin
+export const validateAdminSession = async (req: NextApiRequest): Promise<boolean> => {
+  try {
+    const token = getTokenFromRequest(req);
+    if (!token) return false;
+    
+    const decoded = verifyToken(token);
+    if (!decoded || decoded.role !== 'admin') return false;
+    
+    // Check if user still exists and is active
+    const user = await prisma.user.findUnique({
+      where: { id: Number(decoded.userId) },
+      select: { active: true, role: true }
+    });
+    
+    return !!user && user.active && user.role === 'admin';
+  } catch (error) {
+    logger.error('Admin session validation failed', error);
+    return false;
+  }
 };

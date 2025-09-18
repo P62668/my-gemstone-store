@@ -2,6 +2,7 @@ import { NextApiRequest, NextApiResponse } from 'next';
 import { prisma } from '../../../../lib/prisma';
 import { withAdminAuth } from '../../../../utils/authMiddleware';
 import { logger } from '../../../../utils/logger';
+import { invalidateGemstoneCache } from '../../../../utils/cache';
 
 async function handler(req: NextApiRequest, res: NextApiResponse) {
   try {
@@ -48,8 +49,12 @@ async function handler(req: NextApiRequest, res: NextApiResponse) {
             category: true,
           },
         });
+        
+        // Invalidate gemstone cache after update
+        invalidateGemstoneCache();
+        
         // Parse images before returning
-        let parsedImages = [];
+        let parsedImages: any[] = [];
         try {
           if (typeof gemstone.images === 'string' && gemstone.images.trim()) {
             parsedImages = JSON.parse(gemstone.images);
@@ -87,6 +92,10 @@ async function handler(req: NextApiRequest, res: NextApiResponse) {
         await prisma.gemstone.delete({
           where: { id: gemstoneId },
         });
+        
+        // Invalidate gemstone cache after delete
+        invalidateGemstoneCache();
+        
         res.status(204).end();
       } catch (error) {
         console.error('Error deleting gemstone:', error);

@@ -10,30 +10,72 @@ async function handler(req: NextApiRequest, res: NextApiResponse) {
 
     if (req.method === 'GET') {
       try {
-        const orders = await prisma.order.findMany({
-          include: {
-            user: {
-              select: {
-                id: true,
-                firstName: true,
-                lastName: true,
-                email: true
-              }
-            },
-            items: {
-              include: {
-                gemstone: {
-                  select: {
-                    id: true,
-                    name: true
+        const { page = '1', limit = '20', status = 'all', paymentStatus = 'all' } = req.query;
+
+        const pageNum = parseInt(page as string, 10);
+        const limitNum = parseInt(limit as string, 10);
+        const skip = (pageNum - 1) * limitNum;
+
+        const where: any = {};
+        if (status !== 'all') {
+          where.status = status;
+        }
+        if (paymentStatus !== 'all') {
+          where.paymentStatus = paymentStatus;
+        }
+
+        const [orders, total] = await Promise.all([
+          prisma.order.findMany({
+            where,
+            include: {
+              user: {
+                select: {
+                  id: true,
+                  firstName: true,
+                  lastName: true,
+                  email: true
+                }
+              },
+              items: {
+                include: {
+                  gemstone: {
+                    select: {
+                      id: true,
+                      name: true
+                    }
                   }
                 }
               }
-            }
-          },
-          orderBy: {
-            createdAt: 'desc'
-          }
+            },
+            orderBy: {
+              createdAt: 'desc'
+            },
+            skip,
+            take: limitNum
+          }),
+          prisma.order.count({ where })
+        ]);
+
+        // Get statistics
+        const stats = await prisma.order.aggregate({
+          _count: { id: true },
+          _sum: { total: true },
+        });
+
+        const pendingCount = await prisma.order.count({
+          where: { status: 'pending' },
+        });
+
+        const shippedCount = await prisma.order.count({
+          where: { status: 'shipped' },
+        });
+
+        const deliveredCount = await prisma.order.count({
+          where: { status: 'delivered' },
+        });
+
+        const cancelledCount = await prisma.order.count({
+          where: { status: 'cancelled' },
         });
 
         // Transform data to match frontend interface
@@ -44,12 +86,30 @@ async function handler(req: NextApiRequest, res: NextApiResponse) {
           total: order.total,
           status: order.status,
           paymentStatus: order.paymentStatus,
+          paymentMethod: order.paymentMethod,
+          trackingNumber: order.trackingNumber,
           items: order.items.length,
           createdAt: order.createdAt,
           updatedAt: order.updatedAt
         }));
 
-        res.status(200).json(transformedOrders);
+        res.status(200).json({
+          orders: transformedOrders,
+          pagination: {
+            page: pageNum,
+            limit: limitNum,
+            total,
+            pages: Math.ceil(total / limitNum),
+          },
+          stats: {
+            total: stats._count.id,
+            totalValue: stats._sum.total || 0,
+            pending: pendingCount,
+            shipped: shippedCount,
+            delivered: deliveredCount,
+            cancelled: cancelledCount,
+          }
+        });
       } catch (error) {
         logger.error('Error fetching orders', error, {
           message: 'Failed to fetch orders',

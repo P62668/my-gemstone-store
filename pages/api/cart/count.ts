@@ -1,17 +1,19 @@
-import type { NextApiResponse } from 'next';
-import { withAuth, AuthenticatedRequest } from '../../../utils/authMiddleware';
+import type { NextApiRequest, NextApiResponse } from 'next';
 import { prisma } from '../../../lib/prisma';
+import { getUserFromRequest } from '../../../utils/getUser';
 
-async function handler(req: AuthenticatedRequest, res: NextApiResponse) {
+async function handler(req: NextApiRequest, res: NextApiResponse) {
   if (req.method !== 'GET') {
     return res.status(405).json({ error: 'Method not allowed' });
   }
 
   try {
-    const user = req.user;
+    const user = await getUserFromRequest(req, res);
     if (!user) {
+      // If no authenticated user, return 0 count instead of 401
       return res.status(200).json({ count: 0 });
     }
+    
     const count = await prisma.cartItem.aggregate({
       where: { userId: user.id },
       _sum: { quantity: true },
@@ -23,4 +25,4 @@ async function handler(req: AuthenticatedRequest, res: NextApiResponse) {
   }
 }
 
-export default withAuth(handler);
+export default handler;

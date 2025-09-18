@@ -21,6 +21,8 @@ import {
   Twitter,
   Linkedin,
 } from 'lucide-react';
+import LuxuryButton from '../components/ui/LuxuryButton';
+import LuxuryCard from '../components/ui/LuxuryCard';
 
 const ContactPage: React.FC = () => {
   const [formData, setFormData] = useState({
@@ -243,29 +245,29 @@ const ContactPage: React.FC = () => {
               {contactMethods.map((method, idx) => (
                 <motion.div
                   key={method.title}
-                  className="bg-white/90 rounded-2xl shadow-2xl border border-yellow-100/60 backdrop-blur-lg p-6 sm:p-8 text-center"
                   initial={{ opacity: 0, y: 30 }}
                   whileInView={{ opacity: 1, y: 0 }}
                   transition={{ duration: 0.6, delay: idx * 0.1 }}
                   viewport={{ once: true }}
-                  whileHover={{ y: -5 }}
                 >
-                  <div
-                    className={`w-20 h-20 mx-auto mb-6 bg-gradient-to-br ${method.color} rounded-2xl flex items-center justify-center shadow-lg border border-white/20 group-hover:scale-110 transition-transform duration-300`}
-                  >
-                    {method.icon}
-                  </div>
-                  <h3 className="text-xl font-bold text-yellow-900 mb-3 font-serif">
-                    {method.title}
-                  </h3>
-                  <p className="text-yellow-700 mb-4 font-serif">{method.description}</p>
-                  <div className="space-y-2">
-                    {method.details.map((detail, detailIdx) => (
-                      <p key={detailIdx} className="text-yellow-900 font-semibold font-serif">
-                        {detail}
-                      </p>
-                    ))}
-                  </div>
+                  <LuxuryCard className="p-6 sm:p-8 text-center h-full">
+                    <div
+                      className={`w-20 h-20 mx-auto mb-6 bg-gradient-to-br ${method.color} rounded-2xl flex items-center justify-center shadow-lg border border-white/20 group-hover:scale-110 transition-transform duration-300`}
+                    >
+                      {method.icon}
+                    </div>
+                    <h3 className="text-xl font-bold text-yellow-900 mb-3 luxury-font-serif">
+                      {method.title}
+                    </h3>
+                    <p className="text-yellow-700 mb-4 luxury-font-serif">{method.description}</p>
+                    <div className="space-y-2">
+                      {method.details.map((detail, detailIdx) => (
+                        <p key={detailIdx} className="text-yellow-900 font-semibold luxury-font-serif">
+                          {detail}
+                        </p>
+                      ))}
+                    </div>
+                  </LuxuryCard>
                 </motion.div>
               ))}
             </div>
@@ -315,7 +317,7 @@ const ContactPage: React.FC = () => {
                 >
                   <div className="grid grid-cols-1 sm:grid-cols-2 gap-6">
                     <div className="relative">
-                      <label className="block text-sm font-semibold text-yellow-700 mb-2 font-serif flex items-center gap-2">
+                      <label className="block text-sm font-semibold text-yellow-700 mb-2 luxury-font-serif flex items-center gap-2">
                         <User className="w-4 h-4" />
                         Full Name *
                       </label>
@@ -324,13 +326,13 @@ const ContactPage: React.FC = () => {
                         required
                         value={formData.name}
                         onChange={(e) => updateFormData('name', e.target.value)}
-                        className="w-full pl-12 pr-4 py-3 border border-yellow-200 rounded-xl focus:ring-4 focus:ring-yellow-200/40 focus:border-yellow-400 transition-all duration-300 bg-white/80 backdrop-blur"
+                        className="luxury-input"
                         placeholder="Enter your full name"
                       />
                       <User className="absolute left-4 top-10 w-5 h-5 text-yellow-600" />
                     </div>
                     <div className="relative">
-                      <label className="block text-sm font-semibold text-yellow-700 mb-2 font-serif flex items-center gap-2">
+                      <label className="block text-sm font-semibold text-yellow-700 mb-2 luxury-font-serif flex items-center gap-2">
                         <Mail className="w-4 h-4" />
                         Email Address *
                       </label>
@@ -339,7 +341,7 @@ const ContactPage: React.FC = () => {
                         required
                         value={formData.email}
                         onChange={(e) => updateFormData('email', e.target.value)}
-                        className="w-full pl-12 pr-4 py-3 border border-yellow-200 rounded-xl focus:ring-4 focus:ring-yellow-200/40 focus:border-yellow-400 transition-all duration-300 bg-white/80 backdrop-blur"
+                        className="luxury-input"
                         placeholder="Enter your email"
                       />
                       <Mail className="absolute left-4 top-10 w-5 h-5 text-yellow-600" />
@@ -348,7 +350,7 @@ const ContactPage: React.FC = () => {
 
                   <div className="grid grid-cols-1 sm:grid-cols-2 gap-6">
                     <div className="relative">
-                      <label className="block text-sm font-semibold text-yellow-700 mb-2 font-serif flex items-center gap-2">
+                      <label className="block text-sm font-semibold text-yellow-700 mb-2 luxury-font-serif flex items-center gap-2">
                         <Phone className="w-4 h-4" />
                         Phone Number
                       </label>
@@ -356,13 +358,13 @@ const ContactPage: React.FC = () => {
                         type="tel"
                         value={formData.phone}
                         onChange={(e) => updateFormData('phone', e.target.value)}
-                        className="w-full pl-12 pr-4 py-3 border border-yellow-200 rounded-xl focus:ring-4 focus:ring-yellow-200/40 focus:border-yellow-400 transition-all duration-300 bg-white/80 backdrop-blur"
+                        className="luxury-input"
                         placeholder="Enter your phone number"
                       />
                       <Phone className="absolute left-4 top-10 w-5 h-5 text-yellow-600" />
                     </div>
                     <div className="relative">
-                      <label className="block text-sm font-semibold text-yellow-700 mb-2 font-serif flex items-center gap-2">
+                      <label className="block text-sm font-semibold text-yellow-700 mb-2 luxury-font-serif flex items-center gap-2">
                         <MessageCircle className="w-4 h-4" />
                         Subject *
                       </label>
@@ -370,7 +372,7 @@ const ContactPage: React.FC = () => {
                         required
                         value={formData.subject}
                         onChange={(e) => updateFormData('subject', e.target.value)}
-                        className="w-full pl-12 pr-4 py-3 border border-yellow-200 rounded-xl focus:ring-4 focus:ring-yellow-200/40 focus:border-yellow-400 transition-all duration-300 bg-white/80 backdrop-blur"
+                        className="luxury-select"
                       >
                         <option value="">Select a subject</option>
                         <option value="appointment">Schedule Appointment</option>
@@ -384,7 +386,7 @@ const ContactPage: React.FC = () => {
                   </div>
 
                   <div>
-                    <label className="block text-sm font-semibold text-yellow-700 mb-2 font-serif flex items-center gap-2">
+                    <label className="block text-sm font-semibold text-yellow-700 mb-2 luxury-font-serif flex items-center gap-2">
                       <MessageCircle className="w-4 h-4" />
                       Message *
                     </label>
@@ -393,14 +395,13 @@ const ContactPage: React.FC = () => {
                       rows={6}
                       value={formData.message}
                       onChange={(e) => updateFormData('message', e.target.value)}
-                      className="w-full pl-12 pr-4 py-3 border border-yellow-200 rounded-xl focus:ring-4 focus:ring-yellow-200/40 focus:border-yellow-400 transition-all duration-300 bg-white/80 backdrop-blur resize-none"
+                      className="luxury-input resize-none"
                       placeholder="Tell us about your inquiry..."
                     />
-                    <MessageCircle className="absolute left-4 top-10 w-5 h-5 text-yellow-600" />
                   </div>
 
                   <div>
-                    <label className="block text-sm font-semibold text-yellow-700 mb-2 font-serif">
+                    <label className="block text-sm font-semibold text-yellow-700 mb-2 luxury-font-serif">
                       Preferred Contact Method
                     </label>
                     <div className="flex gap-4">
@@ -420,31 +421,20 @@ const ContactPage: React.FC = () => {
                             onChange={(e) => updateFormData('preferredContact', e.target.value)}
                             className="text-yellow-600 focus:ring-yellow-500"
                           />
-                          <span className="text-yellow-900 font-serif">{option.label}</span>
+                          <span className="text-yellow-900 luxury-font-serif">{option.label}</span>
                         </label>
                       ))}
                     </div>
                   </div>
 
-                  <motion.button
+                  <LuxuryButton
                     type="submit"
                     disabled={isSubmitting}
-                    className="w-full bg-gradient-to-r from-yellow-500 to-amber-500 hover:from-yellow-600 hover:to-amber-600 text-white py-4 px-8 rounded-xl font-bold shadow-lg transition-all duration-300 focus:outline-none focus:ring-4 focus:ring-yellow-300/40 disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-3"
-                    whileHover={{ scale: 1.02 }}
-                    whileTap={{ scale: 0.98 }}
+                    className="w-full"
+                    loading={isSubmitting}
                   >
-                    {isSubmitting ? (
-                      <>
-                        <div className="animate-spin rounded-full h-5 w-5 border-b-2 border-white"></div>
-                        Sending...
-                      </>
-                    ) : (
-                      <>
-                        <Send className="w-5 h-5" />
-                        Send Message
-                      </>
-                    )}
-                  </motion.button>
+                    {isSubmitting ? 'Sending...' : 'Send Message'}
+                  </LuxuryButton>
                 </form>
               </motion.div>
 
@@ -455,33 +445,33 @@ const ContactPage: React.FC = () => {
                 transition={{ duration: 0.8 }}
                 viewport={{ once: true }}
               >
-                <h2 className="text-3xl sm:text-4xl font-bold text-yellow-900 mb-6 font-serif">
+                <h2 className="text-3xl sm:text-4xl font-bold text-yellow-900 mb-6 luxury-font-serif">
                   Visit Our Gallery
                 </h2>
 
                 {/* Business Hours */}
-                <div className="bg-gradient-to-br from-yellow-100 to-amber-100 rounded-2xl p-6 sm:p-8 mb-8 shadow-2xl border border-yellow-200">
-                  <h3 className="text-xl font-bold text-yellow-900 mb-4 font-serif">
+                <LuxuryCard className="p-6 sm:p-8 mb-8">
+                  <h3 className="text-xl font-bold text-yellow-900 mb-4 luxury-font-serif">
                     Business Hours
                   </h3>
                   <div className="space-y-3">
                     {businessHours.map((schedule) => (
                       <div key={schedule.day} className="flex justify-between items-center">
-                        <span className="text-yellow-900 font-serif">{schedule.day}</span>
-                        <span className="font-semibold text-yellow-700 font-serif">
+                        <span className="text-yellow-900 luxury-font-serif">{schedule.day}</span>
+                        <span className="font-semibold text-yellow-700 luxury-font-serif">
                           {schedule.hours}
                         </span>
                       </div>
                     ))}
                   </div>
-                </div>
+                </LuxuryCard>
 
                 {/* Location */}
-                <div className="bg-gradient-to-br from-yellow-100 to-amber-100 rounded-2xl p-6 sm:p-8 mb-8 shadow-2xl border border-yellow-200">
-                  <h3 className="text-xl font-bold text-yellow-900 mb-4 font-serif">
+                <LuxuryCard className="p-6 sm:p-8 mb-8">
+                  <h3 className="text-xl font-bold text-yellow-900 mb-4 luxury-font-serif">
                     Our Location
                   </h3>
-                  <div className="space-y-3 text-yellow-800 font-serif">
+                  <div className="space-y-3 text-yellow-800 luxury-font-serif">
                     <p>123 Heritage Lane, Park Street</p>
                     <p>Kolkata, West Bengal 700016</p>
                     <p>India</p>
@@ -489,14 +479,14 @@ const ContactPage: React.FC = () => {
                   <div className="mt-4 p-4 bg-white/80 rounded-xl border border-yellow-200">
                     <div className="text-center text-yellow-600">
                       <div className="text-2xl mb-2">🗺️</div>
-                      <p className="text-sm font-serif">Interactive Map Coming Soon</p>
+                      <p className="text-sm luxury-font-serif">Interactive Map Coming Soon</p>
                     </div>
                   </div>
-                </div>
+                </LuxuryCard>
 
                 {/* Social Media */}
-                <div className="bg-gradient-to-br from-yellow-100 to-amber-100 rounded-2xl p-6 sm:p-8 shadow-2xl border border-yellow-200">
-                  <h3 className="text-xl font-bold text-yellow-900 mb-4 font-serif">Follow Us</h3>
+                <LuxuryCard className="p-6 sm:p-8">
+                  <h3 className="text-xl font-bold text-yellow-900 mb-4 luxury-font-serif">Follow Us</h3>
                   <div className="flex gap-4">
                     {[
                       {
@@ -531,7 +521,7 @@ const ContactPage: React.FC = () => {
                       </motion.button>
                     ))}
                   </div>
-                </div>
+                </LuxuryCard>
               </motion.div>
             </div>
           </div>
@@ -549,11 +539,11 @@ const ContactPage: React.FC = () => {
             >
               <h2
                 id="contact-faq-heading"
-                className="text-3xl sm:text-4xl font-bold text-yellow-900 mb-6 font-serif"
+                className="text-3xl sm:text-4xl font-bold text-yellow-900 mb-6 luxury-font-serif"
               >
                 Frequently Asked Questions
               </h2>
-              <p className="text-xl text-yellow-800 font-serif">
+              <p className="text-xl text-yellow-800 luxury-font-serif">
                 Find answers to common questions about our services and collection.
               </p>
             </motion.div>
@@ -562,16 +552,17 @@ const ContactPage: React.FC = () => {
               {faqs.map((faq, idx) => (
                 <motion.div
                   key={faq.question}
-                  className="bg-white/90 rounded-2xl shadow-2xl border border-yellow-100/60 backdrop-blur-lg p-6 sm:p-8"
                   initial={{ opacity: 0, y: 20 }}
                   whileInView={{ opacity: 1, y: 0 }}
                   transition={{ duration: 0.6, delay: idx * 0.1 }}
                   viewport={{ once: true }}
                 >
-                  <h3 className="text-lg sm:text-xl font-bold text-yellow-900 mb-3 font-serif">
-                    {faq.question}
-                  </h3>
-                  <p className="text-yellow-700 font-serif leading-relaxed">{faq.answer}</p>
+                  <LuxuryCard className="p-6 sm:p-8">
+                    <h3 className="text-lg sm:text-xl font-bold text-yellow-900 mb-3 luxury-font-serif">
+                      {faq.question}
+                    </h3>
+                    <p className="text-yellow-700 luxury-font-serif leading-relaxed">{faq.answer}</p>
+                  </LuxuryCard>
                 </motion.div>
               ))}
             </div>
@@ -590,7 +581,7 @@ const ContactPage: React.FC = () => {
             >
               <h2
                 id="contact-trust-heading"
-                className="text-2xl sm:text-3xl font-bold text-yellow-900 mb-6 font-serif"
+                className="text-2xl sm:text-3xl font-bold text-yellow-900 mb-6 luxury-font-serif"
               >
                 Trust & Security
               </h2>
@@ -605,17 +596,18 @@ const ContactPage: React.FC = () => {
               ].map((badge, idx) => (
                 <motion.div
                   key={badge.label}
-                  className="text-center p-6 bg-white/90 rounded-2xl shadow-2xl border border-yellow-100/60 backdrop-blur-lg"
                   initial={{ opacity: 0, scale: 0.8 }}
                   whileInView={{ opacity: 1, scale: 1 }}
                   transition={{ duration: 0.5, delay: idx * 0.1 }}
                   viewport={{ once: true }}
                 >
-                  <div className="text-3xl mb-3">{badge.icon}</div>
-                  <div className="text-sm font-semibold text-yellow-900 font-serif">
-                    {badge.label}
-                  </div>
-                  <div className="text-xs text-yellow-700 font-serif">{badge.desc}</div>
+                  <LuxuryCard className="text-center p-6">
+                    <div className="text-3xl mb-3">{badge.icon}</div>
+                    <div className="text-sm font-semibold text-yellow-900 luxury-font-serif">
+                      {badge.label}
+                    </div>
+                    <div className="text-xs text-yellow-700 luxury-font-serif">{badge.desc}</div>
+                  </LuxuryCard>
                 </motion.div>
               ))}
             </div>

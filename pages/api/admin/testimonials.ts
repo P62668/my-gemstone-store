@@ -1,10 +1,6 @@
 import { NextApiRequest, NextApiResponse } from 'next';
-import { prisma } from '../../../lib/prisma';
 import { withAdminAuth } from '../../../utils/authMiddleware';
-import { requireEnv, getEnv } from '../../../utils/env';
-
-// Ensure we read secrets consistently (not used directly here but keep pattern)
-const JWT_SECRET = process.env.NODE_ENV === 'production' ? requireEnv('JWT_SECRET') : getEnv('JWT_SECRET') || 'dev-secret';
+import { prisma } from '../../../lib/prisma';
 
 async function handler(req: NextApiRequest, res: NextApiResponse) {
   try {
@@ -23,15 +19,25 @@ async function handler(req: NextApiRequest, res: NextApiResponse) {
       }
     } else if (req.method === 'POST') {
       try {
-        const { name, content, order, active } = req.body;
+        const { name, role, company, content, rating, image, active } = req.body;
+        
+        // Validate required fields
+        if (!name || !content) {
+          return res.status(400).json({ error: 'Name and content are required' });
+        }
+
         const testimonial = await prisma.testimonial.create({
           data: {
             name,
+            role: role || null,
+            company: company || null,
             content,
-            rating: 5,
+            rating: rating ? parseInt(rating as string) : 5,
+            image: image || null,
             active: active !== undefined ? active : true,
           },
         });
+
         res.status(201).json(testimonial);
       } catch (error) {
         console.error('Error creating testimonial:', error);
@@ -42,6 +48,7 @@ async function handler(req: NextApiRequest, res: NextApiResponse) {
       res.status(405).end(`Method ${req.method} Not Allowed`);
     }
   } catch (err: any) {
+    console.error('Authentication error:', err);
     return res.status(401).json({ error: 'Authentication required' });
   }
 }

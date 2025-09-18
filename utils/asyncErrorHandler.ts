@@ -1,5 +1,5 @@
 import { logger } from './logger';
-import toast from 'react-hot-toast';
+import React from 'react';
 
 export interface AsyncErrorHandlerOptions {
   showToast?: boolean;
@@ -13,6 +13,21 @@ export interface AsyncResult<T> {
   error: string | null;
   loading: boolean;
 }
+
+// Conditional toast function that only works in browser environment
+const conditionalToast = {
+  error: (message: string) => {
+    if (typeof window !== 'undefined') {
+      // Dynamically import react-hot-toast only in browser environment
+      import('react-hot-toast').then((module) => {
+        module.default.error(message);
+      }).catch(() => {
+        // Fallback if import fails
+        console.error(message);
+      });
+    }
+  }
+};
 
 /**
  * Wrapper for async operations with error handling
@@ -39,7 +54,7 @@ export async function handleAsync<T>(
     }
     
     if (showToast) {
-      toast.error(errorMessage);
+      conditionalToast.error(errorMessage);
     }
     
     if (onError && error instanceof Error) {
@@ -99,7 +114,7 @@ export function withErrorHandling<P extends object>(
       logger.error('Component error', undefined, error);
       
       if (options.showToast) {
-        toast.error(options.fallbackMessage || 'Something went wrong');
+        conditionalToast.error(options.fallbackMessage || 'Something went wrong');
       }
       
       if (options.onError) {
@@ -204,11 +219,17 @@ export function useApiCall<T>(
 }
 
 /**
- * Hook for form submission with error handling
+ * Hook for data fetching with automatic retry and caching
  */
-export function useFormSubmission<T>(
-  submitFunction: (data: any) => Promise<T>,
-  options: AsyncErrorHandlerOptions = {}
+export function useDataFetch<T>(
+  key: string,
+  fetcher: () => Promise<T>,
+  options: {
+    cacheTime?: number;
+    staleTime?: number;
+    retry?: number;
+    enabled?: boolean;
+  } = {}
 ) {
   const [state, setState] = React.useState<AsyncResult<T>>({
     data: null,
@@ -216,68 +237,29 @@ export function useFormSubmission<T>(
     loading: false,
   });
 
-  const submit = React.useCallback(
-    async (formData: any) => {
-      setState(prev => ({ ...prev, loading: true, error: null }));
-      
-      const result = await handleAsync(
-        () => submitFunction(formData),
-        {
-          showToast: true,
-          logError: true,
-          fallbackMessage: 'Failed to submit form. Please try again.',
-          ...options,
+  const fetch = React.useCallback(async () => {
+    if (options.enabled === false) return;
+    
+    setState(prev => ({ ...prev, loading: true, error: null }));
+    
+    let retries = options.retry || 3;
+    while (retries >= 0) {
+      try {
+        const data = await fetcher();
+        setState({ data, error: null, loading: false });
+        break;
+      } catch (error) {
+        if (retries === 0) {
+          const errorMessage = error instanceof Error ? error.message : 'Failed to fetch data';
+          setState({ data: null, error: errorMessage, loading: false });
+          logger.error('Data fetch failed', undefined, error as Error);
+        } else {
+          retries--;
+          await new Promise(resolve => setTimeout(resolve, 1000 * (options.retry! - retries)));
         }
-      );
-      
-      setState({
-        data: result.data,
-        error: result.error,
-        loading: false,
-      });
-      
-      return result;
-    },
-    [submitFunction, options]
-  );
-
-  return { ...state, submit };
-}
-
-/**
- * Hook for data fetching with error handling
- */
-export function useDataFetching<T>(
-  fetchFunction: () => Promise<T>,
-  options: AsyncErrorHandlerOptions = {}
-) {
-  const [state, setState] = React.useState<AsyncResult<T>>({
-    data: null,
-    error: null,
-    loading: true,
-  });
-
-  const fetch = React.useCallback(
-    async () => {
-      setState(prev => ({ ...prev, loading: true, error: null }));
-      
-      const result = await handleAsync(fetchFunction, {
-        showToast: false, // Don't show toast for data fetching errors
-        logError: true,
-        fallbackMessage: 'Failed to load data.',
-        ...options,
-      });
-      
-      setState({
-        data: result.data,
-        error: result.error,
-        loading: false,
-      });
-      
-      return result;
-    },
-    [fetchFunction, options]
-  );
+      }
+    }
+  }, [fetcher, options.enabled, options.retry]);
 
   React.useEffect(() => {
     fetch();
@@ -292,7 +274,7 @@ export function useDataFetching<T>(
 export const errorHandlers = {
   network: (error: Error) => {
     if (error.message.includes('fetch') || error.message.includes('network')) {
-      toast.error('Network error. Please check your connection and try again.');
+      conditionalToast.error('Network error. Please check your connection and try again.');
       return true;
     }
     return false;
@@ -300,7 +282,7 @@ export const errorHandlers = {
   
   validation: (error: Error) => {
     if (error.message.includes('validation') || error.message.includes('invalid')) {
-      toast.error('Please check your input and try again.');
+      conditionalToast.error('Please check your input and try again.');
       return true;
     }
     return false;
@@ -308,7 +290,7 @@ export const errorHandlers = {
   
   authentication: (error: Error) => {
     if (error.message.includes('unauthorized') || error.message.includes('authentication')) {
-      toast.error('Please log in to continue.');
+      conditionalToast.error('Please log in to continue.');
       return true;
     }
     return false;
@@ -316,7 +298,7 @@ export const errorHandlers = {
   
   server: (error: Error) => {
     if (error.message.includes('500') || error.message.includes('server')) {
-      toast.error('Server error. Please try again later.');
+      conditionalToast.error('Server error. Please try again later.');
       return true;
     }
     return false;
@@ -346,14 +328,11 @@ export async function handleAsyncWithTypeDetection<T>(
     
     // Fallback to generic error
     if (!handled && options.showToast) {
-      toast.error(result.error);
+      conditionalToast.error(result.error);
     }
     
     return { ...result, errorType: handled ? 'specific' : 'generic' };
   }
   
-  return result;
+  return { ...result, errorType: undefined };
 }
-
-// Import React for the hooks
-import React from 'react';
